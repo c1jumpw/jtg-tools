@@ -1,0 +1,434 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1.5rem 0;font-family:var(--font-sans)}
+h1{font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:1.25rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;align-items:center}
+.tag-btn{font-size:12px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;transition:all 0.12s}
+.tag-btn.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.search{font-size:13px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);outline:none;width:180px}
+.count{font-size:12px;color:var(--color-text-tertiary);margin-bottom:0.75rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1rem}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.card-top{padding:4px 12px;font-size:11px;font-weight:500;letter-spacing:0.04em}
+.card-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:9px}
+.name-row{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+.style-name{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.best-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary);white-space:nowrap;flex-shrink:0;margin-top:2px}
+.desc{font-size:12.5px;color:var(--color-text-secondary);line-height:1.55}
+.lbl{font-size:10px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:11px;padding:2px 7px;border-radius:8px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary)}
+.prompt-wrap{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px}
+.prompt-text{font-size:11.5px;color:var(--color-text-secondary);line-height:1.65}
+.prompt-text b{color:var(--color-text-primary);font-weight:500}
+.actions{display:flex;gap:6px;margin-top:6px}
+.cbtn{font-size:11px;padding:3px 10px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.cbtn:hover{background:var(--color-background-primary)}
+.no-results{font-size:13px;color:var(--color-text-tertiary);padding:2rem 0;text-align:center;grid-column:1/-1}
+</style>
+
+<div class="wrap">
+<h1>Party Flyer Style Index — Complete Edition</h1>
+<p class="sub">24 named styles covering the full spectrum of event flyer design</p>
+
+<div class="controls">
+  <input class="search" type="text" placeholder="Search styles…" id="search" />
+  <button class="tag-btn active" data-f="all">All</button>
+  <button class="tag-btn" data-f="nightclub">Nightclub</button>
+  <button class="tag-btn" data-f="daytime">Day / Brunch</button>
+  <button class="tag-btn" data-f="hiphop">Hip-hop / Trap</button>
+  <button class="tag-btn" data-f="cultural">Cultural</button>
+  <button class="tag-btn" data-f="themed">Themed / Seasonal</button>
+  <button class="tag-btn" data-f="typographic">Type-led</button>
+</div>
+<p class="count" id="count"></p>
+<div class="grid" id="grid"></div>
+</div>
+
+<script>
+const S=[
+{
+  name:"Club Glam",
+  cat:"nightclub",
+  tags:["nightclub","model-forward"],
+  accent:"#c0392b",accentText:"#fff",
+  bestFor:"Weekly nightclub nights — Fridays & Saturdays",
+  desc:"Warm amber-to-red gradient background with bubble or bokeh texture. Two or more female model cutouts, one partially behind oversized hollow-outline display text. Red cursive script for sub-title. Curved wave divider separating lower info band.",
+  typo:["Hollow outline bold (title)","Red italic cursive (sub-title)","Clean sans-serif (info)"],
+  info:["Promoter top-center","Models center bleed","Curved band: venue + address","Left badge: door deal"],
+  palette:["Amber orange","Deep red","White","Gold"],
+  src:"Reference img 1",
+  prompt:`<b>Club Glam</b> party flyer. Warm amber-orange gradient background, water/bubble bokeh texture. Two female model cutouts center-bleed. Giant hollow white outlined font for event name. Red italic cursive script sub-title overlaid. Curved red wave divider lower third. Date + time right side. Free-before badge left. Venue name gold, address white sans-serif bottom band. 1:1 square.`
+},
+{
+  name:"Hip-Hop Noir",
+  cat:"hiphop",
+  tags:["nightclub","hiphop","model-forward"],
+  accent:"#b8860b",accentText:"#fff",
+  bestFor:"Hip-hop / DJ-headlined nights",
+  desc:"Near-black background with electric lightning or smoke haze texture. Performer photo dead-center, partially behind the title. Giant 3D gold beveled block letters as event name. Flying money bills and champagne bottle accents. QR code for RSVP.",
+  typo:["Massive 3D gold beveled block letters","White italic script (sub-line)","Yellow bold caps (guest names)"],
+  info:["Date top-left, time top-right","Performer behind/inside title","Entry/specials row","QR + website footer"],
+  palette:["Black","Gold/yellow","White","Electric blue glow"],
+  src:"Reference img 2",
+  prompt:`<b>Hip-Hop Noir</b> party flyer. Near-black background with electric blue lightning and smoke texture. Male DJ with headphones center, partially behind title. Event name in massive 3D gold beveled block letters. White italic script sub-title. Flying $100 bills and champagne bottles as corner accents. Date top-left, time top-right in gold caps. Guest names yellow bold. Entry price row, QR code lower-right. Website URL footer. 1:1 square.`
+},
+{
+  name:"Editorial Urban",
+  cat:"nightclub",
+  tags:["nightclub","hiphop","typographic"],
+  accent:"#1565c0",accentText:"#fff",
+  bestFor:"Genre-battle nights — R&B vs Trap, Afrobeats vs Dancehall",
+  desc:"Dark city skyline or night backdrop. Multiple B&W desaturated celebrity/artist cutouts spread as a group. Event name in large backlit or halo-glow white brush lettering. Genre labels in neon-blue italic script. Magazine-cover composition with Instagram preview inset.",
+  typo:["Backlit white graffiti/brush display","Neon-blue italic script (genre vs)","White caps (date, venue, specials)"],
+  info:["Date + time top corners","Artists fill lower 60%","Specials and address foot","Mobile frame preview inset"],
+  palette:["Near-black","Neon blue","White","Soft glow"],
+  src:"Reference img 3",
+  prompt:`<b>Editorial Urban</b> party flyer. Dark city night skyline backdrop. Multiple B&W desaturated artist cutouts spread across lower 60% of frame. Large backlit white brush-script event title top. Neon-blue italic script for 'vs' genre separator. Date and time white caps top corners. Drink specials and address small white text foot. Mobile Instagram preview frame inset bottom-right. 1:1 square.`
+},
+{
+  name:"Luxury Noir",
+  cat:"nightclub",
+  tags:["nightclub","model-forward"],
+  accent:"#7b0000",accentText:"#fff",
+  bestFor:"Saturday events, VIP nights, 21+ upscale clubs",
+  desc:"Deep black photo background. Single glamorous female model, moody low-key lighting. Bold red and white stacked oversized type — sometimes ghost-layered at partial opacity for depth. Minimal graphic elements; the model carries the design. Red brush-stroke accent behind title.",
+  typo:["Oversized bold white caps doubled/ghost-layer","Red italic accent word","White condensed caps (details)"],
+  info:["Promoter top-center","Model bleeds all edges","Stacked title over model mid-section","Date box lower-left, time lower-right"],
+  palette:["Black","Deep red","White","Occasional black balloons"],
+  src:"Reference imgs 4 & 10",
+  prompt:`<b>Luxury Noir</b> party flyer. Deep black background. Single glamorous female model full bleed, low-key moody lighting. Oversized bold white caps event name, doubled/ghost-layered slightly offset. Red horizontal brush stroke behind title. Small date box lower-left, time lower-right. Venue name on red center band. Address below in white small caps. Promoter name top-center. 1:1 square.`
+},
+{
+  name:"Gold Standard",
+  cat:"nightclub",
+  tags:["nightclub","model-forward"],
+  accent:"#5d4037",accentText:"#FFD700",
+  bestFor:"Anniversary editions, milestone nights, upscale weekend events",
+  desc:"Warm dark wood-panel or leather-texture background. Two glamorous female models, bright and high-energy. Massive gold editorial serif display type spanning full width. Sub-title in a thin-bordered rectangle badge. Date on a gold paint-chip or torn-paper shape top corner.",
+  typo:["Massive gold serif display font (full-width)","Boxed white small-caps sub-title","Light white sans-serif for details"],
+  info:["Date badge top corner","Models lower 70%","Title over model mid-section","DJs lower-left, venue lower-right"],
+  palette:["Dark warm brown","Gold/amber","White"],
+  src:"Reference img 5",
+  prompt:`<b>Gold Standard</b> party flyer. Warm dark wood-panel texture background. Two elegantly dressed smiling women filling lower 70% of frame. Event name in massive gold serif display font spanning full width. Sub-title in thin-bordered white rectangle badge. Date in gold paint-chip shape top-right. DJ names and genre lower-left. Venue name lower-right in white caps. 1:1 square.`
+},
+{
+  name:"Vibrant Social",
+  cat:"daytime",
+  tags:["daytime","typographic"],
+  accent:"#880e4f",accentText:"#fff",
+  bestFor:"Happy hour, weekday specials, restaurant and bar promos",
+  desc:"Hot magenta-to-pink gradient background. Cocktail and food photography scattered as graphic props. Playful oversized mixed-weight type — some letters jumbo, alternating colors. Heart, speech-bubble, or social notification icon accents floating around. High energy and approachable.",
+  typo:["Giant mixed-case bold title (alternating colors)","Italic cursive 'specials' overlay","White bold pricing info"],
+  info:["Hours top-left badge","Logo top-right","Cocktail/food flanking title","Pricing row near bottom","Address footer"],
+  palette:["Hot pink/magenta","Orange-yellow","White","Purple"],
+  src:"Reference img 6",
+  prompt:`<b>Vibrant Social</b> party flyer. Hot magenta-to-pink gradient background. Large cocktail glass left, food platter right, flanking title. Giant mixed-case bold event name in alternating orange and white letters. Italic cursive 'specials' overlaid. Floating heart and notification-like icon accents. Hours badge top-left in yellow. DJ name below title. Pricing row for drinks, appetizers, shots in white bold. Street address footer. 1:1 square.`
+},
+{
+  name:"Tropical Resort",
+  cat:"daytime",
+  tags:["daytime","typographic"],
+  accent:"#00695c",accentText:"#fff",
+  bestFor:"Pool parties, summer kickoffs, outdoor day events",
+  desc:"Real luxury venue photo — pool, beach, or cabanas. 3D gold or stone-carved display text rendered to sit inside the scene on the ground or water surface. Tropical hibiscus flowers and palm fronds in the foreground. Aspirational and airy.",
+  typo:["3D gold beveled or stone-carved event name","Clean white sans-serif (company, venue)","Light italic gold (website)"],
+  info:["Promoter top-center","Date top-left, offer labels at corners","3D title center bleeds horizon","Venue mid-lower","Website footer"],
+  palette:["Sky blue","Lush green","Gold/amber","Hibiscus pink","White"],
+  src:"Reference img 7",
+  prompt:`<b>Tropical Resort</b> party flyer. Luxury pool venue photo background with cabanas, palm trees, turquoise water. 3D gold beveled block-letter event title appearing to sit on the pool surface. Tropical hibiscus flowers overlaid in foreground. Promoter name top-center in white small caps. Date top-left. Offer labels top-right, bottom-left, bottom-right on semi-transparent panels. Venue name white bold lower-center. Website URL footer. 1:1 square.`
+},
+{
+  name:"Street Trap",
+  cat:"hiphop",
+  tags:["nightclub","hiphop","model-forward"],
+  accent:"#212121",accentText:"#FFD600",
+  bestFor:"Trap nights, college parties, gritty urban events",
+  desc:"Distressed black background with grain, noise, or aged-paper texture. B&W group photo of women or crew. Giant yellow-on-black bold block letters for event name — often stacked with a thin cursive script word overlaid in white. Raw and textural.",
+  typo:["Massive yellow solid block letters (stacked)","White thin italic cursive overlay","White small caps (details)"],
+  info:["Age restriction top-left","Promoter top-right","Group photo center-bleed","Hosted-by section lower-left","Date badge center, specials lower-right"],
+  palette:["Black","Yellow/neon yellow","White","B&W photo"],
+  src:"Reference img 8",
+  prompt:`<b>Street Trap</b> party flyer. Distressed gritty black background with noise grain texture. B&W group photo of five women, center bleed. Giant yellow solid block letters stacked for event name. White italic cursive script word overlaid on title. Age restriction badge top-left. Date pill badge center. Hosted-by DJ names lower-left. Hookah and shots prices lower-right. Address and RSVP text line footer. 1:1 square.`
+},
+{
+  name:"Culture Edit",
+  cat:"cultural",
+  tags:["cultural","model-forward"],
+  accent:"#bf360c",accentText:"#fff",
+  bestFor:"Afrobeats, Soca, Reggae, multicultural party nights",
+  desc:"Lush green hedge, brick wall, or organic texture backdrop. AI or fashion model in one bold solid-color outfit (orange, red, emerald) acts as the dominant visual anchor. Neon-glow accent text for genre labels beside or above the model. Cover-story magazine composition.",
+  typo:["Large bold white title with neon-orange glow","Neon tube-glow genre labels (italic)","White clean caps (date, price, address)"],
+  info:["Title or logo top (partial cut-off for drama)","Date + age badge left","Genre labels right of model","Price/offer bands lower-left/right","Venue + address foot"],
+  palette:["Deep green / organic","Neon orange","White","Vibrant outfit pop color"],
+  src:"Reference img 9",
+  prompt:`<b>Culture Edit</b> party flyer. Lush green hedge wall backdrop. Full-length fashion model in bold orange fitted gown, center-left. Large bold white event title, partially cropped at top edge. Neon-orange glow tube-font genre labels (Soca, Afrobeats, Reggae) right side. Date and age restriction badge lower-left. Ladies free-til time offer lower-right. Venue name large bold lower-right. Address footer. Age disclaimer rotated vertical left edge. 1:1 square.`
+},
+{
+  name:"Cultural Vintage",
+  cat:"cultural",
+  tags:["cultural","typographic"],
+  accent:"#01579b",accentText:"#fff",
+  bestFor:"Latin nights, Noche Latina, Carribean themed events",
+  desc:"Retro halftone or duotone treatment on subject photo. Sky-blue or sun-baked tan background evoking vintage travel posters. Worn torn-paper text blocks. Palm tree or tropical graphic silhouettes. Distressed block-serif lettering. Collectible poster energy.",
+  typo:["Distressed display serif / block caps (title)","Warm italic serif for genre tags","Vintage torn-paper label for promoter"],
+  info:["Title dominant top third","Halftone subject center","Genre list mid-right","Bright footer band: venue + date"],
+  palette:["Sky blue","Cream/tan","Red badge","Black halftone"],
+  src:"Reference img 13",
+  prompt:`<b>Cultural Vintage</b> party flyer. Sky-blue background evoking a vintage travel poster. Halftone-duotone portrait of a stylish figure with bucket hat and sunglasses, center. Event name in large distressed white block caps top. Vintage torn-paper badge top-right corner. Palm tree silhouettes flanking subject. Genre list (Reggaeton, Dembow, Salsa) italic right side. Bright yellow footer band with venue name and date in dark type. 1:1 square.`
+},
+{
+  name:"Neon Cyberpunk",
+  cat:"nightclub",
+  tags:["nightclub","typographic"],
+  accent:"#4a148c",accentText:"#e040fb",
+  bestFor:"EDM-adjacent, underground, late-night techno-leaning events",
+  desc:"Pure black background. Glitch distortion or scanline effects on a model or performer photo. Event name in electric purple or cyan neon with chromatic aberration color-split on edges. Holographic foil or iridescent accent shapes. Grid or matrix pattern in deep background.",
+  typo:["Neon-glow display font with chromatic aberration split","Monospace or techy sans for info","Glitch-distorted accent words"],
+  info:["Minimal — date and time only, ultra-small","Event name dominates","Genre and DJ name secondary","Website or social handle foot"],
+  palette:["Black","Electric purple","Neon cyan","Hot pink","Chromatic RGB split"],
+  src:"Expanded",
+  prompt:`<b>Neon Cyberpunk</b> party flyer. Pure black background with deep dark grid pattern. Glitch-distorted photo of performer center. Event name in electric neon purple with chromatic aberration RGB split on edges. Holographic iridescent accent shapes floating. Cyan neon DJ name below. Date and time in small monospace white text. Social handle footer. 1:1 square.`
+},
+{
+  name:"Synthwave Retro",
+  cat:"themed",
+  tags:["themed","typographic"],
+  accent:"#1a0033",accentText:"#ff79c6",
+  bestFor:"80s night, retro parties, throwback events",
+  desc:"Classic synthwave composition: vanishing-point grid floor in neon pink/purple lines, sunset gradient horizon (magenta-to-purple), chrome or chrome-outline retro display text. Silhouetted city skyline or palm trees on the horizon. Totally nostalgic and cinematic.",
+  typo:["Chrome or chrome-outline retro 3D italic text","Neon pink thin sans for sub-info","VHS timestamp or scan-line date display"],
+  info:["Logo/promoter top-center","Chrome title center-bleed","Sunset horizon mid-line","Artist names on grid floor","Date/address in VHS-style bottom bar"],
+  palette:["Deep purple/black","Hot pink","Neon purple","Chrome silver","Gradient orange-magenta horizon"],
+  src:"Expanded",
+  prompt:`<b>Synthwave Retro</b> party flyer. Vanishing-point neon grid floor in hot pink lines. Sunset gradient horizon, magenta fading to deep purple. Silhouetted palm tree line at horizon. Chrome italic 3D event name center. Neon pink artist names on the grid floor. VHS timestamp date bottom-left. Address in scan-line style bottom bar. 1:1 square.`
+},
+{
+  name:"Y2K Chrome",
+  cat:"themed",
+  tags:["themed","typographic"],
+  accent:"#1a1a2e",accentText:"#c0c0c0",
+  bestFor:"Y2K nights, 2000s throwbacks, futuristic glam events",
+  desc:"Silver chrome, mirror, or glossy metallic surfaces everywhere. Holographic sticker-like elements, chrome bubble letters, butterfly or star motifs. Iridescent or reflective model photo. Very early-2000s pop aesthetic — think CD covers, Myspace era.",
+  typo:["Chrome 3D bubble letters","Tight bold italic futuristic sans","Star/sparkle glyph accents"],
+  info:["Glossy chrome header","Model or chrome object center","Holographic sticker-style info blocks","Price/access bottom"],
+  palette:["Silver/chrome","Holographic rainbow","Black","White","Metallic pink"],
+  src:"Expanded",
+  prompt:`<b>Y2K Chrome</b> party flyer. Silver holographic metallic background. Glossy chrome 3D bubble-letter event name center. Model in iridescent silver outfit, center bleed. Holographic sticker-like info badges scattered. Butterfly and star graphic motifs. DJ name in tight bold italic futuristic sans. Date and cover in chrome pill badge bottom. Social handle footer. 1:1 square.`
+},
+{
+  name:"Brunch & Bubbly",
+  cat:"daytime",
+  tags:["daytime","model-forward"],
+  accent:"#880e4f",accentText:"#fce4ec",
+  bestFor:"Brunch parties, daytime social, ladies' events",
+  desc:"Soft blush-to-gold or champagne gradient background. Mimosa, rose, or champagne flute photography as props. Elegant thin serif display font for the event name — refined but festive. Floral or watercolor accent elements. Feminine and aspirational.",
+  typo:["Thin elegant serif display (event name)","Gold italic cursive sub-title","Light pink or white sans for details"],
+  info:["Date and time top-right in dainty badge","Drink imagery left side","Title center-right","Host/DJ mid-lower","Entry and dress code bottom"],
+  palette:["Blush pink","Champagne/gold","White","Rose gold"],
+  src:"Expanded",
+  prompt:`<b>Brunch & Bubbly</b> party flyer. Soft blush-to-champagne gradient background. Mimosa and rose champagne flute photography left side. Thin elegant serif display event name center-right. Gold italic cursive sub-title below. Watercolor floral accent elements top corners. Date badge top-right. Host and DJ names mid-lower in light pink sans. Entry info and dress code small text bottom. 1:1 square.`
+},
+{
+  name:"Rooftop Affair",
+  cat:"daytime",
+  tags:["daytime","nightclub"],
+  accent:"#0d47a1",accentText:"#fff",
+  bestFor:"Rooftop parties, skyline events, upscale day-to-night",
+  desc:"Real rooftop or aerial cityscape photograph, often at golden hour or blue hour. Warm amber overlay tint on the sky. Clean modern sans-serif event name — confident but not aggressive. Minimal layout. The venue view is the hero.",
+  typo:["Modern clean bold sans (event name)","Thin white tracking-wide caps (sub-info)","Serif or script accent for occasion word"],
+  info:["Promoter top-left","Skyline photo full-bleed","Title upper or lower third","Date, address, RSVP in minimal clean row"],
+  palette:["Golden hour amber","City blue","White","Black"],
+  src:"Expanded",
+  prompt:`<b>Rooftop Affair</b> party flyer. Real rooftop cityscape photo at golden hour, warm amber sky. Warm color grade overlay. Clean bold modern white sans-serif event name upper third. Thin wide-tracked caps for date and venue below. Minimal info layout. DJ name and RSVP in clean single line near bottom. Promoter logo top-left. 1:1 square.`
+},
+{
+  name:"Masquerade Opulent",
+  cat:"themed",
+  tags:["themed","nightclub"],
+  accent:"#1a0a00",accentText:"#d4af37",
+  bestFor:"Masquerade balls, New Year's Eve, black-tie events",
+  desc:"Deep black or near-black background with baroque or damask wallpaper texture. Ornate gold filigree frame or border around the entire composition. Model in elaborate mask and formal attire. Art Deco typographic details — thin-lined gold letterforms. Candles, chandeliers, or feather motifs.",
+  typo:["Tall thin-lined Art Deco display font","Gold italic serif for occasion/sub-title","Small gold caps tracking wide for details"],
+  info:["Ornate top border / header crest","Masked model or couple center","Title within inner frame","Date + venue in gold art-deco plaque style"],
+  palette:["Jet black","Antique gold","Deep burgundy","Ivory"],
+  src:"Expanded",
+  prompt:`<b>Masquerade Opulent</b> party flyer. Jet black background with baroque damask wallpaper texture. Ornate gold filigree border framing entire composition. Model in elaborate Venetian mask and black formal attire center. Art Deco tall thin-lined gold display font for event name. Gold italic serif sub-title. Candelabra and feather motifs. Date and venue in gold art-deco plaque style. 1:1 square.`
+},
+{
+  name:"Old Hollywood",
+  cat:"themed",
+  tags:["themed","nightclub","model-forward"],
+  accent:"#1c1208",accentText:"#d4af37",
+  bestFor:"Gatsby nights, 1920s–40s themed events, glamour parties",
+  desc:"Sepia or film-grain black-and-white photo treatment with gold overlay accents. Art Deco geometry — sunburst, fan, chevron patterns. Model in vintage-inspired glam. Marquee-style event name with lightbulbs or gold line frames. Champagne tower or vintage coupes as props.",
+  typo:["Marquee or Art Deco serif display (title)","Gold all-caps wide tracked sub-title","Typewriter or vintage serif for details"],
+  info:["Vintage film border top and bottom","Model center Art Deco frame","Title in marquee styling","Date, venue in gold inset box"],
+  palette:["Sepia/warm black","Antique gold","Champagne","Ivory"],
+  src:"Expanded",
+  prompt:`<b>Old Hollywood</b> party flyer. Sepia-toned film-grain background. Art Deco sunburst and chevron gold geometry frame. Model in vintage 1920s glam gown, center. Event name in marquee-style Art Deco serif with decorative line frames. Gold wide-tracked caps for sub-title. Champagne coupe glass prop. Vintage film border top and bottom. Date and venue in gold inset box. 1:1 square.`
+},
+{
+  name:"Jazz & Neo-Soul",
+  cat:"cultural",
+  tags:["cultural","daytime","nightclub"],
+  accent:"#3e2000",accentText:"#e8a000",
+  bestFor:"Jazz nights, neo-soul events, upscale lounge parties",
+  desc:"Warm amber and burnt-sienna tones — think vintage jazz album cover. Film-grain or aged paper texture. Saxophone, piano keys, or microphone silhouette as graphic elements. Elegant script or compressed serif for the event name. Soulful and intimate.",
+  typo:["Elegant compressed serif or Art Nouveau script","Warm amber italic accent","Small warm caps for details"],
+  info:["Instrument motif top or corner","Artist name as marquee headline","Event name elegant below","Date and venue in warm amber type","No loud pricing — sophisticated restraint"],
+  palette:["Burnt amber","Deep brown","Warm cream","Gold"],
+  src:"Expanded",
+  prompt:`<b>Jazz & Neo-Soul</b> party flyer. Warm burnt-amber aged-paper background with film grain. Saxophone silhouette top-right as graphic element. Artist or event name in elegant compressed serif or Art Nouveau script, center. Warm amber italic accent for sub-title. Microphone prop lower corner. Date and venue in small warm caps. Minimal pricing — no loud promos. 1:1 square.`
+},
+{
+  name:"Festival Lineup",
+  cat:"themed",
+  tags:["themed","typographic"],
+  accent:"#0a0020",accentText:"#fff",
+  bestFor:"Multi-act events, concert nights, EDM / multi-genre festivals",
+  desc:"Dark background with wide-beam laser or spotlight rays fanning from a central vanishing point. Multi-tier headline billing — headliner in the largest font, supporting acts in descending size. Smoke haze over a crowd silhouette at the bottom. Bold, high-information design.",
+  typo:["Ultra-bold wide caps (headliner, massive)","Decreasing-size bill tiers","Thin caps for supporting acts"],
+  info:["Promoter + date top bar","Laser beams behind title area","Artist tiers center","Crowd silhouette lower band","Ticket info and site footer"],
+  palette:["Black","White","Laser blue/purple","Orange spotlight","Crowd silhouette"],
+  src:"Expanded",
+  prompt:`<b>Festival Lineup</b> party flyer. Near-black background. Wide-beam laser rays in blue and purple fanning from center-lower vanishing point. Headliner name in ultra-bold massive white caps top-center. Two supporting act tiers in decreasing font sizes. Crowd silhouette smoke-haze lower band. Date and promoter in top bar. Ticket info and website footer. 1:1 square.`
+},
+{
+  name:"Magazine Cover",
+  cat:"nightclub",
+  tags:["nightclub","model-forward","typographic"],
+  accent:"#0d0d0d",accentText:"#fff",
+  bestFor:"Premium events, brand-forward nights, influencer-hosted parties",
+  desc:"Formatted as a literal magazine cover — masthead at top, main cover-model full-bleed, pull-quote call-outs beside the model, small barcode and issue number. The event name IS the magazine title. Extremely editorial and shareable.",
+  typo:["Masthead serif or bold sans (event = magazine name)","Pull-quote short caps beside model","Small italic kickers for detail info"],
+  info:["Masthead top full-width","Cover star bleeds full frame","Pull-quote info strips left and right","Barcode + issue/date lower corner"],
+  palette:["White masthead bar","Full-bleed photo","Black pull-quotes","One accent color for issue"],
+  src:"Expanded (ref img 9 direction)",
+  prompt:`<b>Magazine Cover</b> party flyer. Formatted as a glossy magazine cover. White masthead bar top with event name as magazine title in bold display type. Full-bleed cover model photo. Three pull-quote text strips left and right of model listing DJ names, genre, date, venue. Small barcode and date lower-right corner. Bottom strip: address and RSVP. 1:1 square.`
+},
+{
+  name:"Dark Minimalist",
+  cat:"nightclub",
+  tags:["nightclub","typographic"],
+  accent:"#0a0a0a",accentText:"#888",
+  bestFor:"Techno, house, underground club nights",
+  desc:"Almost entirely typographic. Very dark background, near zero imagery. Event name in a single bold or condensed sans-serif typeface — white or near-white. All other information in small, precise, wide-tracked type. Stark whitespace used deliberately. No models, no effects.",
+  typo:["Single bold condensed sans (event name)","Wide-tracked caps for all sub-info","Monospace for time/date precision"],
+  info:["All info stacked in a grid, left-aligned or centered","Date and time prominent second line","Artist names equal-weight to venue","No hierarchy games — flat, intentional"],
+  palette:["Near-black","White","One muted accent (rarely)"],
+  src:"Expanded",
+  prompt:`<b>Dark Minimalist</b> party flyer. Near-black flat background. Event name in single large bold condensed sans-serif, white, centered. All remaining info in small wide-tracked white caps below. Date and time second line. Artist names and venue in equal-weight type. Extreme whitespace. No photographs, no graphic elements. One thin horizontal rule dividing title from info. 1:1 square.`
+},
+{
+  name:"Street Art Collage",
+  cat:"hiphop",
+  tags:["hiphop","cultural","typographic"],
+  accent:"#1a1a1a",accentText:"#ff5722",
+  bestFor:"Urban arts events, street culture, graf-influenced nights",
+  desc:"Brick wall, concrete, or painted surface as background. Mix of spray-paint graffiti lettering and hand-drawn elements. Torn-poster, sticker, and tape collage overlays. Photos treated with halftone or risograph duotone. Chaotic but intentional layering.",
+  typo:["Graffiti or spray-paint style display lettering","Sticker-label sans for practical info","Mixed sizes, mixed angles"],
+  info:["Layers build left-to-right, top-to-bottom","Date on a tape/sticker element","Venue on a torn-poster strip","DJ names as tags or throw-up letters"],
+  palette:["Concrete gray","Black","Spray-can red/orange","Wheat-paste tan","Risograph blue"],
+  src:"Expanded",
+  prompt:`<b>Street Art Collage</b> party flyer. Brick wall or painted concrete background. Event name in graffiti spray-paint style lettering center. Torn-poster and sticker overlay elements with tape marks. Photos of artists/DJs in halftone duotone treatment. Date on a tape-label sticker element. Venue on a torn-paper strip. DJ names as throw-up graffiti tags. Chaotic layered collage composition. 1:1 square.`
+},
+{
+  name:"NYE Countdown",
+  cat:"themed",
+  tags:["themed","nightclub"],
+  accent:"#0a0a1a",accentText:"#d4af37",
+  bestFor:"New Year's Eve, countdown events, milestone celebrations",
+  desc:"Deep midnight black or navy background. Gold or silver glitter particle burst, confetti rain, and firework trails radiating from center. Champagne coupes or sparkler photography. Large countdown-clock or year number as the hero graphic. Elegant and celebratory.",
+  typo:["Large gold serif or metallic display (year/title)","Elegant thin white caps for event name","Gold wide-tracked caps for details"],
+  info:["Year or countdown number dominates center","Event name above","Date/time in elegant smaller type","Venue + ticket info bottom gold band"],
+  palette:["Midnight black/navy","Gold","Silver","Champagne","White particle burst"],
+  src:"Expanded",
+  prompt:`<b>NYE Countdown</b> party flyer. Midnight dark navy background. Gold and silver glitter particle burst radiating from center. Champagne coupe glasses and sparkler photography as props. Large bold gold metallic year or countdown number as hero graphic center. Event name in elegant thin white caps above. Date and time in gold tracking-wide caps. Venue and ticket info in gold footer band. 1:1 square.`
+},
+{
+  name:"Newspaper Editorial",
+  cat:"typographic",
+  tags:["typographic","themed"],
+  accent:"#f5f0e8",accentText:"#1a1a1a",
+  bestFor:"Comedy shows, arts events, literary-themed parties, satirical promos",
+  desc:"Full tabloid or broadsheet newspaper layout — columns of lorem-ipsum body copy, a bold black headline masthead, halftone photo columns, date-line and edition number. The event info is disguised as a news story. Subversive and highly shareable.",
+  typo:["Tall bold tabloid headline sans (masthead)","Body text columns (decorative lorem)","Pull-quote in italic serif"],
+  info:["Masthead at top with edition/date","2–3 column layout","Event name as breaking headline","Photo halftone inset mid-column","RSVP as classified ad at foot"],
+  palette:["Newsprint cream","Black","Gray half-tone","Single ink accent (red or blue)"],
+  src:"Expanded",
+  prompt:`<b>Newspaper Editorial</b> party flyer. Newsprint cream background. Full broadsheet newspaper layout. Bold black tabloid headline masthead top. Two or three text columns with decorative lorem body copy. Event name as breaking headline. Halftone photo inset center-column. Edition number and date-line in small caps top bar. RSVP info formatted as a classified ad at the foot. Single red ink accent for headline. 1:1 square.`
+}
+];
+
+const grid=document.getElementById('grid');
+const countEl=document.getElementById('count');
+let activeFilter='all';
+let searchVal='';
+
+function render(){
+  let list=S.filter(s=>{
+    const matchF=activeFilter==='all'||s.tags.includes(activeFilter);
+    const q=searchVal.toLowerCase();
+    const matchS=!q||s.name.toLowerCase().includes(q)||s.desc.toLowerCase().includes(q)||s.bestFor.toLowerCase().includes(q);
+    return matchF&&matchS;
+  });
+  countEl.textContent=`Showing ${list.length} of ${S.length} styles`;
+  grid.innerHTML='';
+  if(!list.length){
+    grid.innerHTML='<div class="no-results">No styles match — try a different search or filter.</div>';
+    return;
+  }
+  list.forEach(s=>{
+    const c=document.createElement('div');
+    c.className='card';
+    const cleanPrompt=s.prompt.replace(/<b>/g,'').replace(/<\/b>/g,'');
+    c.innerHTML=`
+      <div class="card-top" style="background:${s.accent};color:${s.accentText}">${s.name}</div>
+      <div class="card-body">
+        <div class="name-row">
+          <span class="style-name">${s.name}</span>
+          <span class="best-badge">${s.bestFor.split(',')[0].split('–')[0].trim()}</span>
+        </div>
+        <p class="desc">${s.desc}</p>
+        <div><div class="lbl">Typography</div><div class="pills">${s.typo.map(t=>`<span class="pill">${t}</span>`).join('')}</div></div>
+        <div><div class="lbl">Info layout</div><div class="pills">${s.info.map(t=>`<span class="pill">${t}</span>`).join('')}</div></div>
+        <div><div class="lbl">Palette</div><div class="pills">${s.palette.map(t=>`<span class="pill">${t}</span>`).join('')}</div></div>
+        <div>
+          <div class="lbl" style="margin-bottom:5px">Prompt template</div>
+          <div class="prompt-wrap"><p class="prompt-text">${s.prompt}</p></div>
+          <div class="actions">
+            <button class="cbtn" onclick="doCopy(this,'${encodeURIComponent(cleanPrompt)}')"><i class="ti ti-copy" aria-hidden="true"></i> Copy prompt</button>
+            <button class="cbtn" onclick="sendPrompt('Tell me more about the ${s.name} flyer style and give me 3 variations of its prompt template')">Explore ↗</button>
+          </div>
+        </div>
+      </div>`;
+    grid.appendChild(c);
+  });
+}
+
+function doCopy(btn,enc){
+  navigator.clipboard.writeText(decodeURIComponent(enc)).then(()=>{
+    btn.textContent='✓ Copied';
+    setTimeout(()=>{ btn.innerHTML='<i class="ti ti-copy" aria-hidden="true"></i> Copy prompt'; },1500);
+  });
+}
+
+document.getElementById('filters').addEventListener('click',e=>{
+  const b=e.target.closest('.tag-btn');
+  if(!b)return;
+  document.querySelectorAll('.tag-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  activeFilter=b.dataset.f;
+  render();
+});
+
+document.getElementById('search').addEventListener('input',e=>{
+  searchVal=e.target.value;
+  render();
+});
+
+render();
+</script>
