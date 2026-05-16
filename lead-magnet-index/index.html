@@ -137,7 +137,7 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0SwQ1Wgu1anj1W78DTar8_V9DL8fOh4otUFcoGruwb-otaRi4-UtKTVxS5gtfO-8e1A/exec';
 const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit#gid=1249671034';
 
-const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments'];
+const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments','Uny','F5 CEO'];
 const LEADS    = ['Potential client','Supporter','Partner'];
 
 let rows = [];
@@ -167,7 +167,7 @@ async function apiCall(params) {
 }
 
 async function loadData() {
-  busy(true); setStatus('Loading…');
+  busy(true); setStatus('Loading\u2026');
   var res = await apiCall({action:'read'});
   if (res) {
     rows = res.data || [];
@@ -178,7 +178,7 @@ async function loadData() {
 }
 
 async function addEntry(branch, leadType, name) {
-  busy(true); setStatus('Saving…');
+  busy(true); setStatus('Saving\u2026');
   var res = await apiCall({action:'add', branch:branch, leadType:leadType, name:name});
   if (res) {
     rows.push({branch:branch, leadType:leadType, name:name, description:'', dateAdded:'', link:''});
@@ -189,7 +189,7 @@ async function addEntry(branch, leadType, name) {
 }
 
 async function deleteEntry(branch, leadType, name) {
-  busy(true); setStatus('Removing…');
+  busy(true); setStatus('Removing\u2026');
   var res = await apiCall({action:'delete', branch:branch, leadType:leadType, name:name});
   if (res) {
     rows = rows.filter(function(r){ return !(r.branch===branch && r.leadType===leadType && r.name===name); });
