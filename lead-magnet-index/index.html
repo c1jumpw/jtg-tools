@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Lead Magnet Matrix</title>
+<title>Lead Magnet Matrix — JTG</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -21,6 +21,10 @@
     --pill-border: rgba(24,95,165,0.3);
     --info-bg: #e6f1fb;
     --info-text: #0c447c;
+    --danger-bg: #fcebeb;
+    --danger-text: #a32d2d;
+    --success-bg: #eaf3de;
+    --success-text: #3b6d11;
     --radius-md: 8px;
     --radius-lg: 12px;
   }
@@ -40,6 +44,10 @@
       --pill-border: rgba(55,138,221,0.35);
       --info-bg: #0c2a45;
       --info-text: #85b7eb;
+      --danger-bg: #2d1010;
+      --danger-text: #f09595;
+      --success-bg: #152208;
+      --success-text: #97c459;
     }
   }
 
@@ -52,20 +60,35 @@
   }
 
   header {
-    max-width: 1000px;
-    margin: 0 auto 1.5rem;
+    max-width: 1020px;
+    margin: 0 auto 1.25rem;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
   }
 
   header h1 { font-size: 20px; font-weight: 500; }
-  header span { font-size: 13px; color: var(--text-2); }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #total-count { font-size: 13px; color: var(--text-2); }
+
+  .icon-btn {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; padding: 5px 11px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-2);
+    background: var(--bg);
+    color: var(--text-2);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: var(--bg-3); color: var(--text); }
+  .icon-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 
   .card {
-    max-width: 1000px;
+    max-width: 1020px;
     margin: 0 auto;
     background: var(--bg);
     border-radius: var(--radius-lg);
@@ -73,302 +96,365 @@
     overflow-x: auto;
   }
 
-  table { width: 100%; border-collapse: collapse; min-width: 560px; }
-
+  table { width: 100%; border-collapse: collapse; min-width: 580px; }
   th, td { border: 0.5px solid var(--border); vertical-align: top; }
 
   th.corner { width: 80px; background: var(--bg-2); }
-
   th.lead-head {
-    background: var(--bg-2);
-    padding: 10px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-    text-align: left;
-    min-width: 200px;
+    background: var(--bg-2); padding: 10px 12px;
+    font-size: 12px; font-weight: 500; color: var(--text);
+    text-align: left; min-width: 210px;
   }
-
   th.branch-head {
-    background: var(--bg-2);
-    padding: 10px 8px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-2);
-    text-align: center;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    width: 80px;
+    background: var(--bg-2); padding: 10px 8px;
+    font-size: 11px; font-weight: 500; color: var(--text-2);
+    text-align: center; letter-spacing: 0.05em;
+    text-transform: uppercase; width: 80px;
   }
-
   td.cell { padding: 6px 8px; background: var(--bg); }
 
-  .pills-wrap {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 3px;
-    min-height: 28px;
-  }
+  .pills-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-height: 28px; }
 
   .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    background: var(--pill-bg);
-    color: var(--pill-text);
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--pill-bg); color: var(--pill-text);
     border: 0.5px solid var(--pill-border);
-    border-radius: 20px;
-    font-size: 11px;
-    padding: 3px 8px 3px 9px;
-    white-space: nowrap;
+    border-radius: 20px; font-size: 11px;
+    padding: 3px 8px 3px 9px; white-space: nowrap;
   }
-
   .pill button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--pill-text);
-    font-size: 14px;
-    line-height: 1;
-    padding: 0 0 0 1px;
-    opacity: 0.55;
-    transition: opacity 0.15s;
+    background: none; border: none; cursor: pointer;
+    color: var(--pill-text); font-size: 14px; line-height: 1;
+    padding: 0 0 0 1px; opacity: 0.55; transition: opacity 0.15s;
   }
   .pill button:hover { opacity: 1; }
 
   .add-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border: 0.5px dashed var(--border-2);
-    border-radius: 50%;
-    background: none;
-    cursor: pointer;
-    color: var(--text-3);
-    font-size: 16px;
-    line-height: 1;
-    transition: all 0.15s;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border: 0.5px dashed var(--border-2); border-radius: 50%;
+    background: none; cursor: pointer; color: var(--text-3);
+    font-size: 16px; line-height: 1; transition: all 0.15s; flex-shrink: 0;
   }
-  .add-btn:hover {
-    border-color: var(--text-2);
-    color: var(--text-2);
-    background: var(--bg-2);
-  }
+  .add-btn:hover { border-color: var(--text-2); color: var(--text-2); background: var(--bg-2); }
 
-  .footer {
-    max-width: 1000px;
-    margin: 10px auto 0;
-    text-align: right;
-    font-size: 11px;
-    color: var(--text-3);
-    height: 16px;
+  .status-bar {
+    max-width: 1020px; margin: 8px auto 0;
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; min-height: 20px;
   }
+  .status-msg { font-size: 11px; color: var(--text-3); }
+  .status-msg.ok { color: var(--success-text); }
+  .status-msg.err { color: var(--danger-text); }
 
-  /* Modal */
+  .spinner {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid var(--border-2);
+    border-top-color: var(--pill-text);
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .overlay {
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: rgba(0,0,0,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 1rem;
   }
-
   .modal {
-    background: var(--bg);
-    border-radius: var(--radius-lg);
+    background: var(--bg); border-radius: var(--radius-lg);
     border: 0.5px solid var(--border-2);
-    padding: 1.25rem 1.5rem;
-    width: 100%;
-    max-width: 320px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 1.5rem; width: 100%; max-width: 340px;
   }
-
-  .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 3px; }
-  .modal p { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
-
+  .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .modal p { font-size: 12px; color: var(--text-2); margin-bottom: 14px; line-height: 1.6; }
+  .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; }
   .modal input {
-    width: 100%;
-    font-size: 13px;
-    padding: 8px 10px;
-    border-radius: var(--radius-md);
-    border: 0.5px solid var(--border-2);
-    background: var(--bg-2);
-    color: var(--text);
-    margin-bottom: 12px;
-    font-family: inherit;
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
+    background: var(--bg-2); color: var(--text);
+    margin-bottom: 12px; font-family: inherit;
   }
-  .modal input:focus { outline: 2px solid var(--info-text); outline-offset: 1px; }
-
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
-
+  .modal input:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
   .modal-btns button {
-    font-size: 13px;
-    padding: 7px 16px;
-    border-radius: var(--radius-md);
-    border: 0.5px solid var(--border-2);
-    cursor: pointer;
-    background: var(--bg-2);
-    color: var(--text);
-    font-family: inherit;
-    transition: opacity 0.15s;
+    font-size: 13px; padding: 7px 16px;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
+    cursor: pointer; background: var(--bg-2); color: var(--text);
+    font-family: inherit; transition: opacity 0.15s;
   }
-
   .modal-btns button.primary {
-    background: var(--info-bg);
-    color: var(--info-text);
-    border-color: var(--pill-border);
+    background: var(--info-bg); color: var(--info-text); border-color: var(--pill-border);
   }
   .modal-btns button:hover { opacity: 0.75; }
+
+  .token-hint {
+    font-size: 11px; color: var(--text-3); margin-top: 10px;
+    padding: 8px 10px; background: var(--bg-2);
+    border-radius: var(--radius-md); line-height: 1.7;
+  }
+  .token-hint a { color: var(--pill-text); }
+
+  .token-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 7px 10px;
+    border-radius: var(--radius-md);
+    background: var(--success-bg); color: var(--success-text);
+    margin-bottom: 12px;
+  }
+  .token-status.bad { background: var(--danger-bg); color: var(--danger-text); }
 </style>
 </head>
 <body>
 
 <header>
   <h1>Lead magnet matrix</h1>
-  <span id="total-count">0 lead magnets</span>
+  <div class="header-right">
+    <span id="total-count"></span>
+    <button class="icon-btn" onclick="openTokenModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Settings
+    </button>
+  </div>
 </header>
 
 <div class="card">
   <table id="matrix-table"></table>
 </div>
 
-<div class="footer" id="status"></div>
+<div class="status-bar">
+  <div class="spinner" id="spinner"></div>
+  <div class="status-msg" id="status-msg"></div>
+</div>
+
+<div id="modal-root"></div>
 
 <script>
+const REPO   = 'c1jumpw/jtg-tools';
+const PATH   = 'lead-magnet-index/data.json';
+const BRANCH = 'main';
+const TOKEN_KEY = 'jtg_gh_token';
+
 const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments'];
-const LEADS = ['Potential client','Supporter','Partner'];
-const STORAGE_KEY = 'jtg_lead_magnets_v1';
+const LEADS    = ['Potential client','Supporter','Partner'];
 
 let data = {};
+let fileSha = null;
 let activeModal = null;
 
-function cellKey(branch, lead) {
-  return branch + '||' + lead;
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function escA(s) { return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+function cellKey(b, l) { return b + '||' + l; }
 
 function totalCount() {
-  return Object.values(data).reduce((s, arr) => s + arr.length, 0);
+  return Object.values(data).reduce((s,a) => s + a.length, 0);
 }
 
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) data = JSON.parse(raw);
-  } catch(e) { data = {}; }
-  render();
-  setStatus('');
+function setStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
 }
 
-function save() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    setStatus('Saved ✓');
-    setTimeout(() => setStatus(''), 1500);
-  } catch(e) {
-    setStatus('Could not save — storage may be full.');
+function busy(on) {
+  document.getElementById('spinner').style.display = on ? 'block' : 'none';
+}
+
+const API = 'https://api.github.com/repos/' + REPO + '/contents/' + PATH;
+
+async function loadFromGitHub() {
+  const token = getToken();
+  if (!token) {
+    setStatus('No token set — click Settings to connect GitHub.', 'err');
+    render();
+    return;
   }
+  busy(true);
+  setStatus('Loading…');
+  try {
+    const res = await fetch(API + '?ref=' + BRANCH, {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json'
+      }
+    });
+    if (res.status === 404) {
+      data = {}; fileSha = null;
+      setStatus('Connected — no data yet. Add your first entry!', 'ok');
+      setTimeout(() => setStatus(''), 3000);
+      render(); busy(false); return;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'GitHub error ' + res.status);
+    }
+    const json = await res.json();
+    fileSha = json.sha;
+    const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g,''))));
+    data = JSON.parse(decoded);
+    setStatus('Loaded from GitHub ✓', 'ok');
+    setTimeout(() => setStatus(''), 2000);
+  } catch(e) {
+    setStatus('Load failed: ' + e.message, 'err');
+  }
+  render();
+  busy(false);
 }
 
-function setStatus(msg) {
-  document.getElementById('status').textContent = msg;
+async function saveToGitHub() {
+  const token = getToken();
+  if (!token) { setStatus('No token — open Settings first.', 'err'); return; }
+  busy(true);
+  setStatus('Saving…');
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body = { message: 'Update lead magnet data', content, branch: BRANCH };
+    if (fileSha) body.sha = fileSha;
+
+    const res = await fetch(API, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'GitHub error ' + res.status);
+    }
+    const json = await res.json();
+    fileSha = json.content.sha;
+    setStatus('Saved to GitHub ✓', 'ok');
+    setTimeout(() => setStatus(''), 2000);
+  } catch(e) {
+    setStatus('Save failed: ' + e.message, 'err');
+  }
+  busy(false);
 }
 
 function render() {
   const tbl = document.getElementById('matrix-table');
-
-  const headerCells = LEADS.map(l =>
-    `<th class="lead-head">${l}</th>`
-  ).join('');
-
-  const rows = BRANCHES.map(branch => {
-    const cells = LEADS.map(lead => {
+  const headerCells = LEADS.map(l => '<th class="lead-head">' + esc(l) + '</th>').join('');
+  const rows = BRANCHES.map(function(branch) {
+    const cells = LEADS.map(function(lead) {
       const key = cellKey(branch, lead);
       const items = data[key] || [];
-      const pills = items.map((item, idx) =>
-        `<span class="pill">${escHtml(item)}<button onclick="removeItem('${escAttr(key)}',${idx})" title="Remove">×</button></span>`
-      ).join('');
-      return `<td class="cell"><div class="pills-wrap">${pills}<button class="add-btn" onclick="openModal('${escAttr(key)}','${escAttr(branch)}','${escAttr(lead)}')" title="Add lead magnet">+</button></div></td>`;
+      const pills = items.map(function(item, idx) {
+        return '<span class="pill">' + esc(item) + '<button onclick="removeItem(\'' + escA(key) + '\',' + idx + ')" title="Remove">\xd7</button></span>';
+      }).join('');
+      return '<td class="cell"><div class="pills-wrap">' + pills + '<button class="add-btn" onclick="openAddModal(\'' + escA(key) + '\',\'' + escA(branch) + '\',\'' + escA(lead) + '\')" title="Add lead magnet">+</button></div></td>';
     }).join('');
-
-    return `<tr><th class="branch-head">${escHtml(branch)}</th>${cells}</tr>`;
+    return '<tr><th class="branch-head">' + esc(branch) + '</th>' + cells + '</tr>';
   }).join('');
 
-  tbl.innerHTML = `
-    <thead><tr>
-      <th class="corner"></th>
-      ${headerCells}
-    </tr></thead>
-    <tbody>${rows}</tbody>`;
+  tbl.innerHTML = '<thead><tr><th class="corner"></th>' + headerCells + '</tr></thead><tbody>' + rows + '</tbody>';
 
-  const n = totalCount();
+  var n = totalCount();
   document.getElementById('total-count').textContent = n + ' lead magnet' + (n !== 1 ? 's' : '');
 }
 
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(str) {
-  return str.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-}
-
-function openModal(key, branch, lead) {
+function openAddModal(key, branch, lead) {
   closeModal();
-  const overlay = document.createElement('div');
-  overlay.className = 'overlay';
-  overlay.innerHTML = `
-    <div class="modal">
-      <h3>Add lead magnet</h3>
-      <p>${escHtml(branch)} — ${escHtml(lead)}</p>
-      <input id="lm-input" placeholder="Lead magnet name..." autocomplete="off" />
-      <div class="modal-btns">
-        <button onclick="closeModal()">Cancel</button>
-        <button class="primary" onclick="addItem('${escAttr(key)}')">Add</button>
-      </div>
-    </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-  document.body.appendChild(overlay);
-  activeModal = overlay;
-  const inp = document.getElementById('lm-input');
-  if (inp) {
-    inp.focus();
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter') addItem(key);
-      if (e.key === 'Escape') closeModal();
-    });
-  }
+  showModal(
+    '<h3>Add lead magnet</h3>' +
+    '<p>' + esc(branch) + ' \u2014 ' + esc(lead) + '</p>' +
+    '<label>Name</label>' +
+    '<input id="lm-input" placeholder="e.g. Free BMS audit checklist" autocomplete="off" />' +
+    '<div class="modal-btns">' +
+    '<button onclick="closeModal()">Cancel</button>' +
+    '<button class="primary" onclick="commitAdd(\'' + escA(key) + '\')">Add</button>' +
+    '</div>',
+    function() {
+      var inp = document.getElementById('lm-input');
+      if (inp) {
+        inp.focus();
+        inp.addEventListener('keydown', function(ev) {
+          if (ev.key === 'Enter') commitAdd(key);
+          if (ev.key === 'Escape') closeModal();
+        });
+      }
+    }
+  );
 }
 
-function closeModal() {
-  if (activeModal) { activeModal.remove(); activeModal = null; }
-}
-
-function addItem(key) {
-  const inp = document.getElementById('lm-input');
+function commitAdd(key) {
+  var inp = document.getElementById('lm-input');
   if (!inp) return;
-  const val = inp.value.trim();
+  var val = inp.value.trim();
   if (!val) return;
   if (!data[key]) data[key] = [];
   data[key].push(val);
   closeModal();
   render();
-  save();
+  saveToGitHub();
 }
 
 function removeItem(key, idx) {
   if (!data[key]) return;
   data[key].splice(idx, 1);
   render();
-  save();
+  saveToGitHub();
 }
 
-load();
+function openTokenModal() {
+  closeModal();
+  var current = getToken();
+  var statusHtml = current
+    ? '<div class="token-status">Token saved in this browser</div>'
+    : '<div class="token-status bad">No token set</div>';
+
+  showModal(
+    '<h3>GitHub settings</h3>' +
+    statusHtml +
+    '<p>Your token is stored only in this browser\'s localStorage and is never sent anywhere except the GitHub API.</p>' +
+    '<label>Personal access token</label>' +
+    '<input id="token-input" type="password" placeholder="ghp_\u2026" value="' + (current ? '********' : '') + '" autocomplete="off" />' +
+    '<div class="token-hint">Need a token? <a href="https://github.com/settings/tokens/new" target="_blank">Create one on GitHub</a> — check the <strong>repo</strong> scope, set no expiry (or long expiry), then paste it above.</div>' +
+    '<div class="modal-btns" style="margin-top:14px">' +
+    '<button onclick="closeModal()">Cancel</button>' +
+    '<button class="primary" onclick="saveToken()">Save &amp; connect</button>' +
+    '</div>'
+  );
+}
+
+function saveToken() {
+  var inp = document.getElementById('token-input');
+  if (!inp) return;
+  var val = inp.value.trim();
+  if (val && val !== '********') {
+    localStorage.setItem(TOKEN_KEY, val);
+  }
+  closeModal();
+  loadFromGitHub();
+}
+
+function showModal(html, onOpen) {
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  var inner = document.createElement('div');
+  inner.className = 'modal';
+  inner.innerHTML = html;
+  overlay.appendChild(inner);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+  document.getElementById('modal-root').appendChild(overlay);
+  activeModal = overlay;
+  if (onOpen) setTimeout(onOpen, 30);
+}
+
+function closeModal() {
+  if (activeModal) { activeModal.remove(); activeModal = null; }
+}
+
+render();
+loadFromGitHub();
 </script>
 </body>
 </html>
