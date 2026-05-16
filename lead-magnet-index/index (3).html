@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lead Magnet Matrix</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-2: #f5f5f3;
+    --bg-3: #ebebea;
+    --text: #1a1a18;
+    --text-2: #6b6b66;
+    --text-3: #9e9e98;
+    --border: rgba(0,0,0,0.12);
+    --border-2: rgba(0,0,0,0.22);
+    --pill-bg: #e6f1fb;
+    --pill-text: #0c447c;
+    --pill-border: rgba(24,95,165,0.3);
+    --info-bg: #e6f1fb;
+    --info-text: #0c447c;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c;
+      --bg-2: #2a2a28;
+      --bg-3: #333330;
+      --text: #f0f0eb;
+      --text-2: #a0a09a;
+      --text-3: #6b6b66;
+      --border: rgba(255,255,255,0.1);
+      --border-2: rgba(255,255,255,0.2);
+      --pill-bg: #0c2a45;
+      --pill-text: #85b7eb;
+      --pill-border: rgba(55,138,221,0.35);
+      --info-bg: #0c2a45;
+      --info-text: #85b7eb;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-2);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  header {
+    max-width: 1000px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  header h1 { font-size: 20px; font-weight: 500; }
+  header span { font-size: 13px; color: var(--text-2); }
+
+  .card {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    overflow-x: auto;
+  }
+
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+
+  th, td { border: 0.5px solid var(--border); vertical-align: top; }
+
+  th.corner { width: 80px; background: var(--bg-2); }
+
+  th.lead-head {
+    background: var(--bg-2);
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    min-width: 200px;
+  }
+
+  th.branch-head {
+    background: var(--bg-2);
+    padding: 10px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-align: center;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    width: 80px;
+  }
+
+  td.cell { padding: 6px 8px; background: var(--bg); }
+
+  .pills-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+    min-height: 28px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--pill-bg);
+    color: var(--pill-text);
+    border: 0.5px solid var(--pill-border);
+    border-radius: 20px;
+    font-size: 11px;
+    padding: 3px 8px 3px 9px;
+    white-space: nowrap;
+  }
+
+  .pill button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--pill-text);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 0 0 1px;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+  }
+  .pill button:hover { opacity: 1; }
+
+  .add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 0.5px dashed var(--border-2);
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    color: var(--text-3);
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .add-btn:hover {
+    border-color: var(--text-2);
+    color: var(--text-2);
+    background: var(--bg-2);
+  }
+
+  .footer {
+    max-width: 1000px;
+    margin: 10px auto 0;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-3);
+    height: 16px;
+  }
+
+  /* Modal */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+  }
+
+  .modal {
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border-2);
+    padding: 1.25rem 1.5rem;
+    width: 100%;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+
+  .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 3px; }
+  .modal p { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
+
+  .modal input {
+    width: 100%;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-2);
+    background: var(--bg-2);
+    color: var(--text);
+    margin-bottom: 12px;
+    font-family: inherit;
+  }
+  .modal input:focus { outline: 2px solid var(--info-text); outline-offset: 1px; }
+
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .modal-btns button {
+    font-size: 13px;
+    padding: 7px 16px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-2);
+    cursor: pointer;
+    background: var(--bg-2);
+    color: var(--text);
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+
+  .modal-btns button.primary {
+    background: var(--info-bg);
+    color: var(--info-text);
+    border-color: var(--pill-border);
+  }
+  .modal-btns button:hover { opacity: 0.75; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lead magnet matrix</h1>
+  <span id="total-count">0 lead magnets</span>
+</header>
+
+<div class="card">
+  <table id="matrix-table"></table>
+</div>
+
+<div class="footer" id="status"></div>
+
+<script>
+const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments'];
+const LEADS = ['Potential client','Supporter','Partner'];
+const STORAGE_KEY = 'jtg_lead_magnets_v1';
+
+let data = {};
+let activeModal = null;
+
+function cellKey(branch, lead) {
+  return branch + '||' + lead;
+}
+
+function totalCount() {
+  return Object.values(data).reduce((s, arr) => s + arr.length, 0);
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) data = JSON.parse(raw);
+  } catch(e) { data = {}; }
+  render();
+  setStatus('');
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setStatus('Saved ✓');
+    setTimeout(() => setStatus(''), 1500);
+  } catch(e) {
+    setStatus('Could not save — storage may be full.');
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+function render() {
+  const tbl = document.getElementById('matrix-table');
+
+  const headerCells = LEADS.map(l =>
+    `<th class="lead-head">${l}</th>`
+  ).join('');
+
+  const rows = BRANCHES.map(branch => {
+    const cells = LEADS.map(lead => {
+      const key = cellKey(branch, lead);
+      const items = data[key] || [];
+      const pills = items.map((item, idx) =>
+        `<span class="pill">${escHtml(item)}<button onclick="removeItem('${escAttr(key)}',${idx})" title="Remove">×</button></span>`
+      ).join('');
+      return `<td class="cell"><div class="pills-wrap">${pills}<button class="add-btn" onclick="openModal('${escAttr(key)}','${escAttr(branch)}','${escAttr(lead)}')" title="Add lead magnet">+</button></div></td>`;
+    }).join('');
+
+    return `<tr><th class="branch-head">${escHtml(branch)}</th>${cells}</tr>`;
+  }).join('');
+
+  tbl.innerHTML = `
+    <thead><tr>
+      <th class="corner"></th>
+      ${headerCells}
+    </tr></thead>
+    <tbody>${rows}</tbody>`;
+
+  const n = totalCount();
+  document.getElementById('total-count').textContent = n + ' lead magnet' + (n !== 1 ? 's' : '');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  return str.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+
+function openModal(key, branch, lead) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Add lead magnet</h3>
+      <p>${escHtml(branch)} — ${escHtml(lead)}</p>
+      <input id="lm-input" placeholder="Lead magnet name..." autocomplete="off" />
+      <div class="modal-btns">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="primary" onclick="addItem('${escAttr(key)}')">Add</button>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  activeModal = overlay;
+  const inp = document.getElementById('lm-input');
+  if (inp) {
+    inp.focus();
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addItem(key);
+      if (e.key === 'Escape') closeModal();
+    });
+  }
+}
+
+function closeModal() {
+  if (activeModal) { activeModal.remove(); activeModal = null; }
+}
+
+function addItem(key) {
+  const inp = document.getElementById('lm-input');
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!data[key]) data[key] = [];
+  data[key].push(val);
+  closeModal();
+  render();
+  save();
+}
+
+function removeItem(key, idx) {
+  if (!data[key]) return;
+  data[key].splice(idx, 1);
+  render();
+  save();
+}
+
+load();
+</script>
+</body>
+</html>
