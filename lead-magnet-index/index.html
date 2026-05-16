@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Lead Magnet Matrix — JTG</title>
+<title>MKC Lead Magnet Matrix</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -31,9 +31,14 @@
   }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-2); color: var(--text); min-height: 100vh; padding: 2rem 1.5rem; }
 
-  header { max-width: 1060px; margin: 0 auto 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-  header h1 { font-size: 20px; font-weight: 500; }
-  .header-right { display: flex; align-items: center; gap: 8px; }
+  header { max-width: 1060px; margin: 0 auto 1.5rem; }
+
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 6px; }
+
+  .header-titles h1 { font-size: 22px; font-weight: 500; line-height: 1.3; }
+  .header-titles p { font-size: 13px; color: var(--text-2); margin-top: 5px; line-height: 1.6; max-width: 540px; }
+
+  .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
   #total-count { font-size: 13px; color: var(--text-2); }
 
   .btn {
@@ -42,18 +47,21 @@
     border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
     background: var(--bg); color: var(--text-2);
     cursor: pointer; font-family: inherit; transition: background 0.15s; white-space: nowrap;
+    text-decoration: none;
   }
   .btn:hover { background: var(--bg-3); color: var(--text); }
   .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
   .btn.primary { background: var(--info-bg); color: var(--info-text); border-color: var(--pill-border); }
   .btn.primary:hover { opacity: 0.82; }
+  .btn.sheet { background: var(--success-bg); color: var(--success-text); border-color: rgba(59,109,17,0.25); }
+  .btn.sheet:hover { opacity: 0.82; }
 
   .card { max-width: 1060px; margin: 0 auto; background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; min-width: 600px; }
   th, td { border: 0.5px solid var(--border); vertical-align: top; }
   th.corner { width: 78px; background: var(--bg-2); }
   th.lead-head { background: var(--bg-2); padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--text); text-align: left; min-width: 200px; }
-  th.branch-head { background: var(--bg-2); padding: 10px 8px; font-size: 11px; font-weight: 500; color: var(--text-2); text-align: center; letter-spacing: 0.05em; text-transform: uppercase; width: 78px; }
+  th.branch-head { background: var(--bg-2); padding: 10px 6px; font-size: 10px; font-weight: 500; color: var(--text-2); text-align: center; letter-spacing: 0.04em; text-transform: uppercase; width: 78px; }
   td.cell { padding: 6px 8px; background: var(--bg); }
 
   .pills-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3px; min-height: 30px; }
@@ -114,13 +122,22 @@
 <body>
 
 <header>
-  <h1>Lead magnet matrix</h1>
-  <div class="header-right">
-    <span id="total-count"></span>
-    <button class="btn" onclick="loadData()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.32"/></svg>
-      Refresh
-    </button>
+  <div class="header-top">
+    <div class="header-titles">
+      <h1>MKC Lead Magnet Matrix</h1>
+      <p>A reference tool for mapping lead magnets across branches and lead types. Use the <strong>+</strong> button in any cell to assign a lead magnet to a scenario. Click any entry to view its details or open the master sheet to add descriptions and resource links.</p>
+    </div>
+    <div class="header-actions">
+      <span id="total-count"></span>
+      <a class="btn sheet" href="https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit?gid=1249671034#gid=1249671034" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Master sheet
+      </a>
+      <button class="btn" onclick="loadData()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.32"/></svg>
+        Refresh
+      </button>
+    </div>
   </div>
 </header>
 
@@ -135,9 +152,9 @@
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0SwQ1Wgu1anj1W78DTar8_V9DL8fOh4otUFcoGruwb-otaRi4-UtKTVxS5gtfO-8e1A/exec';
-const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit#gid=1249671034';
+const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit?gid=1249671034#gid=1249671034';
 
-const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments','Uny','F5 CEO'];
+const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','MCO INV','Uny','F5 CEO','SD','BC','MBC','ACAD','BL'];
 const LEADS    = ['Potential client','Supporter','Partner'];
 
 let rows = [];
@@ -231,7 +248,7 @@ function openAdd(branch, lead) {
     '<div class="sub">' + esc(branch) + ' \u2014 ' + esc(lead) + '</div>' +
     '<label>Name</label>' +
     '<input id="lm-input" placeholder="e.g. Free BMS checklist" autocomplete="off" />' +
-    '<div class="hint-box">Description, date, and resource link can be filled in the <a href="' + SHEET_URL + '" target="_blank">Google Sheet</a> after saving.</div>' +
+    '<div class="hint-box">Description, date, and resource link can be filled in the <a href="' + SHEET_URL + '" target="_blank">master sheet</a> after saving.</div>' +
     '<div class="modal-btns">' +
     '<button class="btn" onclick="closeModal()">Cancel</button>' +
     '<button class="btn primary" onclick="commitAdd(\'' + escA(branch) + '\',\'' + escA(lead) + '\')">Add to sheet</button>' +
@@ -270,7 +287,7 @@ function openDetail(branch, leadType, name) {
     '</div>' +
     '<a class="sheet-link" href="' + SHEET_URL + '" target="_blank">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-      'Edit details in Google Sheet' +
+      'Edit details in master sheet' +
     '</a>' +
     '<div class="modal-btns">' +
     '<button class="btn" onclick="closeModal()">Close</button>' +
