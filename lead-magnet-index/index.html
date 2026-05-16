@@ -33,7 +33,7 @@
 
   header { max-width: 1060px; margin: 0 auto 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
   header h1 { font-size: 20px; font-weight: 500; }
-  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
   #total-count { font-size: 13px; color: var(--text-2); }
 
   .btn {
@@ -81,37 +81,27 @@
   .status-msg { font-size: 11px; color: var(--text-3); }
   .status-msg.ok { color: var(--success-text); }
   .status-msg.err { color: var(--danger-text); }
-  .status-msg.warn { color: var(--warning-text); }
   .spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--pill-text); animation: spin 0.7s linear infinite; display: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Overlay */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.38); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
   .modal { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border-2); padding: 1.5rem; width: 100%; }
   .modal.sm { max-width: 340px; }
   .modal.lg { max-width: 520px; }
   .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
   .modal .sub { font-size: 12px; color: var(--text-2); margin-bottom: 16px; line-height: 1.6; }
-  .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; margin-top: 10px; }
-  .modal label:first-of-type { margin-top: 0; }
-  .modal input, .modal textarea {
+  .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; }
+  .modal input {
     width: 100%; font-size: 13px; padding: 8px 10px;
     border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
-    background: var(--bg-2); color: var(--text);
-    font-family: inherit; resize: vertical;
+    background: var(--bg-2); color: var(--text); font-family: inherit;
   }
-  .modal input:focus, .modal textarea:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
+  .modal input:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
   .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
   .hint-box { font-size: 11px; color: var(--text-3); margin-top: 10px; padding: 9px 11px; background: var(--bg-2); border-radius: var(--radius-md); line-height: 1.7; }
   .hint-box a { color: var(--pill-text); }
-  .hint-box code { font-family: monospace; font-size: 10px; background: var(--bg-3); padding: 1px 4px; border-radius: 3px; }
 
-  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 5px 9px; border-radius: var(--radius-md); margin-bottom: 12px; }
-  .badge.ok { background: var(--success-bg); color: var(--success-text); }
-  .badge.bad { background: var(--danger-bg); color: var(--danger-text); }
-
-  /* Detail modal */
   .detail-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 12px; font-size: 13px; margin-top: 10px; }
   .detail-label { color: var(--text-2); font-size: 12px; padding-top: 1px; }
   .detail-val { color: var(--text); line-height: 1.5; }
@@ -127,10 +117,6 @@
   <h1>Lead magnet matrix</h1>
   <div class="header-right">
     <span id="total-count"></span>
-    <button class="btn" onclick="openSettings()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-      Settings
-    </button>
     <button class="btn" onclick="loadData()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.32"/></svg>
       Refresh
@@ -148,35 +134,30 @@
 <div id="modal-root"></div>
 
 <script>
-const SCRIPT_KEY = 'jtg_script_url';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0SwQ1Wgu1anj1W78DTar8_V9DL8fOh4otUFcoGruwb-otaRi4-UtKTVxS5gtfO-8e1A/exec';
 const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit#gid=1249671034';
 
 const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments'];
 const LEADS    = ['Potential client','Supporter','Partner'];
 
-let rows = [];   // flat list of {branch, leadType, name, description, dateAdded, link}
+let rows = [];
 let activeModal = null;
-
-function getScript() { return localStorage.getItem(SCRIPT_KEY) || ''; }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escA(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 function setStatus(msg, type) {
-  const el = document.getElementById('status-msg');
+  var el = document.getElementById('status-msg');
   el.textContent = msg;
   el.className = 'status-msg' + (type ? ' ' + type : '');
 }
 function busy(on) { document.getElementById('spinner').style.display = on ? 'block' : 'none'; }
 
-// ── API calls ──────────────────────────────────────────────────────────────
 async function apiCall(params) {
-  const url = getScript();
-  if (!url) { setStatus('No script URL — open Settings.', 'err'); return null; }
-  const qs = new URLSearchParams(params).toString();
+  var qs = new URLSearchParams(params).toString();
   try {
-    const res = await fetch(url + '?' + qs);
-    const json = await res.json();
+    var res = await fetch(SCRIPT_URL + '?' + qs);
+    var json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Script error');
     return json;
   } catch(e) {
@@ -186,54 +167,51 @@ async function apiCall(params) {
 }
 
 async function loadData() {
-  const url = getScript();
-  if (!url) { setStatus('No script URL — open Settings first.', 'warn'); render(); return; }
   busy(true); setStatus('Loading…');
-  const res = await apiCall({action:'read'});
+  var res = await apiCall({action:'read'});
   if (res) {
     rows = res.data || [];
-    setStatus('Loaded ✓', 'ok');
-    setTimeout(() => setStatus(''), 2000);
+    setStatus('Loaded \u2713', 'ok');
+    setTimeout(function(){ setStatus(''); }, 2000);
   }
   render(); busy(false);
 }
 
 async function addEntry(branch, leadType, name) {
   busy(true); setStatus('Saving…');
-  const res = await apiCall({action:'add', branch, leadType, name});
+  var res = await apiCall({action:'add', branch:branch, leadType:leadType, name:name});
   if (res) {
-    rows.push({branch, leadType, name, description:'', dateAdded:'', link:''});
-    setStatus('Saved to sheet ✓', 'ok');
-    setTimeout(() => setStatus(''), 2000);
+    rows.push({branch:branch, leadType:leadType, name:name, description:'', dateAdded:'', link:''});
+    setStatus('Saved to sheet \u2713', 'ok');
+    setTimeout(function(){ setStatus(''); }, 2000);
   }
   render(); busy(false);
 }
 
 async function deleteEntry(branch, leadType, name) {
   busy(true); setStatus('Removing…');
-  const res = await apiCall({action:'delete', branch, leadType, name});
+  var res = await apiCall({action:'delete', branch:branch, leadType:leadType, name:name});
   if (res) {
-    rows = rows.filter(r => !(r.branch===branch && r.leadType===leadType && r.name===name));
-    setStatus('Removed ✓', 'ok');
-    setTimeout(() => setStatus(''), 2000);
+    rows = rows.filter(function(r){ return !(r.branch===branch && r.leadType===leadType && r.name===name); });
+    setStatus('Removed \u2713', 'ok');
+    setTimeout(function(){ setStatus(''); }, 2000);
   }
   render(); busy(false);
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────
 function render() {
-  const tbl = document.getElementById('matrix-table');
-  const heads = LEADS.map(l => '<th class="lead-head">' + esc(l) + '</th>').join('');
+  var tbl = document.getElementById('matrix-table');
+  var heads = LEADS.map(function(l){ return '<th class="lead-head">' + esc(l) + '</th>'; }).join('');
 
-  const bodyRows = BRANCHES.map(branch => {
-    const cells = LEADS.map(lead => {
-      const items = rows.filter(r => r.branch === branch && r.leadType === lead);
-      const pills = items.map(item =>
-        '<span class="pill" onclick="openDetail(\'' + escA(item.branch) + '\',\'' + escA(item.leadType) + '\',\'' + escA(item.name) + '\')" title="Click to view details">' +
+  var bodyRows = BRANCHES.map(function(branch) {
+    var cells = LEADS.map(function(lead) {
+      var items = rows.filter(function(r){ return r.branch===branch && r.leadType===lead; });
+      var pills = items.map(function(item) {
+        return '<span class="pill" onclick="openDetail(\'' + escA(item.branch) + '\',\'' + escA(item.leadType) + '\',\'' + escA(item.name) + '\')" title="View details">' +
           esc(item.name) +
           '<button class="x" onclick="event.stopPropagation();confirmRemove(\'' + escA(item.branch) + '\',\'' + escA(item.leadType) + '\',\'' + escA(item.name) + '\')" title="Remove">\xd7</button>' +
-        '</span>'
-      ).join('');
+        '</span>';
+      }).join('');
       return '<td class="cell"><div class="pills-wrap">' + pills +
         '<button class="add-btn" onclick="openAdd(\'' + escA(branch) + '\',\'' + escA(lead) + '\')" title="Add lead magnet">+</button>' +
         '</div></td>';
@@ -242,11 +220,10 @@ function render() {
   }).join('');
 
   tbl.innerHTML = '<thead><tr><th class="corner"></th>' + heads + '</tr></thead><tbody>' + bodyRows + '</tbody>';
-  const n = rows.length;
+  var n = rows.length;
   document.getElementById('total-count').textContent = n + ' lead magnet' + (n !== 1 ? 's' : '');
 }
 
-// ── Add modal ──────────────────────────────────────────────────────────────
 function openAdd(branch, lead) {
   closeModal();
   showModal('sm',
@@ -254,7 +231,7 @@ function openAdd(branch, lead) {
     '<div class="sub">' + esc(branch) + ' \u2014 ' + esc(lead) + '</div>' +
     '<label>Name</label>' +
     '<input id="lm-input" placeholder="e.g. Free BMS checklist" autocomplete="off" />' +
-    '<div class="hint-box">Description, date, and resource link can be added directly in the <a href="' + SHEET_URL + '" target="_blank">Google Sheet</a> after saving.</div>' +
+    '<div class="hint-box">Description, date, and resource link can be filled in the <a href="' + SHEET_URL + '" target="_blank">Google Sheet</a> after saving.</div>' +
     '<div class="modal-btns">' +
     '<button class="btn" onclick="closeModal()">Cancel</button>' +
     '<button class="btn primary" onclick="commitAdd(\'' + escA(branch) + '\',\'' + escA(lead) + '\')">Add to sheet</button>' +
@@ -275,15 +252,13 @@ function commitAdd(branch, lead) {
   addEntry(branch, lead, val);
 }
 
-// ── Detail modal ───────────────────────────────────────────────────────────
 function openDetail(branch, leadType, name) {
-  const item = rows.find(r => r.branch===branch && r.leadType===leadType && r.name===name);
+  var item = rows.find(function(r){ return r.branch===branch && r.leadType===leadType && r.name===name; });
   if (!item) return;
   closeModal();
-
-  const descVal  = item.description ? esc(item.description) : '<span class="empty">Not added yet</span>';
-  const dateVal  = item.dateAdded   ? esc(item.dateAdded)   : '<span class="empty">—</span>';
-  const linkVal  = item.link        ? '<a href="' + esc(item.link) + '" target="_blank">' + esc(item.link) + '</a>' : '<span class="empty">Not added yet</span>';
+  var descVal = item.description ? esc(item.description) : '<span class="empty">Not added yet</span>';
+  var dateVal = item.dateAdded   ? esc(item.dateAdded)   : '<span class="empty">\u2014</span>';
+  var linkVal = item.link        ? '<a href="' + esc(item.link) + '" target="_blank">' + esc(item.link) + '</a>' : '<span class="empty">Not added yet</span>';
 
   showModal('lg',
     '<h3>' + esc(name) + '</h3>' +
@@ -316,43 +291,11 @@ function confirmRemove(branch, leadType, name) {
   );
 }
 
-// ── Settings modal ─────────────────────────────────────────────────────────
-function openSettings() {
-  closeModal();
-  const current = getScript();
-  const badge = current
-    ? '<div class="badge ok">Script URL saved</div>'
-    : '<div class="badge bad">No script URL set</div>';
-  showModal('sm',
-    '<h3>Settings</h3>' +
-    badge +
-    '<div class="sub">Paste your Google Apps Script web app URL below. This connects the matrix to your Google Sheet.</div>' +
-    '<label>Apps Script URL</label>' +
-    '<input id="script-input" type="text" placeholder="https://script.google.com/macros/s/..." value="' + esc(current) + '" autocomplete="off" />' +
-    '<div class="hint-box">To get this URL: open your Google Sheet \u2192 <strong>Extensions \u2192 Apps Script</strong> \u2192 <strong>Deploy \u2192 New deployment</strong> \u2192 type: Web app \u2192 access: Anyone. Copy the URL shown.</div>' +
-    '<div class="modal-btns">' +
-    '<button class="btn" onclick="closeModal()">Cancel</button>' +
-    '<button class="btn primary" onclick="saveScript()">Save &amp; load</button>' +
-    '</div>',
-    function() { var inp = document.getElementById('script-input'); if(inp) inp.focus(); }
-  );
-}
-
-function saveScript() {
-  var inp = document.getElementById('script-input');
-  if (!inp) return;
-  var val = inp.value.trim();
-  if (val) localStorage.setItem(SCRIPT_KEY, val);
-  closeModal();
-  loadData();
-}
-
-// ── Modal helpers ──────────────────────────────────────────────────────────
 function showModal(size, html, onOpen) {
   var ov = document.createElement('div');
   ov.className = 'overlay';
   var m = document.createElement('div');
-  m.className = 'modal ' + (size || 'sm');
+  m.className = 'modal ' + (size||'sm');
   m.innerHTML = html;
   ov.appendChild(m);
   ov.addEventListener('click', function(e){ if(e.target===ov) closeModal(); });
@@ -362,7 +305,6 @@ function showModal(size, html, onOpen) {
 }
 function closeModal() { if(activeModal){ activeModal.remove(); activeModal=null; } }
 
-// ── Init ───────────────────────────────────────────────────────────────────
 render();
 loadData();
 </script>
