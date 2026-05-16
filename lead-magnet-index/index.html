@@ -6,203 +6,119 @@
 <title>Lead Magnet Matrix — JTG</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #ffffff;
-    --bg-2: #f5f5f3;
-    --bg-3: #ebebea;
-    --text: #1a1a18;
-    --text-2: #6b6b66;
-    --text-3: #9e9e98;
-    --border: rgba(0,0,0,0.12);
-    --border-2: rgba(0,0,0,0.22);
-    --pill-bg: #e6f1fb;
-    --pill-text: #0c447c;
-    --pill-border: rgba(24,95,165,0.3);
-    --info-bg: #e6f1fb;
-    --info-text: #0c447c;
-    --danger-bg: #fcebeb;
-    --danger-text: #a32d2d;
-    --success-bg: #eaf3de;
-    --success-text: #3b6d11;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --bg: #ffffff; --bg-2: #f5f5f3; --bg-3: #e8e8e5;
+    --text: #1a1a18; --text-2: #6b6b66; --text-3: #9e9e98;
+    --border: rgba(0,0,0,0.11); --border-2: rgba(0,0,0,0.2);
+    --pill-bg: #e6f1fb; --pill-text: #0c447c; --pill-border: rgba(24,95,165,0.28);
+    --info-bg: #e6f1fb; --info-text: #0c447c;
+    --danger-bg: #fcebeb; --danger-text: #a32d2d;
+    --success-bg: #eaf3de; --success-text: #3b6d11;
+    --warning-bg: #faeeda; --warning-text: #854f0b;
+    --radius-md: 8px; --radius-lg: 12px;
   }
-
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1e1e1c;
-      --bg-2: #2a2a28;
-      --bg-3: #333330;
-      --text: #f0f0eb;
-      --text-2: #a0a09a;
-      --text-3: #6b6b66;
-      --border: rgba(255,255,255,0.1);
-      --border-2: rgba(255,255,255,0.2);
-      --pill-bg: #0c2a45;
-      --pill-text: #85b7eb;
-      --pill-border: rgba(55,138,221,0.35);
-      --info-bg: #0c2a45;
-      --info-text: #85b7eb;
-      --danger-bg: #2d1010;
-      --danger-text: #f09595;
-      --success-bg: #152208;
-      --success-text: #97c459;
+      --bg: #1e1e1c; --bg-2: #2a2a28; --bg-3: #333330;
+      --text: #f0f0eb; --text-2: #a0a09a; --text-3: #6b6b66;
+      --border: rgba(255,255,255,0.09); --border-2: rgba(255,255,255,0.18);
+      --pill-bg: #0c2a45; --pill-text: #85b7eb; --pill-border: rgba(55,138,221,0.32);
+      --info-bg: #0c2a45; --info-text: #85b7eb;
+      --danger-bg: #2d1010; --danger-text: #f09595;
+      --success-bg: #152208; --success-text: #97c459;
+      --warning-bg: #2a1e07; --warning-text: #fac775;
     }
   }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-2); color: var(--text); min-height: 100vh; padding: 2rem 1.5rem; }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg-2);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 2rem 1.5rem;
-  }
-
-  header {
-    max-width: 1020px;
-    margin: 0 auto 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
+  header { max-width: 1060px; margin: 0 auto 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
   header h1 { font-size: 20px; font-weight: 500; }
   .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   #total-count { font-size: 13px; color: var(--text-2); }
 
-  .icon-btn {
-    display: flex; align-items: center; gap: 5px;
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
     font-size: 12px; padding: 5px 11px;
-    border-radius: var(--radius-md);
-    border: 0.5px solid var(--border-2);
-    background: var(--bg);
-    color: var(--text-2);
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.15s;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
+    background: var(--bg); color: var(--text-2);
+    cursor: pointer; font-family: inherit; transition: background 0.15s; white-space: nowrap;
   }
-  .icon-btn:hover { background: var(--bg-3); color: var(--text); }
-  .icon-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .btn:hover { background: var(--bg-3); color: var(--text); }
+  .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .btn.primary { background: var(--info-bg); color: var(--info-text); border-color: var(--pill-border); }
+  .btn.primary:hover { opacity: 0.82; }
 
-  .card {
-    max-width: 1020px;
-    margin: 0 auto;
-    background: var(--bg);
-    border-radius: var(--radius-lg);
-    border: 0.5px solid var(--border);
-    overflow-x: auto;
-  }
-
-  table { width: 100%; border-collapse: collapse; min-width: 580px; }
+  .card { max-width: 1060px; margin: 0 auto; background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
   th, td { border: 0.5px solid var(--border); vertical-align: top; }
-
-  th.corner { width: 80px; background: var(--bg-2); }
-  th.lead-head {
-    background: var(--bg-2); padding: 10px 12px;
-    font-size: 12px; font-weight: 500; color: var(--text);
-    text-align: left; min-width: 210px;
-  }
-  th.branch-head {
-    background: var(--bg-2); padding: 10px 8px;
-    font-size: 11px; font-weight: 500; color: var(--text-2);
-    text-align: center; letter-spacing: 0.05em;
-    text-transform: uppercase; width: 80px;
-  }
+  th.corner { width: 78px; background: var(--bg-2); }
+  th.lead-head { background: var(--bg-2); padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--text); text-align: left; min-width: 200px; }
+  th.branch-head { background: var(--bg-2); padding: 10px 8px; font-size: 11px; font-weight: 500; color: var(--text-2); text-align: center; letter-spacing: 0.05em; text-transform: uppercase; width: 78px; }
   td.cell { padding: 6px 8px; background: var(--bg); }
 
-  .pills-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-height: 28px; }
-
+  .pills-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3px; min-height: 30px; }
   .pill {
     display: inline-flex; align-items: center; gap: 3px;
     background: var(--pill-bg); color: var(--pill-text);
-    border: 0.5px solid var(--pill-border);
-    border-radius: 20px; font-size: 11px;
-    padding: 3px 8px 3px 9px; white-space: nowrap;
+    border: 0.5px solid var(--pill-border); border-radius: 20px;
+    font-size: 11px; padding: 3px 7px 3px 9px; white-space: nowrap;
+    cursor: pointer; transition: opacity 0.15s;
   }
-  .pill button {
-    background: none; border: none; cursor: pointer;
-    color: var(--pill-text); font-size: 14px; line-height: 1;
-    padding: 0 0 0 1px; opacity: 0.55; transition: opacity 0.15s;
-  }
-  .pill button:hover { opacity: 1; }
+  .pill:hover { opacity: 0.82; }
+  .pill .x { background: none; border: none; cursor: pointer; color: var(--pill-text); font-size: 14px; line-height: 1; padding: 0 0 0 1px; opacity: 0.5; }
+  .pill .x:hover { opacity: 1; }
 
   .add-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px;
-    border: 0.5px dashed var(--border-2); border-radius: 50%;
-    background: none; cursor: pointer; color: var(--text-3);
-    font-size: 16px; line-height: 1; transition: all 0.15s; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border: 0.5px dashed var(--border-2);
+    border-radius: 50%; background: none; cursor: pointer;
+    color: var(--text-3); font-size: 16px; line-height: 1;
+    transition: all 0.15s; flex-shrink: 0; margin-top: 1px;
   }
   .add-btn:hover { border-color: var(--text-2); color: var(--text-2); background: var(--bg-2); }
 
-  .status-bar {
-    max-width: 1020px; margin: 8px auto 0;
-    display: flex; align-items: center; justify-content: flex-end;
-    gap: 8px; min-height: 20px;
-  }
+  .status-bar { max-width: 1060px; margin: 8px auto 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 20px; }
   .status-msg { font-size: 11px; color: var(--text-3); }
   .status-msg.ok { color: var(--success-text); }
   .status-msg.err { color: var(--danger-text); }
-
-  .spinner {
-    width: 12px; height: 12px; border-radius: 50%;
-    border: 2px solid var(--border-2);
-    border-top-color: var(--pill-text);
-    animation: spin 0.7s linear infinite; display: none;
-  }
+  .status-msg.warn { color: var(--warning-text); }
+  .spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--pill-text); animation: spin 0.7s linear infinite; display: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100; padding: 1rem;
-  }
-  .modal {
-    background: var(--bg); border-radius: var(--radius-lg);
-    border: 0.5px solid var(--border-2);
-    padding: 1.5rem; width: 100%; max-width: 340px;
-  }
+  /* Overlay */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.38); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border-2); padding: 1.5rem; width: 100%; }
+  .modal.sm { max-width: 340px; }
+  .modal.lg { max-width: 520px; }
   .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
-  .modal p { font-size: 12px; color: var(--text-2); margin-bottom: 14px; line-height: 1.6; }
-  .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; }
-  .modal input {
+  .modal .sub { font-size: 12px; color: var(--text-2); margin-bottom: 16px; line-height: 1.6; }
+  .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; margin-top: 10px; }
+  .modal label:first-of-type { margin-top: 0; }
+  .modal input, .modal textarea {
     width: 100%; font-size: 13px; padding: 8px 10px;
     border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
     background: var(--bg-2); color: var(--text);
-    margin-bottom: 12px; font-family: inherit;
+    font-family: inherit; resize: vertical;
   }
-  .modal input:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
-  .modal-btns button {
-    font-size: 13px; padding: 7px 16px;
-    border-radius: var(--radius-md); border: 0.5px solid var(--border-2);
-    cursor: pointer; background: var(--bg-2); color: var(--text);
-    font-family: inherit; transition: opacity 0.15s;
-  }
-  .modal-btns button.primary {
-    background: var(--info-bg); color: var(--info-text); border-color: var(--pill-border);
-  }
-  .modal-btns button:hover { opacity: 0.75; }
+  .modal input:focus, .modal textarea:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
-  .token-hint {
-    font-size: 11px; color: var(--text-3); margin-top: 10px;
-    padding: 8px 10px; background: var(--bg-2);
-    border-radius: var(--radius-md); line-height: 1.7;
-  }
-  .token-hint a { color: var(--pill-text); }
+  .hint-box { font-size: 11px; color: var(--text-3); margin-top: 10px; padding: 9px 11px; background: var(--bg-2); border-radius: var(--radius-md); line-height: 1.7; }
+  .hint-box a { color: var(--pill-text); }
+  .hint-box code { font-family: monospace; font-size: 10px; background: var(--bg-3); padding: 1px 4px; border-radius: 3px; }
 
-  .token-status {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; padding: 7px 10px;
-    border-radius: var(--radius-md);
-    background: var(--success-bg); color: var(--success-text);
-    margin-bottom: 12px;
-  }
-  .token-status.bad { background: var(--danger-bg); color: var(--danger-text); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 5px 9px; border-radius: var(--radius-md); margin-bottom: 12px; }
+  .badge.ok { background: var(--success-bg); color: var(--success-text); }
+  .badge.bad { background: var(--danger-bg); color: var(--danger-text); }
+
+  /* Detail modal */
+  .detail-grid { display: grid; grid-template-columns: 90px 1fr; gap: 8px 12px; font-size: 13px; margin-top: 10px; }
+  .detail-label { color: var(--text-2); font-size: 12px; padding-top: 1px; }
+  .detail-val { color: var(--text); line-height: 1.5; }
+  .detail-val a { color: var(--pill-text); word-break: break-all; }
+  .detail-val.empty { color: var(--text-3); font-style: italic; }
+  .sheet-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pill-text); margin-top: 14px; text-decoration: none; }
+  .sheet-link svg { width: 12px; height: 12px; }
 </style>
 </head>
 <body>
@@ -211,16 +127,18 @@
   <h1>Lead magnet matrix</h1>
   <div class="header-right">
     <span id="total-count"></span>
-    <button class="icon-btn" onclick="openTokenModal()">
+    <button class="btn" onclick="openSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
       Settings
+    </button>
+    <button class="btn" onclick="loadData()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.32"/></svg>
+      Refresh
     </button>
   </div>
 </header>
 
-<div class="card">
-  <table id="matrix-table"></table>
-</div>
+<div class="card"><table id="matrix-table"></table></div>
 
 <div class="status-bar">
   <div class="spinner" id="spinner"></div>
@@ -230,231 +148,223 @@
 <div id="modal-root"></div>
 
 <script>
-const REPO   = 'c1jumpw/jtg-tools';
-const PATH   = 'lead-magnet-index/data.json';
-const BRANCH = 'main';
-const TOKEN_KEY = 'jtg_gh_token';
+const SCRIPT_KEY = 'jtg_script_url';
+const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit#gid=1249671034';
 
 const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','Investments'];
 const LEADS    = ['Potential client','Supporter','Partner'];
 
-let data = {};
-let fileSha = null;
+let rows = [];   // flat list of {branch, leadType, name, description, dateAdded, link}
 let activeModal = null;
 
-function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function getScript() { return localStorage.getItem(SCRIPT_KEY) || ''; }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escA(s) { return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
-
-function cellKey(b, l) { return b + '||' + l; }
-
-function totalCount() {
-  return Object.values(data).reduce((s,a) => s + a.length, 0);
-}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escA(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 function setStatus(msg, type) {
   const el = document.getElementById('status-msg');
   el.textContent = msg;
   el.className = 'status-msg' + (type ? ' ' + type : '');
 }
+function busy(on) { document.getElementById('spinner').style.display = on ? 'block' : 'none'; }
 
-function busy(on) {
-  document.getElementById('spinner').style.display = on ? 'block' : 'none';
-}
-
-const API = 'https://api.github.com/repos/' + REPO + '/contents/' + PATH;
-
-async function loadFromGitHub() {
-  const token = getToken();
-  if (!token) {
-    setStatus('No token set — click Settings to connect GitHub.', 'err');
-    render();
-    return;
-  }
-  busy(true);
-  setStatus('Loading…');
+// ── API calls ──────────────────────────────────────────────────────────────
+async function apiCall(params) {
+  const url = getScript();
+  if (!url) { setStatus('No script URL — open Settings.', 'err'); return null; }
+  const qs = new URLSearchParams(params).toString();
   try {
-    const res = await fetch(API + '?ref=' + BRANCH, {
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/vnd.github+json'
-      }
-    });
-    if (res.status === 404) {
-      data = {}; fileSha = null;
-      setStatus('Connected — no data yet. Add your first entry!', 'ok');
-      setTimeout(() => setStatus(''), 3000);
-      render(); busy(false); return;
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'GitHub error ' + res.status);
-    }
+    const res = await fetch(url + '?' + qs);
     const json = await res.json();
-    fileSha = json.sha;
-    const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g,''))));
-    data = JSON.parse(decoded);
-    setStatus('Loaded from GitHub ✓', 'ok');
-    setTimeout(() => setStatus(''), 2000);
+    if (!json.ok) throw new Error(json.error || 'Script error');
+    return json;
   } catch(e) {
-    setStatus('Load failed: ' + e.message, 'err');
+    setStatus('Error: ' + e.message, 'err');
+    return null;
   }
-  render();
-  busy(false);
 }
 
-async function saveToGitHub() {
-  const token = getToken();
-  if (!token) { setStatus('No token — open Settings first.', 'err'); return; }
-  busy(true);
-  setStatus('Saving…');
-  try {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-    const body = { message: 'Update lead magnet data', content, branch: BRANCH };
-    if (fileSha) body.sha = fileSha;
-
-    const res = await fetch(API, {
-      method: 'PUT',
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'GitHub error ' + res.status);
-    }
-    const json = await res.json();
-    fileSha = json.content.sha;
-    setStatus('Saved to GitHub ✓', 'ok');
+async function loadData() {
+  const url = getScript();
+  if (!url) { setStatus('No script URL — open Settings first.', 'warn'); render(); return; }
+  busy(true); setStatus('Loading…');
+  const res = await apiCall({action:'read'});
+  if (res) {
+    rows = res.data || [];
+    setStatus('Loaded ✓', 'ok');
     setTimeout(() => setStatus(''), 2000);
-  } catch(e) {
-    setStatus('Save failed: ' + e.message, 'err');
   }
-  busy(false);
+  render(); busy(false);
 }
 
+async function addEntry(branch, leadType, name) {
+  busy(true); setStatus('Saving…');
+  const res = await apiCall({action:'add', branch, leadType, name});
+  if (res) {
+    rows.push({branch, leadType, name, description:'', dateAdded:'', link:''});
+    setStatus('Saved to sheet ✓', 'ok');
+    setTimeout(() => setStatus(''), 2000);
+  }
+  render(); busy(false);
+}
+
+async function deleteEntry(branch, leadType, name) {
+  busy(true); setStatus('Removing…');
+  const res = await apiCall({action:'delete', branch, leadType, name});
+  if (res) {
+    rows = rows.filter(r => !(r.branch===branch && r.leadType===leadType && r.name===name));
+    setStatus('Removed ✓', 'ok');
+    setTimeout(() => setStatus(''), 2000);
+  }
+  render(); busy(false);
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
 function render() {
   const tbl = document.getElementById('matrix-table');
-  const headerCells = LEADS.map(l => '<th class="lead-head">' + esc(l) + '</th>').join('');
-  const rows = BRANCHES.map(function(branch) {
-    const cells = LEADS.map(function(lead) {
-      const key = cellKey(branch, lead);
-      const items = data[key] || [];
-      const pills = items.map(function(item, idx) {
-        return '<span class="pill">' + esc(item) + '<button onclick="removeItem(\'' + escA(key) + '\',' + idx + ')" title="Remove">\xd7</button></span>';
-      }).join('');
-      return '<td class="cell"><div class="pills-wrap">' + pills + '<button class="add-btn" onclick="openAddModal(\'' + escA(key) + '\',\'' + escA(branch) + '\',\'' + escA(lead) + '\')" title="Add lead magnet">+</button></div></td>';
+  const heads = LEADS.map(l => '<th class="lead-head">' + esc(l) + '</th>').join('');
+
+  const bodyRows = BRANCHES.map(branch => {
+    const cells = LEADS.map(lead => {
+      const items = rows.filter(r => r.branch === branch && r.leadType === lead);
+      const pills = items.map(item =>
+        '<span class="pill" onclick="openDetail(\'' + escA(item.branch) + '\',\'' + escA(item.leadType) + '\',\'' + escA(item.name) + '\')" title="Click to view details">' +
+          esc(item.name) +
+          '<button class="x" onclick="event.stopPropagation();confirmRemove(\'' + escA(item.branch) + '\',\'' + escA(item.leadType) + '\',\'' + escA(item.name) + '\')" title="Remove">\xd7</button>' +
+        '</span>'
+      ).join('');
+      return '<td class="cell"><div class="pills-wrap">' + pills +
+        '<button class="add-btn" onclick="openAdd(\'' + escA(branch) + '\',\'' + escA(lead) + '\')" title="Add lead magnet">+</button>' +
+        '</div></td>';
     }).join('');
     return '<tr><th class="branch-head">' + esc(branch) + '</th>' + cells + '</tr>';
   }).join('');
 
-  tbl.innerHTML = '<thead><tr><th class="corner"></th>' + headerCells + '</tr></thead><tbody>' + rows + '</tbody>';
-
-  var n = totalCount();
+  tbl.innerHTML = '<thead><tr><th class="corner"></th>' + heads + '</tr></thead><tbody>' + bodyRows + '</tbody>';
+  const n = rows.length;
   document.getElementById('total-count').textContent = n + ' lead magnet' + (n !== 1 ? 's' : '');
 }
 
-function openAddModal(key, branch, lead) {
+// ── Add modal ──────────────────────────────────────────────────────────────
+function openAdd(branch, lead) {
   closeModal();
-  showModal(
+  showModal('sm',
     '<h3>Add lead magnet</h3>' +
-    '<p>' + esc(branch) + ' \u2014 ' + esc(lead) + '</p>' +
+    '<div class="sub">' + esc(branch) + ' \u2014 ' + esc(lead) + '</div>' +
     '<label>Name</label>' +
-    '<input id="lm-input" placeholder="e.g. Free BMS audit checklist" autocomplete="off" />' +
+    '<input id="lm-input" placeholder="e.g. Free BMS checklist" autocomplete="off" />' +
+    '<div class="hint-box">Description, date, and resource link can be added directly in the <a href="' + SHEET_URL + '" target="_blank">Google Sheet</a> after saving.</div>' +
     '<div class="modal-btns">' +
-    '<button onclick="closeModal()">Cancel</button>' +
-    '<button class="primary" onclick="commitAdd(\'' + escA(key) + '\')">Add</button>' +
+    '<button class="btn" onclick="closeModal()">Cancel</button>' +
+    '<button class="btn primary" onclick="commitAdd(\'' + escA(branch) + '\',\'' + escA(lead) + '\')">Add to sheet</button>' +
     '</div>',
     function() {
       var inp = document.getElementById('lm-input');
-      if (inp) {
-        inp.focus();
-        inp.addEventListener('keydown', function(ev) {
-          if (ev.key === 'Enter') commitAdd(key);
-          if (ev.key === 'Escape') closeModal();
-        });
-      }
+      if (inp) { inp.focus(); inp.addEventListener('keydown', function(e){ if(e.key==='Enter') commitAdd(branch,lead); if(e.key==='Escape') closeModal(); }); }
     }
   );
 }
 
-function commitAdd(key) {
+function commitAdd(branch, lead) {
   var inp = document.getElementById('lm-input');
   if (!inp) return;
   var val = inp.value.trim();
   if (!val) return;
-  if (!data[key]) data[key] = [];
-  data[key].push(val);
   closeModal();
-  render();
-  saveToGitHub();
+  addEntry(branch, lead, val);
 }
 
-function removeItem(key, idx) {
-  if (!data[key]) return;
-  data[key].splice(idx, 1);
-  render();
-  saveToGitHub();
-}
-
-function openTokenModal() {
+// ── Detail modal ───────────────────────────────────────────────────────────
+function openDetail(branch, leadType, name) {
+  const item = rows.find(r => r.branch===branch && r.leadType===leadType && r.name===name);
+  if (!item) return;
   closeModal();
-  var current = getToken();
-  var statusHtml = current
-    ? '<div class="token-status">Token saved in this browser</div>'
-    : '<div class="token-status bad">No token set</div>';
 
-  showModal(
-    '<h3>GitHub settings</h3>' +
-    statusHtml +
-    '<p>Your token is stored only in this browser\'s localStorage and is never sent anywhere except the GitHub API.</p>' +
-    '<label>Personal access token</label>' +
-    '<input id="token-input" type="password" placeholder="ghp_\u2026" value="' + (current ? '********' : '') + '" autocomplete="off" />' +
-    '<div class="token-hint">Need a token? <a href="https://github.com/settings/tokens/new" target="_blank">Create one on GitHub</a> — check the <strong>repo</strong> scope, set no expiry (or long expiry), then paste it above.</div>' +
-    '<div class="modal-btns" style="margin-top:14px">' +
-    '<button onclick="closeModal()">Cancel</button>' +
-    '<button class="primary" onclick="saveToken()">Save &amp; connect</button>' +
+  const descVal  = item.description ? esc(item.description) : '<span class="empty">Not added yet</span>';
+  const dateVal  = item.dateAdded   ? esc(item.dateAdded)   : '<span class="empty">—</span>';
+  const linkVal  = item.link        ? '<a href="' + esc(item.link) + '" target="_blank">' + esc(item.link) + '</a>' : '<span class="empty">Not added yet</span>';
+
+  showModal('lg',
+    '<h3>' + esc(name) + '</h3>' +
+    '<div class="sub">' + esc(branch) + ' \u2014 ' + esc(leadType) + '</div>' +
+    '<div class="detail-grid">' +
+      '<span class="detail-label">Description</span><span class="detail-val">' + descVal + '</span>' +
+      '<span class="detail-label">Date added</span><span class="detail-val">' + dateVal + '</span>' +
+      '<span class="detail-label">Resource</span><span class="detail-val">' + linkVal + '</span>' +
+    '</div>' +
+    '<a class="sheet-link" href="' + SHEET_URL + '" target="_blank">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+      'Edit details in Google Sheet' +
+    '</a>' +
+    '<div class="modal-btns">' +
+    '<button class="btn" onclick="closeModal()">Close</button>' +
+    '<button class="btn" style="color:var(--danger-text);border-color:var(--danger-text)" onclick="closeModal();confirmRemove(\'' + escA(branch) + '\',\'' + escA(leadType) + '\',\'' + escA(name) + '\')">Remove</button>' +
     '</div>'
   );
 }
 
-function saveToken() {
-  var inp = document.getElementById('token-input');
+function confirmRemove(branch, leadType, name) {
+  closeModal();
+  showModal('sm',
+    '<h3>Remove lead magnet?</h3>' +
+    '<div class="sub">This will delete <strong>' + esc(name) + '</strong> from the sheet. This cannot be undone.</div>' +
+    '<div class="modal-btns">' +
+    '<button class="btn" onclick="closeModal()">Cancel</button>' +
+    '<button class="btn" style="background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-text)" onclick="closeModal();deleteEntry(\'' + escA(branch) + '\',\'' + escA(leadType) + '\',\'' + escA(name) + '\')">Yes, remove</button>' +
+    '</div>'
+  );
+}
+
+// ── Settings modal ─────────────────────────────────────────────────────────
+function openSettings() {
+  closeModal();
+  const current = getScript();
+  const badge = current
+    ? '<div class="badge ok">Script URL saved</div>'
+    : '<div class="badge bad">No script URL set</div>';
+  showModal('sm',
+    '<h3>Settings</h3>' +
+    badge +
+    '<div class="sub">Paste your Google Apps Script web app URL below. This connects the matrix to your Google Sheet.</div>' +
+    '<label>Apps Script URL</label>' +
+    '<input id="script-input" type="text" placeholder="https://script.google.com/macros/s/..." value="' + esc(current) + '" autocomplete="off" />' +
+    '<div class="hint-box">To get this URL: open your Google Sheet \u2192 <strong>Extensions \u2192 Apps Script</strong> \u2192 <strong>Deploy \u2192 New deployment</strong> \u2192 type: Web app \u2192 access: Anyone. Copy the URL shown.</div>' +
+    '<div class="modal-btns">' +
+    '<button class="btn" onclick="closeModal()">Cancel</button>' +
+    '<button class="btn primary" onclick="saveScript()">Save &amp; load</button>' +
+    '</div>',
+    function() { var inp = document.getElementById('script-input'); if(inp) inp.focus(); }
+  );
+}
+
+function saveScript() {
+  var inp = document.getElementById('script-input');
   if (!inp) return;
   var val = inp.value.trim();
-  if (val && val !== '********') {
-    localStorage.setItem(TOKEN_KEY, val);
-  }
+  if (val) localStorage.setItem(SCRIPT_KEY, val);
   closeModal();
-  loadFromGitHub();
+  loadData();
 }
 
-function showModal(html, onOpen) {
-  var overlay = document.createElement('div');
-  overlay.className = 'overlay';
-  var inner = document.createElement('div');
-  inner.className = 'modal';
-  inner.innerHTML = html;
-  overlay.appendChild(inner);
-  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
-  document.getElementById('modal-root').appendChild(overlay);
-  activeModal = overlay;
+// ── Modal helpers ──────────────────────────────────────────────────────────
+function showModal(size, html, onOpen) {
+  var ov = document.createElement('div');
+  ov.className = 'overlay';
+  var m = document.createElement('div');
+  m.className = 'modal ' + (size || 'sm');
+  m.innerHTML = html;
+  ov.appendChild(m);
+  ov.addEventListener('click', function(e){ if(e.target===ov) closeModal(); });
+  document.getElementById('modal-root').appendChild(ov);
+  activeModal = ov;
   if (onOpen) setTimeout(onOpen, 30);
 }
+function closeModal() { if(activeModal){ activeModal.remove(); activeModal=null; } }
 
-function closeModal() {
-  if (activeModal) { activeModal.remove(); activeModal = null; }
-}
-
+// ── Init ───────────────────────────────────────────────────────────────────
 render();
-loadFromGitHub();
+loadData();
 </script>
 </body>
 </html>
