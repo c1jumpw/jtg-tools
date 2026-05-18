@@ -1,1 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Web App Creator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; min-height: 100vh; padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; }
+  .wrap { width: 100%; max-width: 700px; }
 
+  /* Progress */
+  .progress { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 2rem; }
+  .prog-step { display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+  .prog-dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #ddd; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #aaa; transition: all .3s; z-index: 1; }
+  .prog-dot.active { border-color: #534AB7; background: #534AB7; color: #fff; }
+  .prog-dot.done { border-color: #0F6E56; background: #0F6E56; color: #fff; }
+  .prog-line { width: 40px; height: 2px; background: #ddd; margin: 0 2px; margin-bottom: 20px; transition: background .3s; }
+  .prog-line.done { background: #0F6E56; }
+  .prog-label { font-size: 10px; color: #aaa; white-space: nowrap; position: absolute; top: 36px; }
+  .prog-label.active { color: #534AB7; font-weight: 600; }
+  .prog-label.done { color: #0F6E56; }
+
+  /* Cards */
+  .card { background: #fff; border: 0.5px solid #ddd; border-radius: 14px; padding: 2rem; margin-bottom: 1rem; }
+  .step { display: none; }
+  .step.active { display: block; }
+
+  /* Typography */
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #534AB7; margin-bottom: 8px; display: block; }
+  h2 { font-size: 22px; font-weight: 700; color: #111; margin-bottom: 8px; }
+  .desc { font-size: 14px; color: #666; line-height: 1.7; margin-bottom: 1.5rem; }
+
+  /* Form */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: #222; margin-bottom: 4px; }
+  .field .hint { font-size: 11px; color: #999; margin-bottom: 5px; display: block; }
+  input[type=text], input[type=password], select, textarea { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #222; font-family: inherit; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #534AB7; box-shadow: 0 0 0 3px rgba(83,74,183,0.1); }
+  textarea { resize: vertical; line-height: 1.6; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Buttons */
+  .btn { background: #534AB7; color: #fff; border: none; border-radius: 8px; padding: 11px 24px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .15s; }
+  .btn:hover { background: #3C3489; }
+  .btn:disabled { background: #aaa; cursor: not-allowed; }
+  .btn-ghost { background: transparent; border: 1px solid #ccc; border-radius: 7px; padding: 10px 20px; font-size: 13px; cursor: pointer; color: #444; font-family: inherit; }
+  .btn-ghost:hover { background: #f5f5f5; }
+  .btn-teal { background: #0F6E56; color: #fff; border: none; border-radius: 7px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-teal:hover { background: #085041; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 6px; }
+
+  /* Callouts */
+  .info-box { background: #E1F5EE; border-left: 3px solid #0F6E56; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13px; color: #085041; margin: 14px 0; line-height: 1.6; }
+  .warn-box { background: #FAEEDA; border-left: 3px solid #BA7517; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13px; color: #412402; margin: 14px 0; line-height: 1.6; }
+  .purple-box { background: #EEEDFE; border-left: 3px solid #534AB7; border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 13px; color: #26215C; margin: 14px 0; line-height: 1.6; }
+  .error-box { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 7px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 14px; display: none; }
+
+  /* Step rows */
+  .step-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; background: #534AB7; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-text { font-size: 14px; color: #333; line-height: 1.6; flex: 1; }
+  .step-text a { color: #534AB7; font-weight: 600; }
+  .step-text strong { color: #111; }
+
+  /* Code block */
+  .code-wrap { position: relative; margin: 12px 0; }
+  .code-block { background: #1E1E2E; border-radius: 8px; padding: 1rem; font-family: 'Courier New', monospace; font-size: 12px; color: #CDD6F4; line-height: 1.7; overflow-x: auto; white-space: pre; max-height: 280px; overflow-y: auto; }
+  .copy-code-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 5px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .copy-code-btn:hover { background: rgba(255,255,255,0.2); }
+
+  /* Test worker */
+  .test-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 6px; }
+  .test-row input { flex: 1; }
+  .test-status { font-size: 13px; margin-top: 8px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .test-status.ok { background: #E1F5EE; color: #085041; display: block; }
+  .test-status.fail { background: #fff0f0; color: #c0392b; display: block; }
+
+  /* URL preview */
+  .url-preview { background: #f8f8f6; border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px 16px; font-family: monospace; font-size: 13px; color: #333; margin-top: 8px; word-break: break-all; }
+
+  /* Generation */
+  .gen-loading { text-align: center; padding: 2rem 0; }
+  .gen-loading .icon { font-size: 40px; margin-bottom: 12px; }
+  .gen-loading h3 { font-size: 17px; font-weight: 600; color: #111; margin-bottom: 6px; }
+  .gen-loading p { font-size: 13px; color: #888; }
+
+  /* Final code output */
+  .result-code { background: #1E1E2E; border-radius: 10px; padding: 1.25rem; font-family: monospace; font-size: 11.5px; color: #CDD6F4; line-height: 1.7; max-height: 380px; overflow-y: auto; white-space: pre; margin-bottom: 14px; }
+  .success-tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #0F6E56; margin-bottom: 4px; display: block; }
+
+  /* Nav */
+  .nav { display: flex; gap: 10px; align-items: center; margin-top: 1.5rem; }
+  .nav-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .step-counter { font-size: 12px; color: #aaa; }
+
+  .footer { text-align: center; font-size: 12px; color: #bbb; margin-top: .5rem; }
+  @media(max-width:500px) { .grid2 { grid-template-columns: 1fr; } .prog-label { display: none; } .prog-line { width: 24px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Progress Bar -->
+  <div class="progress" id="progress-bar"></div>
+
+  <!-- ═══ STEP 1: WELCOME ═══ -->
+  <div class="card step active" id="step-1">
+    <span class="tag">AI Web App Creator</span>
+    <h2>Build a shareable AI-powered web app</h2>
+    <p class="desc">This wizard guides you through every step — from idea to a live, shareable URL. You'll end up with a fully working AI tool that anyone on your team can use. No code experience needed.</p>
+
+    <div class="info-box">
+      <strong>What you'll build:</strong> A single-page web app where users fill out a form, click a button, and get AI-generated output — powered by Groq and hosted free on GitHub.
+    </div>
+
+    <p style="font-size:14px;font-weight:600;color:#222;margin:16px 0 10px">What you need before starting:</p>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-text">A free <a href="https://console.groq.com" target="_blank">Groq account</a> (for the AI model)</div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-text">A free <a href="https://dash.cloudflare.com" target="_blank">Cloudflare account</a> (to keep your API key secure)</div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-text">A <a href="https://github.com" target="_blank">GitHub account</a> with Pages enabled on your repo</div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-text">About 15–20 minutes</div></div>
+
+    <div class="warn-box"><strong>Note:</strong> Use Groq, not Google Gemini. Gemini has project permission restrictions that make key creation unreliable. Groq works immediately with no restrictions.</div>
+
+    <div class="nav"><div class="nav-right"><button class="btn" onclick="goTo(2)">Let's build it →</button></div></div>
+  </div>
+
+  <!-- ═══ STEP 2: APP DESIGN ═══ -->
+  <div class="card step" id="step-2">
+    <span class="tag">Step 1 of 6</span>
+    <h2>Design your app</h2>
+    <p class="desc">Describe what your app does. The AI will use this to generate the form fields, the prompt, and the output format automatically.</p>
+
+    <div class="field">
+      <label>App name *</label>
+      <span class="hint">Short and clear. This becomes the page title.</span>
+      <input type="text" id="d-name" placeholder="e.g. Email Campaign Writer" />
+    </div>
+    <div class="field">
+      <label>What does this app do? *</label>
+      <span class="hint">One or two sentences. What problem does it solve?</span>
+      <textarea id="d-desc" rows="2" placeholder="e.g. Takes a product description and target audience, then writes a complete cold email campaign with subject lines and body copy."></textarea>
+    </div>
+    <div class="field">
+      <label>What information does the user provide? *</label>
+      <span class="hint">Describe the inputs. These become the form fields.</span>
+      <textarea id="d-inputs" rows="3" placeholder="e.g. Business type (dropdown: SaaS / Agency / E-commerce), target audience (text), key message (long text), tone (dropdown: Professional / Casual / Urgent)"></textarea>
+    </div>
+    <div class="field">
+      <label>What should the AI produce? *</label>
+      <span class="hint">Describe the output format and content in detail.</span>
+      <textarea id="d-output" rows="3" placeholder="e.g. 3 subject line options, a 300-word email body, and a 1-sentence call to action. Each clearly labeled and ready to copy."></textarea>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Tone / style</label>
+        <select id="d-tone">
+          <option value="professional">Professional</option>
+          <option value="casual">Casual and conversational</option>
+          <option value="creative">Creative and bold</option>
+          <option value="technical">Technical and precise</option>
+          <option value="persuasive">Persuasive and direct</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Button label</label>
+        <span class="hint">What does the generate button say?</span>
+        <input type="text" id="d-btn" placeholder="e.g. Generate Campaign →" />
+      </div>
+    </div>
+
+    <div class="error-box" id="err-2">Please fill in all required fields above.</div>
+    <div class="nav">
+      <button class="btn-ghost" onclick="goTo(1)">← Back</button>
+      <div class="nav-right">
+        <span class="step-counter">Step 1 of 6</span>
+        <button class="btn" onclick="validateAndGo(2,3)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: GROQ API KEY ═══ -->
+  <div class="card step" id="step-3">
+    <span class="tag">Step 2 of 6</span>
+    <h2>Get your Groq API key</h2>
+    <p class="desc">Groq is the AI engine. It's free, requires no credit card, and works immediately with no project setup or org permissions.</p>
+
+    <div class="step-row"><div class="step-num">1</div><div class="step-text">Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> and sign up with any email or Google account</div></div>
+    <div class="step-row"><div class="step-num">2</div><div class="step-text">Once logged in, click <strong>API Keys</strong> in the left sidebar</div></div>
+    <div class="step-row"><div class="step-num">3</div><div class="step-text">Click <strong>Create API Key</strong> — name it anything (e.g. "my-app-key")</div></div>
+    <div class="step-row"><div class="step-num">4</div><div class="step-text">Copy the key immediately — it starts with <code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px">gsk_</code> — you can't view it again after closing</div></div>
+
+    <div class="info-box"><strong>Free tier:</strong> 14,400 tokens/day on Llama 3.3 70B. Each generation uses ~1,000–2,000 tokens — covers 7–14 uses per day free. Upgrade anytime at console.groq.com.</div>
+
+    <div class="field" style="margin-top:1rem">
+      <label>Paste your Groq API key *</label>
+      <span class="hint">Starts with gsk_ — stored only in this wizard session, never sent anywhere except your own Cloudflare worker</span>
+      <input type="password" id="g-key" placeholder="gsk_..." />
+    </div>
+
+    <div class="error-box" id="err-3">That doesn't look like a valid Groq key. It should start with gsk_</div>
+    <div class="nav">
+      <button class="btn-ghost" onclick="goTo(2)">← Back</button>
+      <div class="nav-right">
+        <span class="step-counter">Step 2 of 6</span>
+        <button class="btn" onclick="validateAndGo(3,4)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 4: CLOUDFLARE WORKER ═══ -->
+  <div class="card step" id="step-4">
+    <span class="tag">Step 3 of 6</span>
+    <h2>Set up your Cloudflare Worker</h2>
+    <p class="desc">The worker is a tiny script that sits between your app and the AI. It holds your API key securely on Cloudflare's servers so it never appears in your public code.</p>
+
+    <p style="font-size:13px;font-weight:600;color:#222;margin-bottom:10px">1. Copy this worker code:</p>
+    <div class="code-wrap">
+      <pre class="code-block" id="worker-code-display"></pre>
+      <button class="copy-code-btn" onclick="copyWorkerCode()">Copy</button>
+    </div>
+
+    <p style="font-size:13px;font-weight:600;color:#222;margin:16px 0 10px">2. Deploy it to Cloudflare:</p>
+    <div class="step-row"><div class="step-num">a</div><div class="step-text">Go to <a href="https://dash.cloudflare.com" target="_blank">dash.cloudflare.com</a> → <strong>Workers & Pages</strong> → <strong>Create</strong> → <strong>Create Worker</strong></div></div>
+    <div class="step-row"><div class="step-num">b</div><div class="step-text">Name it anything (e.g. <code style="background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px">my-ai-app</code>) → click <strong>Deploy</strong></div></div>
+    <div class="step-row"><div class="step-num">c</div><div class="step-text">Click <strong>Edit Code</strong> → delete all default code → paste the code above → click <strong>Deploy</strong></div></div>
+    <div class="step-row"><div class="step-num">d</div><div class="step-text">Go to <strong>Settings → Variables → Secrets → Add secret</strong><br>Name: <code style="background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px">GROQ_KEY</code> — Value: your key from Step 2 — click <strong>Encrypt & Save</strong></div></div>
+
+    <p style="font-size:13px;font-weight:600;color:#222;margin:16px 0 8px">3. Enter and test your worker URL:</p>
+    <div class="field" style="margin-bottom:6px">
+      <label>Worker URL</label>
+      <span class="hint">Copy it from Cloudflare — looks like: https://my-ai-app.yourname.workers.dev</span>
+      <div class="test-row">
+        <input type="text" id="w-url" placeholder="https://my-ai-app.yourname.workers.dev" oninput="resetWorkerTest()" />
+        <button class="btn-teal btn-sm" onclick="testWorker()">Test</button>
+      </div>
+    </div>
+    <div class="test-status" id="worker-status"></div>
+
+    <div class="warn-box" style="margin-top:12px"><strong>Must pass the test before continuing.</strong> If it fails, check that you deployed the code and saved the GROQ_KEY secret in Cloudflare.</div>
+
+    <div class="error-box" id="err-4">Please enter a valid worker URL and run the test first.</div>
+    <div class="nav">
+      <button class="btn-ghost" onclick="goTo(3)">← Back</button>
+      <div class="nav-right">
+        <span class="step-counter">Step 3 of 6</span>
+        <button class="btn" onclick="validateAndGo(4,5)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 5: GITHUB ═══ -->
+  <div class="card step" id="step-5">
+    <span class="tag">Step 4 of 6</span>
+    <h2>GitHub setup</h2>
+    <p class="desc">Your app will be hosted on GitHub Pages for free. Enter your GitHub details and we'll show you the exact URL your app will be live at.</p>
+
+    <div class="step-row"><div class="step-num">1</div><div class="step-text">Go to your GitHub repo (e.g. <strong>github.com/c1jumpw/jtg-tools</strong>)</div></div>
+    <div class="step-row"><div class="step-num">2</div><div class="step-text">Create a new folder with the name you enter below (click <strong>Add file → Create new file</strong>, type <code style="background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px">folder-name/index.html</code> to create the folder)</div></div>
+    <div class="step-row"><div class="step-num">3</div><div class="step-text">Make sure GitHub Pages is enabled: <strong>Settings → Pages → main branch → / (root) → Save</strong></div></div>
+
+    <div class="grid2" style="margin-top:1rem">
+      <div class="field">
+        <label>GitHub username *</label>
+        <input type="text" id="gh-user" placeholder="e.g. c1jumpw" oninput="updateUrlPreview()" />
+      </div>
+      <div class="field">
+        <label>Repository name *</label>
+        <input type="text" id="gh-repo" placeholder="e.g. jtg-tools" oninput="updateUrlPreview()" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Folder name for this app *</label>
+      <span class="hint">Use lowercase with dashes. Each app gets its own folder.</span>
+      <input type="text" id="gh-folder" placeholder="e.g. email-writer" oninput="updateUrlPreview()" />
+    </div>
+
+    <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Your app will be live at:</p>
+    <div class="url-preview" id="url-preview">https://username.github.io/repo/folder/</div>
+
+    <div class="error-box" id="err-5">Please fill in all GitHub fields.</div>
+    <div class="nav">
+      <button class="btn-ghost" onclick="goTo(4)">← Back</button>
+      <div class="nav-right">
+        <span class="step-counter">Step 4 of 6</span>
+        <button class="btn" onclick="validateAndGo(5,6)">Generate my app →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 6: GENERATING ═══ -->
+  <div class="card step" id="step-6">
+    <div class="gen-loading">
+      <div class="icon">⚙️</div>
+      <h3>Building your app...</h3>
+      <p>Groq is generating your custom form, prompt, and layout</p>
+      <div style="margin-top:1rem;font-size:12px;color:#bbb" id="gen-substatus">Designing your app structure...</div>
+    </div>
+    <div class="error-box" id="err-6" style="margin-top:1rem">Generation failed. <span id="err-6-detail"></span></div>
+  </div>
+
+  <!-- ═══ STEP 7: READY ═══ -->
+  <div class="card step" id="step-7">
+    <span class="success-tag">✓ Your app is ready</span>
+    <h2 id="final-app-name">Your app</h2>
+    <p class="desc">Copy the code below and upload it to GitHub. Your app will be live within 60 seconds.</p>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <p style="font-size:13px;font-weight:600;color:#222">index.html — copy this entire file</p>
+      <button class="btn-teal btn-sm" id="copy-final-btn" onclick="copyFinalCode()">Copy code</button>
+    </div>
+    <div class="result-code" id="final-code-display"></div>
+
+    <div style="background:#E1F5EE;border-radius:10px;padding:1.25rem;margin-bottom:1rem">
+      <p style="font-size:13px;font-weight:700;color:#085041;margin-bottom:10px">Deploy in 3 steps:</p>
+      <div class="step-row"><div class="step-num" style="background:#0F6E56">1</div><div class="step-text" style="color:#085041">Go to <strong>github.com/<span class="gh-user-out"></span>/<span class="gh-repo-out"></span></strong> → navigate to the <strong><span class="gh-folder-out"></span></strong> folder</div></div>
+      <div class="step-row"><div class="step-num" style="background:#0F6E56">2</div><div class="step-text" style="color:#085041">Click <strong>Add file → Upload files</strong> → drop the <code style="background:rgba(0,0,0,0.1);padding:1px 5px;border-radius:3px;font-size:12px">index.html</code> file → <strong>Commit changes</strong></div></div>
+      <div class="step-row"><div class="step-num" style="background:#0F6E56">3</div><div class="step-text" style="color:#085041">Wait 60 seconds → your app is live at the URL below</div></div>
+    </div>
+
+    <p style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Live URL:</p>
+    <div class="url-preview" id="final-url" style="cursor:pointer" onclick="openFinalUrl()"></div>
+
+    <div class="purple-box" style="margin-top:1rem"><strong>Build another app:</strong> Come back to this wizard and go through the steps again. Each new app just needs a different folder name and description. Your Groq key and Cloudflare worker stay the same.</div>
+
+    <div class="nav" style="margin-top:1rem">
+      <button class="btn-ghost" onclick="startOver()">Start over — build another app</button>
+      <div class="nav-right"><button class="btn" onclick="openFinalUrl()">Open live app →</button></div>
+    </div>
+  </div>
+
+  <div class="footer">JTG Tools · AI Web App Creator · Powered by Groq</div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  appName: '', appDesc: '', appInputs: '', appOutput: '', appTone: '', appBtn: '',
+  groqKey: '',
+  workerUrl: '', workerTested: false,
+  ghUser: '', ghRepo: '', ghFolder: '',
+  generatedDef: null,
+  finalHtml: ''
+};
+
+const STEPS = ['', 'Welcome', 'Design', 'Groq Key', 'Worker', 'GitHub', 'Generating', 'Ready'];
+const TOTAL = 6;
+
+// ── Progress bar ───────────────────────────────────────────────────────────────
+function renderProgress(current) {
+  const bar = document.getElementById('progress-bar');
+  const labels = ['Design', 'Groq Key', 'Worker', 'GitHub', 'Generate', 'Done'];
+  let html = '';
+  for (let i = 1; i <= TOTAL; i++) {
+    const cls = i < current - 1 ? 'done' : i === current - 1 ? 'active' : '';
+    const dotCls = i < current - 1 ? 'done' : i === current - 1 ? 'active' : '';
+    html += `<div class="prog-step">
+      <div class="prog-dot ${dotCls}">${i < current - 1 ? '✓' : i}</div>
+      <span class="prog-label ${dotCls}">${labels[i-1]}</span>
+    </div>`;
+    if (i < TOTAL) html += `<div class="prog-line ${i < current - 1 ? 'done' : ''}"></div>`;
+  }
+  bar.innerHTML = html;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  renderProgress(n);
+  window.scrollTo(0, 0);
+  if (n === 6) startGeneration();
+}
+
+function validateAndGo(from, to) {
+  const err = document.getElementById('err-' + from);
+  if (err) err.style.display = 'none';
+
+  if (from === 2) {
+    if (!v('d-name') || !v('d-desc') || !v('d-inputs') || !v('d-output')) {
+      err.style.display = 'block'; return;
+    }
+    state.appName = v('d-name'); state.appDesc = v('d-desc');
+    state.appInputs = v('d-inputs'); state.appOutput = v('d-output');
+    state.appTone = v('d-tone'); state.appBtn = v('d-btn') || 'Generate →';
+    // Auto-suggest folder name
+    if (!document.getElementById('gh-folder').value) {
+      document.getElementById('gh-folder').value = state.appName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      updateUrlPreview();
+    }
+  }
+  if (from === 3) {
+    const key = v('g-key');
+    if (!key.startsWith('gsk_')) { err.style.display = 'block'; return; }
+    state.groqKey = key;
+  }
+  if (from === 4) {
+    if (!state.workerTested || !state.workerUrl) { err.style.display = 'block'; return; }
+  }
+  if (from === 5) {
+    if (!v('gh-user') || !v('gh-repo') || !v('gh-folder')) { err.style.display = 'block'; return; }
+    state.ghUser = v('gh-user'); state.ghRepo = v('gh-repo'); state.ghFolder = v('gh-folder');
+  }
+
+  goTo(to);
+}
+
+function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
+
+// ── Worker code template ───────────────────────────────────────────────────────
+const WORKER_CODE = `export default {
+  async fetch(request, env) {
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Content-Type': 'application/json'
+    };
+    if (request.method === 'OPTIONS')
+      return new Response(null, { status: 204, headers });
+    if (request.method === 'GET')
+      return new Response(JSON.stringify({
+        status: 'ok', groq_key_set: !!env.GROQ_KEY
+      }), { headers });
+    if (request.method === 'POST') {
+      if (!env.GROQ_KEY)
+        return new Response(JSON.stringify({
+          error: 'GROQ_KEY not set in worker secrets.'
+        }), { status: 500, headers });
+      const body = await request.json();
+      const res = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': \`Bearer \${env.GROQ_KEY}\`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: body.prompt }],
+            temperature: 0.7,
+            max_tokens: body.max_tokens || 1500
+          })
+        }
+      );
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        status: res.status, headers
+      });
+    }
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers }
+    );
+  }
+};`;
+
+document.getElementById('worker-code-display').textContent = WORKER_CODE;
+
+function copyWorkerCode() {
+  navigator.clipboard.writeText(WORKER_CODE).then(() => {
+    const btn = document.querySelector('.copy-code-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// ── Worker URL test ────────────────────────────────────────────────────────────
+function resetWorkerTest() {
+  state.workerTested = false;
+  const s = document.getElementById('worker-status');
+  s.className = 'test-status'; s.textContent = '';
+}
+
+async function testWorker() {
+  const url = v('w-url');
+  const status = document.getElementById('worker-status');
+  if (!url.startsWith('https://')) {
+    status.className = 'test-status fail';
+    status.textContent = '✗ URL must start with https://'; return;
+  }
+  status.className = 'test-status'; status.textContent = 'Testing...'; status.style.display = 'block';
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    const data = await res.json();
+    if (data.status === 'ok' && data.groq_key_set === true) {
+      status.className = 'test-status ok';
+      status.textContent = '✓ Worker is running and GROQ_KEY is set correctly';
+      state.workerUrl = url; state.workerTested = true;
+    } else if (data.status === 'ok' && !data.groq_key_set) {
+      status.className = 'test-status fail';
+      status.textContent = '✗ Worker is running but GROQ_KEY secret is not set — go to Worker Settings → Variables → Secrets';
+      state.workerTested = false;
+    } else {
+      status.className = 'test-status fail';
+      status.textContent = '✗ Unexpected response from worker. Re-paste the worker code and redeploy.';
+      state.workerTested = false;
+    }
+  } catch(e) {
+    status.className = 'test-status fail';
+    status.textContent = '✗ Could not reach that URL. Check the URL is correct and the worker is deployed.';
+    state.workerTested = false;
+  }
+}
+
+// ── GitHub URL preview ────────────────────────────────────────────────────────
+function updateUrlPreview() {
+  const user = v('gh-user') || 'username';
+  const repo = v('gh-repo') || 'repo';
+  const folder = v('gh-folder') || 'app-folder';
+  document.getElementById('url-preview').textContent = `https://${user}.github.io/${repo}/${folder}/`;
+}
+
+// ── Generation ────────────────────────────────────────────────────────────────
+async function startGeneration() {
+  const errBox = document.getElementById('err-6');
+  errBox.style.display = 'none';
+  document.getElementById('gen-substatus').textContent = 'Designing your app structure...';
+
+  const prompt = `You are a web app designer. Design a configuration for a single-page AI-powered web app.
+
+App Name: ${state.appName}
+Description: ${state.appDesc}
+User inputs (form fields): ${state.appInputs}
+AI output to produce: ${state.appOutput}
+Tone: ${state.appTone}
+Generate button label: ${state.appBtn}
+
+Return ONLY a valid JSON object with NO markdown, NO code fences, NO explanation. Use this exact structure:
+{
+  "labelTag": "2-3 word category label",
+  "title": "app title",
+  "subtitle": "one sentence describing what the app does",
+  "buttonLabel": "generate button text",
+  "loadingMessage": "8-12 word loading message",
+  "resultTitle": "title shown above the AI output",
+  "nextTip": "one sentence: what should the user do with the output",
+  "requiredFieldId": "id of the single most important required field",
+  "fields": [
+    {
+      "id": "field-id-lowercase-dashes",
+      "label": "Field Label",
+      "hint": "short hint text",
+      "type": "text or textarea or select",
+      "placeholder": "placeholder text",
+      "options": ["only for select type"],
+      "rows": 3,
+      "required": false
+    }
+  ],
+  "systemRole": "one sentence: you are an expert [role] with expertise in [domain]",
+  "promptBody": "The main prompt instructions. Use {{field-id}} to reference field values. Be specific about output format and sections."
+}
+
+Rules:
+- Maximum 5 form fields
+- Mark the main required textarea with "required": true
+- The promptBody must reference field values using {{field-id}} syntax
+- promptBody should specify exactly what sections to output and in what format`;
+
+  setTimeout(() => {
+    document.getElementById('gen-substatus').textContent = 'Writing your prompt and form fields...';
+  }, 1500);
+
+  try {
+    const res = await fetch(state.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, max_tokens: 1200 })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch { throw new Error('Worker returned invalid JSON.'); }
+    if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+
+    const content = data?.choices?.[0]?.message?.content || '';
+    if (!content) throw new Error('Empty response from Groq.');
+
+    // Parse JSON from content (strip any accidental markdown)
+    const jsonStr = content.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    let def;
+    try { def = JSON.parse(jsonStr); }
+    catch { throw new Error('Could not parse app definition. Try again.'); }
+
+    document.getElementById('gen-substatus').textContent = 'Assembling your HTML file...';
+    state.generatedDef = def;
+    state.finalHtml = assembleHtml(def, state.workerUrl);
+
+    setTimeout(() => showResult(), 800);
+  } catch(e) {
+    errBox.style.display = 'block';
+    document.getElementById('err-6-detail').textContent = e.message;
+    document.querySelector('#step-6 .gen-loading h3').textContent = 'Generation failed';
+  }
+}
+
+function showResult() {
+  const def = state.generatedDef;
+  const url = `https://${state.ghUser}.github.io/${state.ghRepo}/${state.ghFolder}/`;
+
+  document.getElementById('final-app-name').textContent = def.title || state.appName;
+  document.getElementById('final-code-display').textContent = state.finalHtml;
+  document.getElementById('final-url').textContent = url;
+
+  document.querySelectorAll('.gh-user-out').forEach(el => el.textContent = state.ghUser);
+  document.querySelectorAll('.gh-repo-out').forEach(el => el.textContent = state.ghRepo);
+  document.querySelectorAll('.gh-folder-out').forEach(el => el.textContent = state.ghFolder);
+
+  goTo(7);
+}
+
+function copyFinalCode() {
+  navigator.clipboard.writeText(state.finalHtml).then(() => {
+    const btn = document.getElementById('copy-final-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy code', 2000);
+  });
+}
+
+function openFinalUrl() {
+  const url = `https://${state.ghUser}.github.io/${state.ghRepo}/${state.ghFolder}/`;
+  window.open(url, '_blank');
+}
+
+function startOver() {
+  document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+  document.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+  Object.keys(state).forEach(k => {
+    state[k] = typeof state[k] === 'boolean' ? false : typeof state[k] === 'object' ? null : '';
+  });
+  state.workerTested = false;
+  document.getElementById('worker-status').className = 'test-status';
+  goTo(2);
+}
+
+// ── HTML Assembler ────────────────────────────────────────────────────────────
+function assembleHtml(def, workerUrl) {
+  // Build form fields HTML
+  const fieldsHtml = (def.fields || []).map(f => {
+    const hint = f.hint ? `<span class="hint">${esc(f.hint)}</span>` : '';
+    const req = f.required ? ' *' : '';
+    if (f.type === 'select') {
+      const opts = (f.options || []).map(o => `          <option>${esc(o)}</option>`).join('\n');
+      return `    <div class="field">
+      <label>${esc(f.label)}${req}</label>
+      ${hint}
+      <select id="${f.id}">
+        <option value="">Select...</option>
+${opts}
+      </select>
+    </div>`;
+    } else if (f.type === 'textarea') {
+      return `    <div class="field">
+      <label>${esc(f.label)}${req}</label>
+      ${hint}
+      <textarea id="${f.id}" rows="${f.rows || 3}" placeholder="${esc(f.placeholder || '')}"></textarea>
+    </div>`;
+    } else {
+      return `    <div class="field">
+      <label>${esc(f.label)}${req}</label>
+      ${hint}
+      <input type="text" id="${f.id}" placeholder="${esc(f.placeholder || '')}" />
+    </div>`;
+    }
+  }).join('\n\n');
+
+  // Build prompt JS (convert {{id}} → ' + getVal('id') + ')
+  const promptJs = (def.promptBody || '').replace(/\{\{([\w-]+)\}\}/g, "' + getVal('$1') + '");
+
+  // Build required field check
+  const reqId = def.requiredFieldId || (def.fields?.find(f=>f.required)?.id) || (def.fields?.[def.fields.length-1]?.id) || 'f-main';
+
+  // Build reset JS
+  const resetJs = (def.fields || []).map(f => `    document.getElementById('${f.id}').value = '';`).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(def.title || state.appName)}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 2rem 1rem; }
+  .wrap { width: 100%; max-width: 680px; }
+  .card { background: #fff; border: 0.5px solid #ddd; border-radius: 14px; padding: 2rem; margin-bottom: 1rem; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #534AB7; margin-bottom: 6px; display: block; }
+  h1 { font-size: 22px; font-weight: 600; color: #111; margin-bottom: 6px; }
+  .sub { font-size: 14px; color: #666; line-height: 1.65; margin-bottom: 1.5rem; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: #222; margin-bottom: 4px; }
+  .hint { font-size: 11px; color: #999; margin-bottom: 5px; display: block; }
+  input, select, textarea { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #222; font-family: inherit; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #534AB7; box-shadow: 0 0 0 3px rgba(83,74,183,0.1); }
+  textarea { resize: vertical; line-height: 1.6; }
+  .btn { background: #534AB7; color: #fff; border: none; border-radius: 8px; padding: 11px 24px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn:hover { background: #3C3489; }
+  .btn-ghost { background: transparent; border: 1px solid #ccc; border-radius: 7px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: #444; font-family: inherit; }
+  .btn-ghost:hover { background: #f5f5f5; }
+  .error-box { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 7px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 14px; }
+  .result-box { background: #f8f8f6; border: 1px solid #e5e5e5; border-radius: 10px; padding: 1.25rem; font-size: 14px; line-height: 1.8; color: #333; white-space: pre-wrap; max-height: 560px; overflow-y: auto; margin-bottom: 14px; }
+  .next-box { background: #EEEDFE; border-radius: 8px; padding: .9rem 1rem; font-size: 13px; color: #3C3489; line-height: 1.6; }
+  .loading { text-align: center; padding: 4rem 0; }
+  .loading .icon { font-size: 32px; margin-bottom: 14px; }
+  .loading h2 { font-size: 17px; font-weight: 600; color: #111; margin-bottom: 6px; }
+  .loading p { font-size: 13px; color: #999; }
+  .result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .success-tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #0F6E56; margin-bottom: 4px; display: block; }
+  .btn-row { display: flex; gap: 8px; }
+  .footer { text-align: center; font-size: 12px; color: #bbb; margin-top: .5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card" id="form-screen">
+    <span class="tag">${esc(def.labelTag || 'AI Tool')}</span>
+    <h1>${esc(def.title || state.appName)}</h1>
+    <p class="sub">${esc(def.subtitle || state.appDesc)}</p>
+
+${fieldsHtml}
+
+    <div class="error-box" id="form-error" style="display:none"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" onclick="generate()">${esc(def.buttonLabel || state.appBtn)}</button>
+      <span style="font-size:12px;color:#aaa">Powered by Groq</span>
+    </div>
+  </div>
+
+  <div class="card loading" id="loading-screen" style="display:none">
+    <div class="icon">⚙️</div>
+    <h2>${esc(def.loadingMessage || 'Generating your result...')}</h2>
+    <p>Powered by Groq · Llama 3.3 70B</p>
+  </div>
+
+  <div class="card" id="result-screen" style="display:none">
+    <div class="result-header">
+      <div>
+        <span class="success-tag">✓ Generated</span>
+        <h1 style="font-size:20px">${esc(def.resultTitle || 'Your result')}</h1>
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" id="copy-btn" onclick="copyResult()">Copy</button>
+        <button class="btn-ghost" onclick="reset()">← New</button>
+      </div>
+    </div>
+    <div class="result-box" id="result-text"></div>
+    <div class="next-box"><strong>Next:</strong> ${esc(def.nextTip || 'Use this output as a starting point and refine as needed.')}</div>
+  </div>
+
+  <div class="footer">JTG Tools · Internal</div>
+</div>
+
+<script>
+  const WORKER_URL = '${workerUrl}';
+
+  function getVal(id) { return document.getElementById(id)?.value?.trim() || 'Not specified'; }
+
+  function show(id) {
+    ['form-screen','loading-screen','result-screen'].forEach(s => {
+      document.getElementById(s).style.display = s === id ? 'block' : 'none';
+    });
+  }
+
+  function buildPrompt() {
+    return '${esc(def.systemRole || 'You are a helpful expert assistant.')}\\n\\n' + '${promptJs.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}';
+  }
+
+  async function generate() {
+    const required = document.getElementById('${reqId}')?.value?.trim();
+    const err = document.getElementById('form-error');
+    if (!required) { err.textContent = 'Please fill in the required field.'; err.style.display = 'block'; return; }
+    err.style.display = 'none';
+    show('loading-screen');
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: buildPrompt() })
+      });
+      const rawText = await res.text();
+      let data;
+      try { data = JSON.parse(rawText); }
+      catch { throw new Error('Unexpected response from worker. Check it is running at ' + WORKER_URL); }
+      if (!res.ok) throw new Error(data?.error || 'Error ' + res.status);
+      const text = data?.choices?.[0]?.message?.content || '';
+      if (!text) throw new Error('Empty response — try again.');
+      document.getElementById('result-text').textContent = text;
+      show('result-screen');
+    } catch(e) {
+      show('form-screen');
+      err.textContent = e.message || 'Something went wrong. Try again.';
+      err.style.display = 'block';
+    }
+  }
+
+  function copyResult() {
+    navigator.clipboard.writeText(document.getElementById('result-text').textContent).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+
+  function reset() {
+${resetJs}
+    document.getElementById('form-error').style.display = 'none';
+    show('form-screen');
+  }
+<\/script>
+</body>
+</html>`;
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderProgress(1);
+</script>
+</body>
+</html>
