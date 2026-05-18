@@ -23,7 +23,7 @@
   .btn:hover { background: #3C3489; }
   .btn-ghost { background: transparent; border: 1px solid #ccc; border-radius: 7px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: #444; font-family: inherit; }
   .btn-ghost:hover { background: #f5f5f5; }
-  .error-box { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 7px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 14px; }
+  .error-box { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 7px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 14px; line-height: 1.6; }
   .result-box { background: #f8f8f6; border: 1px solid #e5e5e5; border-radius: 10px; padding: 1.25rem; font-size: 14px; line-height: 1.8; color: #333; white-space: pre-wrap; max-height: 560px; overflow-y: auto; margin-bottom: 14px; }
   .next-box { background: #EEEDFE; border-radius: 8px; padding: .9rem 1rem; font-size: 13px; color: #3C3489; line-height: 1.6; }
   .loading { text-align: center; padding: 4rem 0; }
@@ -136,11 +136,7 @@
 </div>
 
 <script>
-  // ─── ONLY LINE YOU NEED TO EDIT ──────────────────────────────────────────
-  // After deploying the Cloudflare Worker, paste its URL here.
-  // It will look like: https://lead-mag-proxy.yourname.workers.dev
   const WORKER_URL = 'https://gemini.c1-jumpw.workers.dev';
-  // ─────────────────────────────────────────────────────────────────────────
 
   function show(id) {
     ['form-screen','loading-screen','result-screen'].forEach(s => {
@@ -190,30 +186,40 @@ Be direct. No generic advice.`;
       err.style.display = 'block';
       return;
     }
-    if (WORKER_URL === 'PASTE_YOUR_WORKER_URL_HERE') {
-      err.textContent = 'Worker URL not set yet. Open index.html and replace PASTE_YOUR_WORKER_URL_HERE with your Cloudflare Worker URL.';
-      err.style.display = 'block';
-      return;
-    }
 
     err.style.display = 'none';
     show('loading-screen');
 
     try {
-      const res = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: buildPrompt() }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
-        })
-      });
+      let res;
+      try {
+        res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: buildPrompt() }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
+          })
+        });
+      } catch (fetchErr) {
+        throw new Error(`Could not reach the worker at ${WORKER_URL}. Check the URL is correct and the worker is deployed.`);
+      }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error?.message || `Error ${res.status}`);
+      // Try to parse as JSON — if it fails, the worker returned HTML (error page)
+      let data;
+      const rawText = await res.text();
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Worker returned an unexpected response. Open ${WORKER_URL} in a new tab to check if it's running correctly.`);
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error?.message || `Worker error ${res.status}`);
+      }
 
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!text) throw new Error('Empty response — try again.');
+      if (!text) throw new Error('Empty response from Gemini — try again.');
 
       document.getElementById('result-text').textContent = text;
       show('result-screen');
