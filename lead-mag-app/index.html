@@ -94,7 +94,7 @@
     <div class="field">
       <label>Core problem to solve *</label>
       <span class="hint">Be specific. What does your audience struggle with that this magnet will fix?</span>
-      <textarea id="f-problem" rows="3" placeholder="e.g. Our clients don't know if their pricing is leaving money on the table compared to competitors in their market."></textarea>
+      <textarea id="f-problem" rows="3" placeholder="e.g. Our clients don't know if their pricing is leaving money on the table vs competitors."></textarea>
     </div>
 
     <div class="field">
@@ -107,7 +107,7 @@
 
     <div style="display:flex;align-items:center;gap:12px">
       <button class="btn" onclick="generate()">Generate Ideas + Outline →</button>
-      <span style="font-size:12px;color:#aaa">Powered by Gemini</span>
+      <span style="font-size:12px;color:#aaa">Powered by Groq</span>
     </div>
   </div>
 
@@ -136,7 +136,9 @@
 </div>
 
 <script>
-  const WORKER_URL = 'https://gemini.c1-jumpw.workers.dev';
+  // ── Your Cloudflare Worker URL ─────────────────────────────────────────
+  const WORKER_URL = 'PASTE_WORKER_URL_HERE';
+  // ──────────────────────────────────────────────────────────────────────
 
   function show(id) {
     ['form-screen','loading-screen','result-screen'].forEach(s => {
@@ -147,7 +149,7 @@
   function buildPrompt() {
     return `You are an expert lead magnet strategist trained in the Hormozi Value Equation and the Brunson Value Ladder.
 
-A team is developing a lead magnet for a client. Here are the details:
+A team is developing a lead magnet. Details:
 - Business / org type: ${document.getElementById('f-biz').value || 'Not specified'}
 - Target audience: ${document.getElementById('f-audience').value || 'Not specified'}
 - Primary goal: ${document.getElementById('f-goal').value || 'Not specified'}
@@ -155,26 +157,15 @@ A team is developing a lead magnet for a client. Here are the details:
 - Core problem to solve: ${document.getElementById('f-problem').value}
 - Additional notes: ${document.getElementById('f-notes').value || 'None'}
 
-Your job:
+Deliver:
 
-1. LEAD MAGNET IDEAS (3 distinct concepts)
-For each: Title, Format, Core promise (one sentence), Why this works (Value Equation), Where on the Value Ladder.
+1. THREE LEAD MAGNET IDEAS — for each: Title, Format, Core promise (1 sentence), Why it works (Value Equation), Ladder position.
 
-2. FULL OUTLINE for the strongest idea:
-- Headline / opt-in hook
-- What it delivers (section by section)
-- The one result felt within 5 minutes
-- Natural next step on the Value Ladder
-- Suggested distribution context
+2. FULL OUTLINE of the strongest idea: headline/hook, section-by-section breakdown, result felt in 5 min, next step on the ladder, distribution context.
 
-3. QUALITY CHECKLIST (yes/no + note):
-- Solves one specific problem completely
-- Result felt in under 5 minutes
-- Some level of personalization
-- Clear next step on the ladder
-- Promise specific enough to be believed
+3. QUALITY CHECKLIST (yes/no + note): solves one problem completely · result in under 5 min · personalized · clear next step · promise believable.
 
-Be direct. No generic advice.`;
+Be specific. No generic advice.`;
   }
 
   async function generate() {
@@ -186,40 +177,31 @@ Be direct. No generic advice.`;
       err.style.display = 'block';
       return;
     }
+    if (WORKER_URL === 'PASTE_WORKER_URL_HERE') {
+      err.textContent = 'Worker URL not set. Open index.html and replace PASTE_WORKER_URL_HERE with your Cloudflare Worker URL.';
+      err.style.display = 'block';
+      return;
+    }
 
     err.style.display = 'none';
     show('loading-screen');
 
     try {
-      let res;
-      try {
-        res = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: buildPrompt() }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
-          })
-        });
-      } catch (fetchErr) {
-        throw new Error(`Could not reach the worker at ${WORKER_URL}. Check the URL is correct and the worker is deployed.`);
-      }
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: buildPrompt() })
+      });
 
-      // Try to parse as JSON — if it fails, the worker returned HTML (error page)
-      let data;
       const rawText = await res.text();
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        throw new Error(`Worker returned an unexpected response. Open ${WORKER_URL} in a new tab to check if it's running correctly.`);
-      }
+      let data;
+      try { data = JSON.parse(rawText); }
+      catch { throw new Error('Worker returned an unexpected response. Visit your worker URL in a browser tab to confirm it is running.'); }
 
-      if (!res.ok) {
-        throw new Error(data?.error?.message || `Worker error ${res.status}`);
-      }
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
 
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!text) throw new Error('Empty response from Gemini — try again.');
+      const text = data?.choices?.[0]?.message?.content || '';
+      if (!text) throw new Error('Empty response — please try again.');
 
       document.getElementById('result-text').textContent = text;
       show('result-screen');
