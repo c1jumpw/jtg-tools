@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Magnet Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 2rem 1rem; }
+  .wrap { width: 100%; max-width: 680px; }
+  .card { background: #fff; border: 0.5px solid #ddd; border-radius: 14px; padding: 2rem; margin-bottom: 1rem; }
+  .label-tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #534AB7; margin-bottom: 6px; display: block; }
+  h1 { font-size: 22px; font-weight: 600; color: #111; margin-bottom: 6px; }
+  .sub { font-size: 14px; color: #666; line-height: 1.65; margin-bottom: 1.5rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+  .field label { font-size: 13px; font-weight: 600; color: #222; }
+  .field .hint { font-size: 11px; color: #999; margin-top: 2px; }
+  input, select, textarea { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #222; font-family: inherit; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #534AB7; box-shadow: 0 0 0 3px rgba(83,74,183,0.1); }
+  textarea { resize: vertical; line-height: 1.6; }
+  .btn { background: #534AB7; color: #fff; border: none; border-radius: 8px; padding: 11px 24px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn:hover { background: #3C3489; }
+  .btn-ghost { background: transparent; border: 1px solid #ccc; border-radius: 7px; padding: 8px 16px; font-size: 13px; cursor: pointer; color: #444; font-family: inherit; }
+  .btn-ghost:hover { background: #f5f5f5; }
+  .step-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: #534AB7; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-text { font-size: 14px; color: #333; line-height: 1.6; }
+  .step-text a { color: #534AB7; font-weight: 600; }
+  .info-box { background: #E1F5EE; border-left: 3px solid #0F6E56; border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #085041; margin: 14px 0; line-height: 1.6; }
+  .warn-box { background: #FAEEDA; border-left: 3px solid #BA7517; border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #412402; margin: 14px 0; line-height: 1.6; }
+  .error-box { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 7px; padding: 10px 14px; font-size: 13px; color: #c0392b; margin-bottom: 14px; }
+  .result-box { background: #f8f8f6; border: 1px solid #e5e5e5; border-radius: 10px; padding: 1.25rem; font-size: 14px; line-height: 1.8; color: #333; white-space: pre-wrap; max-height: 560px; overflow-y: auto; margin-bottom: 14px; }
+  .next-box { background: #EEEDFE; border-radius: 8px; padding: .9rem 1rem; font-size: 13px; color: #3C3489; line-height: 1.6; }
+  .loading { text-align: center; padding: 4rem 0; }
+  .loading .icon { font-size: 32px; margin-bottom: 14px; }
+  .loading h2 { font-size: 17px; font-weight: 600; color: #111; margin-bottom: 6px; }
+  .loading p { font-size: 13px; color: #999; }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+  .result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .success-tag { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #0F6E56; margin-bottom: 4px; display: block; }
+  .btn-row { display: flex; gap: 8px; }
+  .footer { text-align: center; font-size: 12px; color: #bbb; margin-top: .5rem; }
+  @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SETUP SCREEN -->
+  <div class="card" id="setup-screen">
+    <span class="label-tag">One-time setup</span>
+    <h1>Connect your Gemini API key</h1>
+    <p class="sub">This tool uses Google's free Gemini API to generate lead magnet ideas. Your key is stored only in your browser — it never leaves your device.</p>
+
+    <div style="background:#f8f8f8;border:0.5px solid #e0e0e0;border-radius:10px;padding:1.25rem;margin-bottom:1.25rem">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">How to get your free key (2 minutes, no card needed)</div>
+      <div class="step-row"><div class="step-num">1</div><div class="step-text">Go to <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> and sign in with Google</div></div>
+      <div class="step-row"><div class="step-num">2</div><div class="step-text">Click <strong>Get API Key</strong> in the left sidebar</div></div>
+      <div class="step-row"><div class="step-num">3</div><div class="step-text">Click <strong>Create API key</strong> → if asked, create or select any project</div></div>
+      <div class="step-row"><div class="step-num">4</div><div class="step-text">Copy the key (starts with <code style="background:#eee;padding:2px 6px;border-radius:4px;font-size:12px">AIza...</code>) and paste below</div></div>
+      <div class="info-box">Free tier: 1,500 requests/day. Resets daily. Never expires.</div>
+    </div>
+
+    <div class="field">
+      <label for="api-key-input">Paste your Gemini API key</label>
+      <span class="hint">Starts with AIza...</span>
+      <input type="password" id="api-key-input" placeholder="AIzaSy..." />
+    </div>
+
+    <div class="error-box" id="setup-error" style="display:none"></div>
+
+    <button class="btn" onclick="saveKey()">Save key and continue →</button>
+    <div style="font-size:12px;color:#aaa;margin-top:10px">Key is saved to your browser only. Share the app URL — each teammate enters their own free key.</div>
+  </div>
+
+  <!-- GENERATOR FORM -->
+  <div class="card" id="form-screen" style="display:none">
+    <div class="top-row">
+      <div>
+        <span class="label-tag">Lead Magnet Builder</span>
+        <h1>Turn your idea into a full plan</h1>
+        <p class="sub" style="margin-bottom:0">Fill in what you know. Only the core problem is required.</p>
+      </div>
+      <button class="btn-ghost" onclick="clearKey()" style="font-size:11px;padding:5px 10px;color:#aaa;flex-shrink:0;margin-left:12px">Change API key</button>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label>Business / org type</label>
+        <span class="hint">e.g. SaaS, agency, nonprofit</span>
+        <input type="text" id="f-biz" placeholder="e.g. Marketing agency" />
+      </div>
+      <div class="field">
+        <label>Target audience</label>
+        <select id="f-audience">
+          <option value="">Select...</option>
+          <option>B2B — small business</option>
+          <option>B2B — enterprise</option>
+          <option>B2C — consumer</option>
+          <option>B2C — creator / personal brand</option>
+          <option>Nonprofit / org</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Primary goal</label>
+        <select id="f-goal">
+          <option value="">Select...</option>
+          <option>More email signups</option>
+          <option>Higher-quality leads</option>
+          <option>Build trust fast</option>
+          <option>Warm up cold traffic</option>
+          <option>Qualify buyers for offer</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Preferred format</label>
+        <select id="f-format">
+          <option value="">Select...</option>
+          <option>Quiz / Assessment</option>
+          <option>Calculator / ROI Tool</option>
+          <option>Audit / Scorecard</option>
+          <option>Checklist / Cheat Sheet</option>
+          <option>Template</option>
+          <option>Free Trial / Demo</option>
+          <option>Short Challenge</option>
+          <option>Micro-Course</option>
+          <option>AI-Personalized Report</option>
+          <option>Not sure — suggest one</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Core problem to solve *</label>
+      <span class="hint">Be specific. What does your audience struggle with that this magnet will fix?</span>
+      <textarea id="f-problem" rows="3" placeholder="e.g. Our clients don't know if their pricing is leaving money on the table compared to competitors in their market."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Additional notes</label>
+      <span class="hint">Client brief, constraints, audience context, anything useful</span>
+      <textarea id="f-notes" rows="3" placeholder="e.g. Client is conservative, audience is non-technical, wants something that shows ROI fast."></textarea>
+    </div>
+
+    <div class="error-box" id="form-error" style="display:none"></div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" onclick="generate()">Generate Ideas + Outline →</button>
+      <span style="font-size:12px;color:#aaa">Powered by Gemini (free)</span>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="card loading" id="loading-screen" style="display:none">
+    <div class="icon">⚙️</div>
+    <h2>Building your lead magnet plan...</h2>
+    <p>Running inputs through the Hormozi + Brunson framework</p>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card" id="result-screen" style="display:none">
+    <div class="result-header">
+      <div>
+        <span class="success-tag">✓ Generated</span>
+        <h1 style="font-size:20px">Your lead magnet plan</h1>
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost" id="copy-btn" onclick="copyResult()">Copy</button>
+        <button class="btn-ghost" onclick="reset()">← New</button>
+      </div>
+    </div>
+    <div class="result-box" id="result-text"></div>
+    <div class="next-box"><strong>Next:</strong> Brief your designer or copywriter with this outline, then run it through the pre-launch checklist before anything goes live.</div>
+  </div>
+
+  <div class="footer">Hormozi + Brunson Framework · Free via Google Gemini API</div>
+</div>
+
+<script>
+  const KEY = 'gemini_api_key';
+
+  function show(id) {
+    ['setup-screen','form-screen','loading-screen','result-screen'].forEach(s => {
+      document.getElementById(s).style.display = s === id ? 'block' : 'none';
+    });
+  }
+
+  function init() {
+    const key = localStorage.getItem(KEY);
+    show(key ? 'form-screen' : 'setup-screen');
+  }
+
+  function saveKey() {
+    const val = document.getElementById('api-key-input').value.trim();
+    const err = document.getElementById('setup-error');
+    if (!val.startsWith('AIza')) {
+      err.textContent = 'That doesn\'t look right — the key should start with "AIza". Copy it directly from Google AI Studio.';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+    localStorage.setItem(KEY, val);
+    show('form-screen');
+  }
+
+  function clearKey() {
+    localStorage.removeItem(KEY);
+    document.getElementById('api-key-input').value = '';
+    show('setup-screen');
+  }
+
+  function buildPrompt() {
+    const biz = document.getElementById('f-biz').value;
+    const audience = document.getElementById('f-audience').value;
+    const goal = document.getElementById('f-goal').value;
+    const format = document.getElementById('f-format').value;
+    const problem = document.getElementById('f-problem').value;
+    const notes = document.getElementById('f-notes').value;
+
+    return `You are an expert lead magnet strategist trained in the Hormozi Value Equation and the Brunson Value Ladder.
+
+A team is developing a lead magnet for a client. Here are the details:
+- Business / org type: ${biz || 'Not specified'}
+- Target audience: ${audience || 'Not specified'}
+- Primary goal: ${goal || 'Not specified'}
+- Preferred format: ${format || 'Not specified'}
+- Core problem to solve: ${problem}
+- Additional notes: ${notes || 'None'}
+
+Your job:
+
+1. LEAD MAGNET IDEAS (give 3 distinct concepts)
+For each idea:
+- Title (specific and outcome-focused)
+- Format
+- Core promise (one sentence — what does the user get and how fast?)
+- Why this works (tie to Value Equation: high dream outcome, fast result, low effort)
+- Where it sits on the Value Ladder
+
+2. FULL OUTLINE for the strongest idea:
+- Headline / opt-in hook
+- What it delivers (section by section)
+- The one result felt within 5 minutes
+- Natural next step on the Value Ladder
+- Suggested distribution context
+
+3. QUALITY CHECKLIST (yes/no + brief note each):
+- Solves one specific problem completely
+- Result felt in under 5 minutes
+- Some level of personalization
+- Clear next step exists on the ladder
+- Promise specific enough to be believed
+
+Be direct and specific. No generic advice.`;
+  }
+
+  async function generate() {
+    const problem = document.getElementById('f-problem').value.trim();
+    const err = document.getElementById('form-error');
+
+    if (!problem) {
+      err.textContent = 'Please describe the core problem to solve.';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+
+    const apiKey = localStorage.getItem(KEY);
+    show('loading-screen');
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: buildPrompt() }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
+          })
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data?.error?.message || `API error (${res.status})`;
+        throw new Error(msg);
+      }
+
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!text) throw new Error('Empty response from Gemini.');
+
+      document.getElementById('result-text').textContent = text;
+      show('result-screen');
+
+    } catch(e) {
+      show('form-screen');
+      err.textContent = e.message || 'Something went wrong. Check your API key and try again.';
+      err.style.display = 'block';
+    }
+  }
+
+  function copyResult() {
+    const text = document.getElementById('result-text').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+
+  function reset() {
+    document.getElementById('f-problem').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('form-error').style.display = 'none';
+    show('form-screen');
+  }
+
+  // Allow Enter key on API key field
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('api-key-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveKey();
+    });
+    init();
+  });
+</script>
+</body>
+</html>
