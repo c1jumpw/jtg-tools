@@ -220,7 +220,8 @@ function switchTab(tab, btn) {
 // ── API ────────────────────────────────────────────────────────────────────
 async function apiCall(params) {
   try {
-    var res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params).toString());
+    params._t = Date.now();
+    var res = await fetch(SCRIPT_URL + "?" + new URLSearchParams(params).toString());
     var json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Script error');
     return json;
