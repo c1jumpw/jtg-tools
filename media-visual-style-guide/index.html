@@ -9,28 +9,16 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#F7F5F0;
-  --surface:#FFFFFF;
-  --surface2:#F2EFE8;
-  --text1:#1A1916;
-  --text2:#6B6860;
-  --text3:#AAA89F;
-  --border:#E5E2D8;
-  --border2:#D0CDBE;
-  --amber:#B06C00;
-  --amber-bg:#FFF4E0;
-  --teal:#0A6652;
-  --teal-bg:#E4F5EF;
-  --purple:#4A3BAA;
-  --purple-bg:#EFEDFC;
-  --coral:#B03A1A;
-  --coral-bg:#FDEEE9;
-  --radius:12px;
-  --radius-sm:8px;
+  --bg:#F7F5F0;--surface:#FFFFFF;--surface2:#F2EFE8;
+  --text1:#1A1916;--text2:#6B6860;--text3:#AAA89F;
+  --border:#E5E2D8;--border2:#D0CDBE;
+  --amber:#B06C00;--amber-bg:#FFF4E0;
+  --teal:#0A6652;--teal-bg:#E4F5EF;
+  --purple:#4A3BAA;--purple-bg:#EFEDFC;
+  --radius:12px;--radius-sm:8px;
 }
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);font-size:15px;line-height:1.6;padding:0}
 
-/* PAGE HEADER */
 .page-header{background:var(--text1);padding:56px 48px 44px;position:relative;overflow:hidden}
 .page-header::before{content:'';position:absolute;right:-60px;top:-60px;width:320px;height:320px;border-radius:50%;border:1px solid rgba(255,255,255,0.07)}
 .page-header::after{content:'';position:absolute;right:60px;top:20px;width:160px;height:160px;border-radius:50%;border:1px solid rgba(255,255,255,0.05)}
@@ -40,66 +28,66 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text1);fo
 .header-meta{display:flex;gap:24px;align-items:center}
 .meta-pill{font-size:11px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6)}
 
-/* MAIN */
 main{padding:32px 48px 64px;max-width:1100px;margin:0 auto}
 
-/* FILTERS */
 .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;padding-top:4px}
-.fb{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 16px;border-radius:20px;border:1px solid var(--border2);background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;letter-spacing:0.01em}
+.fb{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 16px;border-radius:20px;border:1px solid var(--border2);background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s}
 .fb:hover{background:var(--surface);border-color:var(--text3)}
 .fb.on{background:var(--text1);color:#fff;border-color:var(--text1)}
 
-/* SECTION LABEL */
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.leg-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2)}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
 .sec-label{font-size:10.5px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);padding:12px 0 10px;border-bottom:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;gap:8px;grid-column:1/-1}
 .sec-label-dot{width:6px;height:6px;border-radius:50%}
 
-/* GRID */
 #grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
 
-/* CARD */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;display:flex;flex-direction:column}
 .card:hover{border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,0.06)}
 
-/* PREVIEW */
-.preview{height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;border-bottom:1px solid var(--border)}
+.preview{height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--border)}
 .preview svg{max-width:140px;max-height:76px}
 
-/* CARD BODY */
 .cbody{padding:14px 16px 16px;display:flex;flex-direction:column;flex:1}
 .title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
 .ctitle{font-family:'Playfair Display',serif;font-size:17px;font-weight:500;color:var(--text1);line-height:1.2}
 .badge{font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap;margin-top:2px;flex-shrink:0}
 .cdesc{font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px}
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}
-.tag{font-size:10.5px;padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);font-weight:400}
+.tag{font-size:10.5px;padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 
-/* PROMPT SECTION */
+/* PROMPT AREA */
 .prompt-label{font-size:9.5px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
-.prompt-wrap{position:relative;flex:1}
-.prompt{font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.65;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 36px 9px 10px;max-height:90px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
-.copy-btn{position:absolute;top:6px;right:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text3);transition:all 0.1s;font-size:13px;line-height:1}
-.copy-btn:hover{background:var(--surface2);color:var(--text1)}
-.copy-btn.copied{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
+.prompt{font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.65;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:9px 10px;max-height:82px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;border-bottom:none}
 
-/* LEGEND */
-.legend{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
-.leg-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2)}
-.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* INPUT FIELDS */
+.inputs-area{background:var(--surface2);border:1px solid var(--border);border-top:1px solid var(--border2);border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px}
+.input-row{display:flex;align-items:center;gap:8px}
+.input-lbl{font-size:10px;font-weight:500;color:var(--text3);white-space:nowrap;width:54px;flex-shrink:0;letter-spacing:0.04em;text-transform:uppercase}
+.prompt-input{font-family:'DM Sans',sans-serif;font-size:11.5px;flex:1;padding:5px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text1);outline:none;transition:border-color 0.15s}
+.prompt-input:focus{border-color:var(--text3)}
+.prompt-input::placeholder{color:var(--text3);font-size:11px}
+
+/* COPY ROW */
+.copy-row{display:flex;justify-content:flex-end;margin-top:8px}
+.copy-btn{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;color:var(--text2);display:flex;align-items:center;gap:5px;transition:all 0.12s}
+.copy-btn:hover{background:var(--text1);color:#fff;border-color:var(--text1)}
+.copy-btn.copied{background:var(--teal);color:#fff;border-color:var(--teal)}
+.copy-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* SCROLL */
 .prompt::-webkit-scrollbar{width:4px}
-.prompt::-webkit-scrollbar-track{background:transparent}
 .prompt::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-/* NOTICE */
 .notice{font-size:12px;color:var(--text3);margin-top:20px;padding:10px 14px;border-left:2px solid var(--border2);background:var(--surface2);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
 .notice strong{color:var(--text2);font-weight:500}
+code{font-family:'DM Mono',monospace;font-size:11px;background:var(--border);padding:1px 4px;border-radius:3px}
 
 @media(max-width:700px){
-  .page-header{padding:36px 24px 30px}
-  .header-title{font-size:28px}
-  main{padding:24px 20px 48px}
-  #grid{grid-template-columns:1fr}
+  .page-header{padding:36px 24px 30px}.header-title{font-size:28px}
+  main{padding:24px 20px 48px}#grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -108,7 +96,7 @@ main{padding:32px 48px 64px;max-width:1100px;margin:0 auto}
 <div class="page-header">
   <div class="header-label">Media Planner Reference</div>
   <h1 class="header-title">Visual Style Guide</h1>
-  <p class="header-sub">18 image and illustration styles — with ready-to-use AI generation prompts. Copy any prompt, swap the bracketed fields, and generate on-brand assets.</p>
+  <p class="header-sub">18 image and illustration styles with ready-to-use AI generation prompts. Fill in your subject and colors, then copy the assembled prompt.</p>
   <div class="header-meta">
     <span class="meta-pill">18 styles</span>
     <span class="meta-pill">3 categories</span>
@@ -132,190 +120,215 @@ main{padding:32px 48px 64px;max-width:1100px;margin:0 auto}
 
   <div id="grid"></div>
 
-  <div class="notice"><strong>How to use prompts:</strong> Replace all <code>[BRACKETED]</code> fields with your specific subject, colors, or context. Use prompts in Midjourney, DALL-E 3, Firefly, or Stable Diffusion. Adjust aspect ratios using your tool's native parameter (e.g. <code>--ar 16:9</code> in Midjourney).</div>
+  <div class="notice"><strong>How to use:</strong> Fill in the subject and color fields on each card, then click Copy to get the fully assembled prompt. Paste directly into Midjourney, DALL-E 3, Adobe Firefly, or Stable Diffusion. Adjust aspect ratios using your tool's native syntax (e.g. <code>--ar 16:9</code> in Midjourney).</div>
 </main>
 
 <script>
 const S = [
-  // ── DIGITAL ILLUSTRATION ──────────────────────────────────────────────────
+  // ── DIGITAL ILLUSTRATION ────────────────────────────────────────────
   {
-    cat:"illustration",
-    name:"Flat Design",
+    cat:"illustration",name:"Flat Design",
     desc:"Bold geometric shapes, solid fills, zero shadows or gradients. The definitive style for tech, SaaS, and modern consumer brands.",
     best:["Web banners","App UI","Social posts","Icon sets"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Flat design illustration of [SUBJECT], centered composition on a clean white background, direct front-facing view, simple geometric shapes only with solid flat color fills, strictly no shadows or gradients or highlights, 3-color palette using [COLOR 1], [COLOR 2], and [ACCENT], shapes scaled to fill 70% of the frame, crisp vector edges with no anti-aliasing artifacts, generous negative space at the perimeter, vector art style inspired by Malika Favre and Olimpia Zagnoli, 2:1 landscape aspect ratio`,
+    prompt:`Centered composition on a clean white background, direct front-facing view, simple geometric shapes only with solid flat color fills, strictly no shadows or gradients or highlights, shapes scaled to fill 70% of the frame, crisp vector edges with no anti-aliasing artifacts, generous negative space at the perimeter, vector art style inspired by Malika Favre and Olimpia Zagnoli, 2:1 landscape aspect ratio`,
+    subjectHint:"e.g. a smartphone, a coffee cup, a team",
+    hasColors:true, colorHint:"e.g. coral + navy + cream",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="18" width="42" height="48" rx="4" fill="#0A6652"/><circle cx="98" cy="38" r="26" fill="#3AB795"/><rect x="14" y="72" width="112" height="8" rx="4" fill="#B2E8D8"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Line Art",
+    cat:"illustration",name:"Line Art",
     desc:"Pure outlines with no fill. Clean, versatile, works on any background. The preferred style for luxury, editorial, and premium brands.",
-    best:["Editorial layouts","White papers","Branded docs","Luxury branding"],
+    best:["Editorial layouts","White papers","Luxury branding","Branded docs"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Minimalist line art illustration of [SUBJECT], single continuous black stroke at a precise uniform 2pt line weight, zero fill anywhere in the image, isolated on a pure white background, subject centered with equal margins on all four sides, viewed from directly overhead or from a clean 3/4 angle showing the full silhouette, limited to 4 to 6 key defining details, no cross-hatching or shading, crisp clean vector linework, portrait or square 1:1 format, similar to fashion illustration or studio Ghibli production sketch style`,
+    prompt:`Single continuous black stroke at a precise uniform 2pt line weight, zero fill anywhere in the image, isolated on a pure white background, subject centered with equal margins on all four sides, viewed from a clean 3/4 angle showing the full silhouette, limited to 4 to 6 key defining details only, no cross-hatching or shading, crisp clean vector linework, portrait or square 1:1 format, fashion illustration aesthetic`,
+    subjectHint:"e.g. a hand, a bicycle, a cityscape",
+    hasColors:false,
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#fff"/><circle cx="70" cy="40" r="26" fill="none" stroke="#0A6652" stroke-width="2.5"/><line x1="48" y1="75" x2="92" y2="75" stroke="#0A6652" stroke-width="2.5"/><line x1="62" y1="66" x2="70" y2="75" stroke="#0A6652" stroke-width="2.5"/><line x1="78" y1="66" x2="70" y2="75" stroke="#0A6652" stroke-width="2.5"/><circle cx="60" cy="36" r="4" fill="#0A6652"/><circle cx="80" cy="36" r="4" fill="#0A6652"/><path d="M60 50 Q70 58 80 50" fill="none" stroke="#0A6652" stroke-width="2"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Isometric Illustration",
+    cat:"illustration",name:"Isometric Illustration",
     desc:"3D-looking scenes from a precise 45° top-down angle. Perfect for tech, process diagrams, and anything showing space, systems, or architecture.",
     best:["Tech explainers","Process diagrams","Landing pages","Infographics"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Isometric illustration of [SUBJECT] scene, dimetric 3D perspective at a precise 45-degree downward viewing angle, flat matte color fills with a lighter tint on the top face and a darker shade on the side face for depth, teal and slate blue palette, all edges perfectly geometric and grid-aligned, no gradients, no cast shadows, even ambient lighting, objects stacked and arranged in the lower-center of the frame, 1:1 square canvas with off-white background, clean and minimal clutter`,
+    prompt:`Dimetric 3D perspective at a precise 45-degree downward viewing angle, flat matte color fills with a lighter tint on the top face and a darker shade on the side face for depth, all edges perfectly geometric and grid-aligned, no gradients, no cast shadows, even ambient lighting, objects stacked and arranged in the lower-center of the frame, 1:1 square canvas with off-white background, clean and minimal clutter`,
+    subjectHint:"e.g. a home office, a city block, a shop",
+    hasColors:true, colorHint:"e.g. soft blue + white + dark slate",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><polygon points="70,12 110,34 70,56 30,34" fill="#B2E8D8"/><polygon points="30,34 70,56 70,76 30,54" fill="#0A6652"/><polygon points="110,34 70,56 70,76 110,54" fill="#3AB795"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"3D CGI Render",
+    cat:"illustration",name:"3D CGI Render",
     desc:"Studio-lit 3D objects with physical material realism. Polished, premium, and arresting at any scale.",
     best:["Product showcases","Hero images","Brand campaigns","Packaging mock-ups"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`3D CGI render of [SUBJECT], soft diffused studio lighting from the upper-left at a 45-degree angle with a low-intensity fill light from the opposite side, subtle ambient occlusion in all recessed areas, clean pure white cyclorama background with no visible seam, matte or slightly glossy material finish with realistic surface detail, camera positioned at eye level in a 3/4 angle view at a 35mm lens equivalent, very shallow depth of field blurring background elements only, high-resolution photoreal render at octane or Blender Cycles quality, 3:2 aspect ratio, no post-processing filters or color grading`,
+    prompt:`Soft diffused studio lighting from the upper-left at a 45-degree angle with a low-intensity fill light from the opposite side, subtle ambient occlusion in all recessed areas, clean pure white cyclorama background with no visible seam, matte or slightly glossy material finish with realistic surface detail, camera positioned at eye level in a 3/4 angle view at 35mm lens equivalent, very shallow depth of field blurring background elements only, Octane or Blender Cycles render quality, 3:2 aspect ratio, no post-processing filters`,
+    subjectHint:"e.g. a perfume bottle, a sneaker, a device",
+    hasColors:true, colorHint:"e.g. matte white with gold accents",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><ellipse cx="70" cy="74" rx="34" ry="8" fill="#D0CDBE" opacity="0.5"/><circle cx="65" cy="38" r="32" fill="#9FE1CB"/><ellipse cx="54" cy="27" rx="14" ry="10" fill="#E4F5EF" opacity="0.7"/><circle cx="80" cy="45" r="6" fill="#0A6652" opacity="0.3"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Cartoon / Character",
+    cat:"illustration",name:"Cartoon / Character",
     desc:"Rounded forms, exaggerated proportions, bold outlines. Friendly and approachable for broad audiences and storytelling.",
     best:["Social media content","Blog art","Explainer assets","Brand mascots"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Flat cartoon character illustration of [SUBJECT OR CHARACTER DESCRIPTION], friendly rounded body shapes with intentionally exaggerated proportions — large head at 40% of total height and simplified short limbs, front-facing or 3/4 turn view, bold clean black outline at exactly 3pt stroke weight, bright flat color fills with a single-tone cel shading added to one side only, neutral off-white or light cream background, subject centered with clear breathing room on all sides, expressive oversized eyes and simple curved mouth, no photorealistic texture or detail, Pixar and Cartoon Network aesthetic, 1:1 square format`,
+    prompt:`Friendly rounded body shapes with intentionally exaggerated proportions — large head at 40% of total height and simplified short limbs, front-facing or 3/4 turn view, bold clean black outline at 3pt stroke weight, flat color fills with a single-tone cel shading added to one side only, neutral off-white background, subject centered with clear breathing room on all sides, expressive oversized eyes and simple curved mouth, no photorealistic texture or detail, Pixar and Cartoon Network aesthetic, 1:1 square format`,
+    subjectHint:"e.g. a friendly robot, a chef, a dog",
+    hasColors:true, colorHint:"e.g. primary colors, bright and playful",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><circle cx="70" cy="30" r="22" fill="#3AB795" stroke="#0A3D2F" stroke-width="2"/><circle cx="62" cy="26" r="5" fill="#0A3D2F"/><circle cx="78" cy="26" r="5" fill="#0A3D2F"/><circle cx="63" cy="25" r="2" fill="white"/><circle cx="79" cy="25" r="2" fill="white"/><path d="M60 37 Q70 46 80 37" stroke="#0A3D2F" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="50" y="54" width="40" height="24" rx="12" fill="#0A6652" stroke="#0A3D2F" stroke-width="2"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Geometric Abstract",
-    desc:"No figures — pure shapes that convey concepts and emotions. Bold graphic impact. Great for expressing ideas that resist literal illustration.",
-    best:["Brand identity","Report covers","Abstract concepts","Background patterns"],
+    cat:"illustration",name:"Geometric Abstract",
+    desc:"No figures — pure shapes that convey concepts and emotions. Bold graphic impact for ideas that resist literal illustration.",
+    best:["Brand identity","Report covers","Concept art","Background patterns"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Abstract geometric composition representing the concept of [CONCEPT OR EMOTION], overlapping polygon, circle, and rectangular shapes at varied intentional angles, a restricted palette of exactly 3 colors with one dominant tone and two contrasting accents, shapes arranged in a diagonal flow from the lower-left corner to the upper-right corner, no recognizable real-world figures or objects, all flat solid fills with clean hard edges, strong visual rhythm and repetition, slight deliberate asymmetry, Swiss modernist design influence, 1:1 square or 16:9 landscape canvas`,
+    prompt:`Overlapping polygon, circle, and rectangular shapes at varied intentional angles, shapes arranged in a diagonal flow from the lower-left corner to the upper-right corner, no recognizable real-world figures or objects, all flat solid fills with clean hard edges, strong visual rhythm and repetition, slight deliberate asymmetry, Swiss modernist design influence, 1:1 square or 16:9 landscape canvas`,
+    subjectHint:"e.g. innovation, growth, collaboration",
+    hasColors:true, colorHint:"e.g. black + terracotta + sand",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><polygon points="10,78 54,10 98,78" fill="#B2E8D8"/><circle cx="88" cy="30" r="30" fill="#0A6652" opacity="0.88"/><rect x="0" y="62" width="60" height="26" fill="#3AB795"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Editorial / Conceptual",
+    cat:"illustration",name:"Editorial / Conceptual",
     desc:"Metaphorical visuals that communicate complex ideas. The style used by leading publications — bold, smart, and thought-provoking.",
     best:["Annual reports","Long-form articles","Op-eds","Concept explainers"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`Editorial conceptual illustration for [PUBLICATION TYPE e.g. business magazine] about the topic of [TOPIC], one central strong symbolic object placed exactly in the center of the frame occupying 45% of the composition, 3 to 4 supporting smaller elements arranged around it to reinforce the narrative, strong tonal contrast between the central subject and its background, limited flat 3-tone color palette, slight fine grain texture overlay at 10% opacity on the background, 2:1 landscape format, visually influenced by The New Yorker cover illustration, Noma Bar, or New York Times opinion section artwork`,
+    prompt:`One central strong symbolic object placed exactly in the center of the frame occupying 45% of the composition, 3 to 4 supporting smaller elements arranged around it to reinforce the narrative, strong tonal contrast between the central subject and its background, slight fine grain texture overlay at 10% opacity on the background, 2:1 landscape format, visually influenced by The New Yorker cover illustration, Noma Bar, or New York Times opinion section artwork`,
+    subjectHint:"e.g. data privacy, burnout, supply chains",
+    hasColors:true, colorHint:"e.g. muted olive + burnt orange + off-white",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#E4F5EF"/><circle cx="70" cy="40" r="26" fill="#0A6652"/><rect x="64" y="10" width="12" height="16" rx="2" fill="#043D2C"/><polygon points="60,36 80,36 70,26" fill="#B2E8D8"/><line x1="20" y1="72" x2="120" y2="72" stroke="#B2E8D8" stroke-width="1.5"/></svg>`
   },
   {
-    cat:"illustration",
-    name:"Pixel Art",
+    cat:"illustration",name:"Pixel Art",
     desc:"Retro 8-bit / 16-bit grid-based illustration. Nostalgic, instantly recognizable, and unexpectedly versatile for youth and gaming brands.",
     best:["Gaming brands","Youth campaigns","Social stickers","Digital collectibles"],
     color:"var(--teal)",cbg:"var(--teal-bg)",
-    prompt:`16-bit pixel art illustration of [SUBJECT], 64x64 pixel base resolution, direct front-facing or isometric viewing angle, limited palette of exactly 24 distinct colors, dithering technique used for all gradient-like tonal transitions, strict anti-aliasing-free hard pixel edges throughout, 1px black outlines on all figures and foreground elements, retro SNES-era game sprite aesthetic, displayed at 4x upscaled resolution on a dark navy background (#0D0D1E), no smoothing or filtering applied`,
-    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg">${Array.from({length:8},(_,r)=>Array.from({length:14},(_,c)=>`<rect x="${1+c*10}" y="${1+r*11}" width="9" height="10" fill="${[[0,3,6,9],[1,4,7,10],[2,5,8,11,13]].findIndex(a=>a.includes(c))===0?'#0A6652':[[1,4,7,10],[2,5,8,11,13]].findIndex(a=>a.includes(c))===0?'#3AB795':'#B2E8D8'}"/>`).join('')).join('')}</svg>`
+    prompt:`16-bit pixel art at 64x64 pixel base resolution, direct front-facing or isometric viewing angle, dithering technique used for all gradient-like tonal transitions, strict anti-aliasing-free hard pixel edges throughout, 1px black outlines on all figures and foreground elements, retro SNES-era game sprite aesthetic, displayed at 4x upscaled resolution on a dark navy background, no smoothing or filtering applied`,
+    subjectHint:"e.g. a knight, a spaceship, a storefront",
+    hasColors:true, colorHint:"e.g. NES warm palette, or sunset tones",
+    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg">${Array.from({length:8},(_,r)=>Array.from({length:14},(_,c)=>`<rect x="${1+c*10}" y="${1+r*11}" width="9" height="10" fill="${(r+c)%3===0?'#0A6652':(r+c)%3===1?'#3AB795':'#B2E8D8'}"/>`).join('')).join('')}</svg>`
   },
-  // ── TRADITIONAL / ANALOG ──────────────────────────────────────────────────
+  // ── TRADITIONAL / ANALOG ────────────────────────────────────────────
   {
-    cat:"traditional",
-    name:"Watercolor & Ink",
+    cat:"traditional",name:"Watercolor & Ink",
     desc:"Soft painterly washes layered under ink line detail. Warm, organic, and deeply human. Ideal for lifestyle, food, and editorial work.",
     best:["Lifestyle brands","Editorial art","Food & beverage","Blog headers"],
     color:"var(--amber)",cbg:"var(--amber-bg)",
-    prompt:`Watercolor and ink illustration of [SUBJECT], soft wet-on-wet color washes with visible pigment bloom and irregular spreading at the edges of each wash, subject centered with deliberately unpainted white margins on all four sides, loose expressive ink line detail layered on top of fully dried watercolor washes, muted earthy palette with one pop of saturated accent color, rough cold-press watercolor paper texture clearly visible, portrait orientation, style inspired by James Jean, Beatrix Potter, or 1920s botanical illustration`,
+    prompt:`Soft wet-on-wet color washes with visible pigment bloom and irregular spreading at the edges of each wash, subject centered with deliberately unpainted white margins on all four sides, loose expressive ink line detail layered on top of fully dried watercolor washes, rough cold-press watercolor paper texture clearly visible, portrait orientation, style inspired by James Jean or 1920s botanical illustration`,
+    subjectHint:"e.g. a flower bouquet, a mountain, a tea cup",
+    hasColors:true, colorHint:"e.g. muted sage + dusty rose + warm brown",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="44" rx="42" ry="32" fill="#F5C4B3" opacity="0.6"/><ellipse cx="70" cy="42" rx="34" ry="24" fill="#EF9F27" opacity="0.45"/><ellipse cx="54" cy="46" rx="28" ry="20" fill="#D85A30" opacity="0.35"/><path d="M28 30 Q70 14 105 36 Q94 62 56 70 Q24 60 28 30Z" fill="none" stroke="#633806" stroke-width="1.5" stroke-dasharray="3,1.5" stroke-linecap="round"/></svg>`
   },
   {
-    cat:"traditional",
-    name:"Woodcut / Engraving",
+    cat:"traditional",name:"Woodcut / Engraving",
     desc:"Cross-hatched ink on cream stock. Evokes authority, heritage, and craft. The strongest style for legacy brand identity and premium packaging.",
     best:["Heritage brands","Premium packaging","Certificates","Print collateral"],
     color:"var(--amber)",cbg:"var(--amber-bg)",
-    prompt:`Vintage woodcut engraving illustration of [SUBJECT], high-contrast black ink lines on a cream or ivory background only, bold outlines enclosing all major forms, dense parallel line hatching and perpendicular cross-hatching used to define shadow volumes, no halftone dots, slightly rough hand-carved line quality, subject centered within a symmetrical decorative engraved border frame, 19th-century naturalist scientific print or currency note style, portrait orientation, for use in print or as textured brand illustration`,
-    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FFF4E0"/>${Array.from({length:14},(_,i)=>`<line x1="${8+i*10}" y1="8" x2="${8+i*10}" y2="80" stroke="#633806" stroke-width="${0.7+i*0.04}" opacity="${0.25+i*0.04}"/>`).join('')}${Array.from({length:9},(_,i)=>`<line x1="8" y1="${8+i*9}" x2="132" y2="${8+i*9}" stroke="#633806" stroke-width="0.7" opacity="0.18"/>`).join('')}<circle cx="70" cy="44" r="30" fill="none" stroke="#412402" stroke-width="3"/><path d="M50 34 Q70 25 90 34 Q96 50 70 62 Q44 50 50 34Z" fill="#412402" opacity="0.28"/></svg>`
+    prompt:`High-contrast black ink lines on a cream or ivory background only, bold outlines enclosing all major forms, dense parallel line hatching and perpendicular cross-hatching used to define shadow volumes, no halftone dots, slightly rough hand-carved line quality, subject centered within a symmetrical decorative engraved border frame, 19th-century naturalist scientific print or currency note style, portrait orientation`,
+    subjectHint:"e.g. a bear, a sailing ship, a farmhouse",
+    hasColors:false,
+    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FFF4E0"/>${Array.from({length:14},(_,i)=>`<line x1="${8+i*10}" y1="8" x2="${8+i*10}" y2="80" stroke="#633806" stroke-width="${0.7+i*0.04}" opacity="${0.22+i*0.04}"/>`).join('')}${Array.from({length:9},(_,i)=>`<line x1="8" y1="${8+i*9}" x2="132" y2="${8+i*9}" stroke="#633806" stroke-width="0.7" opacity="0.18"/>`).join('')}<circle cx="70" cy="44" r="30" fill="none" stroke="#412402" stroke-width="3"/><path d="M50 34 Q70 25 90 34 Q96 50 70 62 Q44 50 50 34Z" fill="#412402" opacity="0.28"/></svg>`
   },
   {
-    cat:"traditional",
-    name:"Hand-Drawn / Sketch",
-    desc:"Visible pencil or pen marks, organic lines, authentic imperfection. Human, warm, and honest — the antidote to over-polished digital.",
+    cat:"traditional",name:"Hand-Drawn / Sketch",
+    desc:"Visible pencil marks, organic lines, authentic imperfection. Human, warm, and honest — the antidote to over-polished digital.",
     best:["Startup branding","Casual editorial","Food & wellness","Education"],
     color:"var(--amber)",cbg:"var(--amber-bg)",
-    prompt:`Hand-drawn pencil sketch illustration of [SUBJECT], loose gestural strokes showing visible construction lines not fully erased, subject placed slightly right of center, rough cross-hatching used for shadow areas only, deliberately unfinished feel at the edges of the image, scanned warm ivory sketchbook paper texture clearly visible, monochromatic warm sepia tone with no color fills, organic slightly wobbly line quality throughout, 4:3 landscape aspect ratio, intimate sketchbook journal aesthetic, no digital retouching or smoothing`,
-    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FFF4E0"/><path d="M38 70 Q44 24 70 18 Q98 12 102 48 Q106 72 82 76 Q55 82 38 70" fill="none" stroke="#633806" stroke-width="2" stroke-linecap="round"/><path d="M40 68 Q47 28 70 20" fill="none" stroke="#B06C00" stroke-width="0.8" stroke-dasharray="4,2" opacity="0.6"/><line x1="56" y1="38" x2="88" y2="32" stroke="#633806" stroke-width="0.8" opacity="0.5"/><line x1="54" y1="46" x2="90" y2="44" stroke="#633806" stroke-width="0.8" opacity="0.5"/><line x1="56" y1="54" x2="88" y2="56" stroke="#633806" stroke-width="0.8" opacity="0.5"/><line x1="44" y1="42" x2="56" y2="34" stroke="#633806" stroke-width="0.7" opacity="0.35"/><line x1="44" y1="48" x2="58" y2="44" stroke="#633806" stroke-width="0.7" opacity="0.35"/></svg>`
+    prompt:`Loose gestural strokes with visible construction lines not fully erased, subject placed slightly right of center, rough cross-hatching used for shadow areas only, deliberately unfinished feel at the edges of the image, scanned warm ivory sketchbook paper texture clearly visible, monochromatic warm sepia tone with no color fills, organic slightly wobbly line quality throughout, 4:3 landscape aspect ratio, intimate sketchbook journal aesthetic, no digital retouching or smoothing`,
+    subjectHint:"e.g. hands holding a pen, a kitchen scene",
+    hasColors:false,
+    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FFF4E0"/><path d="M38 70 Q44 24 70 18 Q98 12 102 48 Q106 72 82 76 Q55 82 38 70" fill="none" stroke="#633806" stroke-width="2" stroke-linecap="round"/><path d="M40 68 Q47 28 70 20" fill="none" stroke="#B06C00" stroke-width="0.8" stroke-dasharray="4,2" opacity="0.6"/><line x1="56" y1="38" x2="88" y2="32" stroke="#633806" stroke-width="0.8" opacity="0.5"/><line x1="54" y1="46" x2="90" y2="44" stroke="#633806" stroke-width="0.8" opacity="0.5"/><line x1="56" y1="54" x2="88" y2="56" stroke="#633806" stroke-width="0.8" opacity="0.5"/></svg>`
   },
   {
-    cat:"traditional",
-    name:"Retro / Vintage Halftone",
+    cat:"traditional",name:"Retro / Vintage Halftone",
     desc:"Halftone dots, limited palette, worn texture. Instantly nostalgic. A powerful shorthand for authenticity in food, events, and packaging.",
     best:["Food & beverage","Event posters","Craft packaging","Nostalgia campaigns"],
     color:"var(--amber)",cbg:"var(--amber-bg)",
-    prompt:`1960s retro vintage poster illustration of [SUBJECT], bold halftone dot pattern visible in all mid-tone and shadow areas with dots ranging from 1px to 5px diameter, strictly limited 3-color palette using black, warm cream or off-white, and a single saturated mid-century hue such as goldenrod yellow or cherry red, slight worn paper distress texture overlay at 12% opacity, bold condensed sans-serif text block reserved in the upper third of the composition, portrait poster orientation, inspired by vintage travel advertising posters and 1960s commercial art`,
+    prompt:`Bold halftone dot pattern visible in all mid-tone and shadow areas with dots ranging from 1px to 5px diameter, strictly limited 3-color palette, slight worn paper distress texture overlay at 12% opacity, bold condensed sans-serif text block reserved in the upper third of the composition, portrait poster orientation, inspired by vintage travel advertising posters and 1960s commercial art`,
+    subjectHint:"e.g. a diner, a road trip, a music festival",
+    hasColors:true, colorHint:"e.g. black + cream + mustard yellow",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FFF4E0"/>${Array.from({length:7},(_,r)=>Array.from({length:11},(_,c)=>`<circle cx="${6+c*13}" cy="${8+r*12}" r="${1.2+(r+c)%3*0.6}" fill="#B06C00" opacity="0.55"/>`).join('')).join('')}<rect x="22" y="4" width="96" height="16" rx="3" fill="#D85A30"/><rect x="18" y="28" width="104" height="42" rx="4" fill="none" stroke="#412402" stroke-width="2.5"/></svg>`
   },
   {
-    cat:"traditional",
-    name:"Collage / Mixed Media",
+    cat:"traditional",name:"Collage / Mixed Media",
     desc:"Layered cut-paper shapes combining flat color and texture. Handcrafted editorial feel with a modern graphic sensibility.",
-    best:["Culture editorial","Magazine features","Brand storytelling","Campaign art"],
+    best:["Culture editorial","Magazine layouts","Brand storytelling","Campaign art"],
     color:"var(--amber)",cbg:"var(--amber-bg)",
-    prompt:`Mixed media paper collage illustration of [SUBJECT], cut-paper layered aesthetic with clean straight or slightly torn edges on each paper layer, combining 4 flat solid-color paper shapes with one photographic texture element, subtle 1px drop-shadow under each paper layer to suggest physical elevation, off-white scrapbook or kraft paper background, subject form deconstructed and reassembled across 5 to 7 overlapping pieces at slight angles between -8 and +8 degrees, muted warm pastel palette with one bold saturated color as the focal point, centered arrangement with intentional asymmetric negative space, strongly influenced by Saul Bass and Henri Matisse paper-cut work`,
+    prompt:`Cut-paper layered aesthetic with clean straight or slightly torn edges on each paper layer, combining flat solid-color paper shapes with one photographic texture element, subtle drop-shadow under each paper layer to suggest physical elevation, off-white scrapbook or kraft paper background, subject form deconstructed and reassembled across 5 to 7 overlapping pieces at slight angles between -8 and +8 degrees, centered arrangement with intentional asymmetric negative space, influenced by Saul Bass and Henri Matisse paper-cut work`,
+    subjectHint:"e.g. a city, a human figure, 'change'",
+    hasColors:true, colorHint:"e.g. pastel pink + tan + cobalt accent",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="12" width="60" height="52" rx="2" fill="#FAC775" transform="rotate(-7 42 38)"/><rect x="45" y="18" width="66" height="48" rx="2" fill="#EF9F27" transform="rotate(4 78 42)"/><rect x="22" y="38" width="54" height="36" rx="2" fill="#B06C00" transform="rotate(-2 49 56)"/><rect x="58" y="8" width="42" height="66" rx="2" fill="#633806" opacity="0.65" transform="rotate(7 79 41)"/></svg>`
   },
-  // ── PHOTOGRAPHY & TREATMENT ───────────────────────────────────────────────
+  // ── PHOTOGRAPHY & TREATMENT ─────────────────────────────────────────
   {
-    cat:"photography",
-    name:"Minimalist Product Photography",
-    desc:"Single subject, generous white space, clean overhead or front shot. The universal premium standard for product-first brands.",
+    cat:"photography",name:"Minimalist Product Photo",
+    desc:"Single subject, generous white space, clean overhead shot. The universal premium standard for product-first brands.",
     best:["E-commerce","Product launches","Paid social ads","Brand websites"],
     color:"var(--purple)",cbg:"var(--purple-bg)",
-    prompt:`Minimalist product photography of [PRODUCT], subject placed in the lower-center of the frame leaving 60% of white space above and 20% on each side, flat lay shot from exactly overhead at a precise 90-degree nadir angle, soft fully diffused window light entering from the left with no visible hotspot, zero harsh shadows, clean seamless white surface, one small complementary prop such as [PROP] placed 2 inches to the right of the subject, 1:1 square format, 50mm lens equivalent focal length, f/11 aperture, ISO 100, no color grading or filters, no reflections`,
+    prompt:`Subject placed in the lower-center of the frame leaving 60% white space above and 20% on each side, flat lay shot from exactly overhead at a precise 90-degree nadir angle, soft fully diffused window light entering from the left with no visible hotspot, zero harsh shadows, clean seamless white surface, 50mm lens equivalent focal length, f/11, ISO 100, no color grading or filters, 1:1 square format`,
+    subjectHint:"e.g. a skincare bottle, a book, a sneaker",
+    hasColors:false,
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#F7F5F0"/><rect x="44" y="46" width="52" height="34" rx="5" fill="#888780"/><ellipse cx="70" cy="46" rx="22" ry="7" fill="#AAA89F"/><ellipse cx="70" cy="80" rx="24" ry="5" fill="#D0CDBE" opacity="0.5"/></svg>`
   },
   {
-    cat:"photography",
-    name:"Aerial / Drone Photography",
-    desc:"Top-down bird's-eye perspective that reveals pattern, scale, and geometry invisible at ground level. Dramatic and geographically striking.",
+    cat:"photography",name:"Aerial / Drone",
+    desc:"Top-down bird's-eye perspective reveals pattern, scale, and geometry invisible at ground level. Dramatic and geographically striking.",
     best:["Real estate","Events","Location features","Annual reports"],
     color:"var(--purple)",cbg:"var(--purple-bg)",
-    prompt:`Aerial drone photograph of [SUBJECT OR LOCATION], captured from 80 to 100 meters altitude at a precisely 90-degree nadir downward angle, golden hour lighting with long parallel shadows all pointing in the same direction, primary subject centered in the frame with a strong repeating geometric or natural pattern visible across the rest of the image, vivid saturated natural colors, no visible people or vehicles, landscape 16:9 format, DJI Mavic 3 Pro image quality with no vignetting, no horizon line visible`,
+    prompt:`Captured from 80 to 100 meters altitude at a precisely 90-degree nadir downward angle, golden hour lighting with long parallel shadows all pointing in the same direction, primary subject centered in the frame with a strong repeating geometric or natural pattern visible across the rest of the image, no visible people or vehicles, landscape 16:9 format, DJI Mavic 3 Pro image quality with no vignetting, no horizon line visible`,
+    subjectHint:"e.g. a beach, a city intersection, a vineyard",
+    hasColors:false,
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#B5D4F4"/>${Array.from({length:5},(_,i)=>`<rect x="${2+i*28}" y="0" width="24" height="88" fill="${i%2===0?'#378ADD':'#85B7EB'}" opacity="0.7"/>`).join('')}<line x1="0" y1="44" x2="140" y2="44" stroke="#E6F1FB" stroke-width="1" opacity="0.5"/><circle cx="70" cy="44" r="10" fill="#0C447C" opacity="0.5"/></svg>`
   },
   {
-    cat:"photography",
-    name:"Duotone Photo Treatment",
-    desc:"Two-color photo conversion. Bold, branded, infinitely scalable. The Spotify treatment — instantly creates a cohesive visual identity from any photo.",
+    cat:"photography",name:"Duotone Treatment",
+    desc:"Two-color photo conversion. Bold, branded, infinitely scalable. The Spotify treatment — creates instant visual cohesion from any photograph.",
     best:["Branded content","Event identity","Social campaigns","Print headers"],
     color:"var(--purple)",cbg:"var(--purple-bg)",
-    prompt:`Duotone photography treatment of [SUBJECT], original photograph converted to a strict two-color process where [DARK COLOR, e.g. deep navy #0D1F40] replaces all shadow tones and [LIGHT COLOR, e.g. warm cream #F5EDD6] replaces all highlight tones with no midtones remaining, medium shot of the subject at a 3/4 angle with the camera positioned slightly below eye level, sharp focus on the primary subject element, strong directional side lighting from the left creating clear high-contrast tonal separation, 2:3 portrait orientation, directly inspired by Spotify's campaign duotone visual system`,
+    prompt:`Original photograph converted to a strict two-color process where one color replaces all shadow tones and the other replaces all highlight tones with no midtones remaining, medium shot at a 3/4 angle with camera positioned slightly below eye level, sharp focus on the primary subject element, strong directional side lighting from the left creating clear tonal separation, 2:3 portrait orientation, Spotify campaign duotone visual system influence`,
+    subjectHint:"e.g. a portrait, a musician, an athlete",
+    hasColors:true, colorHint:"e.g. shadow: deep teal / highlight: cream",
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#EFEDFC"/><rect x="0" y="0" width="70" height="88" fill="#4A3BAA"/><circle cx="70" cy="44" r="30" fill="#7F77DD"/><path d="M40 44 Q70 14 100 44" fill="#4A3BAA"/><path d="M40 44 Q70 74 100 44" fill="#26215C"/><circle cx="70" cy="44" r="12" fill="#CCC8F5"/></svg>`
   },
   {
-    cat:"photography",
-    name:"Lifestyle Photography",
+    cat:"photography",name:"Lifestyle Photography",
     desc:"People in real, lived-in contexts. Candid warmth that builds trust and emotional connection. The backbone of most brand content strategies.",
     best:["Brand websites","Social ads","Testimonials","Campaign storytelling"],
     color:"var(--purple)",cbg:"var(--purple-bg)",
-    prompt:`Lifestyle photograph of [PERSON OR PEOPLE DESCRIPTION] [DOING ACTIVITY IN LOCATION], candid or lightly directed natural pose, warm ambient light from a large window positioned to the left of the frame with no artificial fill, camera at a slight 3/4 side angle to the subject, lens at eye level or 10 degrees below, shallow depth of field at f/2.8 softening the background, warm color temperature at 5600K, subject positioned in the left two-thirds of the frame with open breathing room on the right, subject not making direct eye contact with the camera, 3:2 horizontal format, no props that feel staged or promotional`,
+    prompt:`Candid or lightly directed natural pose, warm ambient light from a large window to the left of the frame with no artificial fill, camera at a slight 3/4 side angle at eye level or 10 degrees below, shallow depth of field at f/2.8 softening the background, subject positioned in the left two-thirds of the frame with open breathing room on the right, no direct eye contact with camera, 3:2 horizontal format, no staged or promotional-looking props`,
+    subjectHint:"e.g. a woman reading in a café, friends cooking",
+    hasColors:false,
     svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#FBEAF0"/><ellipse cx="46" cy="74" rx="26" ry="12" fill="#F4C0D1"/><circle cx="46" cy="28" r="22" fill="#ED93B1"/><rect x="28" y="50" width="36" height="28" rx="10" fill="#D4537E"/><rect x="72" y="18" width="56" height="60" rx="4" fill="#F4C0D1" opacity="0.5"/><circle cx="100" cy="52" r="18" fill="#993556" opacity="0.55"/></svg>`
   },
   {
-    cat:"photography",
-    name:"Surrealist / Composite Photography",
+    cat:"photography",name:"Surrealist / Composite",
     desc:"Photorealistic imagery assembled into impossible dreamlike scenes. Arresting, culturally resonant, and unforgettable at a glance.",
     best:["Campaign hero art","Art direction","Brand awareness","Storytelling"],
     color:"var(--purple)",cbg:"var(--purple-bg)",
-    prompt:`Surrealist composite photograph or digital painting depicting [CONCEPT], impossible scale juxtaposition placing a giant [UNEXPECTED OBJECT] inside a [REALISTIC FAMILIAR ENVIRONMENT], soft diffused overcast atmospheric lighting with no harsh directional shadows, photorealistic rendering of every element with painterly edge blending where elements meet, dreamlike muted color palette with one vivid anomalous color that breaks the mood, horizon line placed in the lower third of the frame, camera positioned at a worm's-eye angle looking upward at 15 degrees, wide cinematic 21:9 aspect ratio, no text or logos in frame, inspired by Erik Johansson photography and Magritte surrealism`,
-    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#EFEDFC"/><rect x="0" y="52" width="140" height="36" fill="#AFA9EC"/><circle cx="70" cy="48" r="34" fill="#7F77DD"/><rect x="20" y="64" width="22" height="20" rx="3" fill="#4A3BAA"/><rect x="58" y="66" width="26" height="16" rx="3" fill="#4A3BAA"/><rect x="98" y="60" width="20" height="22" rx="3" fill="#4A3BAA"/><circle cx="38" cy="18" r="9" fill="#FAC775"/><line x1="38" y1="28" x2="70" y2="48" stroke="#EEEDFE" stroke-width="1.5" opacity="0.4"/></svg>`
+    prompt:`Impossible scale juxtaposition with photorealistic rendering of every element, painterly edge blending where composite elements meet, soft diffused overcast atmospheric lighting with no harsh directional shadows, one vivid anomalous color accent that breaks the overall muted mood, horizon line placed in the lower third of the frame, camera positioned at a worm's-eye angle looking upward at 15 degrees, wide cinematic 21:9 aspect ratio, no text or logos in frame, inspired by Erik Johansson photography and Magritte surrealism`,
+    subjectHint:"e.g. giant clock floating in a forest",
+    hasColors:true, colorHint:"e.g. misty grey-blue + vivid red anomaly",
+    svg:`<svg viewBox="0 0 140 88" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="140" height="88" fill="#EFEDFC"/><rect x="0" y="52" width="140" height="36" fill="#AFA9EC"/><circle cx="70" cy="48" r="34" fill="#7F77DD"/><rect x="20" y="64" width="22" height="20" rx="3" fill="#4A3BAA"/><rect x="58" y="66" width="26" height="16" rx="3" fill="#4A3BAA"/><rect x="98" y="60" width="20" height="22" rx="3" fill="#4A3BAA"/><circle cx="38" cy="18" r="9" fill="#FAC775"/></svg>`
   }
 ];
 
-const CATS = ['illustration','traditional','photography'];
-const LABELS = {illustration:'Digital illustration',traditional:'Traditional & analog',photography:'Photography & treatment'};
-const DOTS = {illustration:'var(--teal)',traditional:'var(--amber)',photography:'var(--purple)'};
+const CATS=['illustration','traditional','photography'];
+const LABELS={illustration:'Digital illustration',traditional:'Traditional & analog',photography:'Photography & treatment'};
+const DOTS={illustration:'var(--teal)',traditional:'var(--amber)',photography:'var(--purple)'};
 
-function render(filter){
+function assemblePrompt(s, subjectVal, colorVal) {
+  let p = s.prompt;
+  p += '\n\nSubject: ' + (subjectVal.trim() || '[YOUR SUBJECT]');
+  if (s.hasColors) p += '\nColor palette: ' + (colorVal.trim() || '[YOUR COLOR PALETTE]');
+  return p;
+}
+
+function render(filter) {
   const grid = document.getElementById('grid');
   let html = '';
-  CATS.forEach(cat=>{
+  CATS.forEach(cat => {
     const items = (filter==='all'||filter===cat) ? S.filter(s=>s.cat===cat) : [];
-    if(!items.length) return;
+    if (!items.length) return;
     html += `<div class="sec-label" style="grid-column:1/-1"><div class="sec-label-dot" style="background:${DOTS[cat]}"></div>${LABELS[cat]}</div>`;
-    items.forEach(s=>{
+    items.forEach(s => {
       const idx = S.indexOf(s);
       html += `<div class="card" data-cat="${s.cat}">
         <div class="preview" style="background:${s.cbg}">${s.svg}</div>
@@ -326,30 +339,54 @@ function render(filter){
           </div>
           <p class="cdesc">${s.desc}</p>
           <div class="tags">${s.best.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-          <div class="prompt-label">AI generation prompt</div>
-          <div class="prompt-wrap">
-            <div class="prompt">${s.prompt}</div>
-            <button class="copy-btn" data-idx="${idx}" title="Copy prompt">&#x2398;</button>
+          <div class="prompt-label">Style instructions</div>
+          <div class="prompt">${s.prompt}</div>
+          <div class="inputs-area">
+            <div class="input-row">
+              <span class="input-lbl">Subject</span>
+              <input class="prompt-input" type="text" data-idx="${idx}" data-role="subject" placeholder="${s.subjectHint}" />
+            </div>
+            ${s.hasColors ? `<div class="input-row">
+              <span class="input-lbl">Colors</span>
+              <input class="prompt-input" type="text" data-idx="${idx}" data-role="color" placeholder="${s.colorHint}" />
+            </div>` : ''}
+          </div>
+          <div class="copy-row">
+            <button class="copy-btn" data-idx="${idx}">
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy full prompt
+            </button>
           </div>
         </div>
       </div>`;
     });
   });
   grid.innerHTML = html;
-  grid.querySelectorAll('.copy-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const s = S[+btn.dataset.idx];
-      navigator.clipboard.writeText(s.prompt).catch(()=>{});
-      btn.textContent = '✓';
+
+  grid.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = +btn.dataset.idx;
+      const s = S[idx];
+      const card = btn.closest('.card');
+      const subjectInput = card.querySelector('[data-role="subject"]');
+      const colorInput = card.querySelector('[data-role="color"]');
+      const subjectVal = subjectInput ? subjectInput.value : '';
+      const colorVal = colorInput ? colorInput.value : '';
+      const full = assemblePrompt(s, subjectVal, colorVal);
+      navigator.clipboard.writeText(full).catch(() => {});
+      btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
       btn.classList.add('copied');
-      setTimeout(()=>{btn.textContent='⎘';btn.classList.remove('copied');},1800);
+      setTimeout(() => {
+        btn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy full prompt`;
+        btn.classList.remove('copied');
+      }, 2000);
     });
   });
 }
 
-document.querySelectorAll('.fb').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.fb').forEach(x=>x.classList.remove('on'));
+document.querySelectorAll('.fb').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.fb').forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     render(b.dataset.f);
   });
