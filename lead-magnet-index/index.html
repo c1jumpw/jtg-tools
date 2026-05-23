@@ -235,6 +235,8 @@ async function loadData() {
     rows = res.data || [];
     setStatus('Loaded \u2713', 'ok');
     setTimeout(function(){ setStatus(''); }, 2000);
+  } else {
+    setStatus('Could not reach Apps Script — check deployment is active', 'err');
   }
   renderMatrix();
   if (currentTab === 'library') renderLibrary();
@@ -409,12 +411,16 @@ function setAllChecks(v) {
 }
 
 function commitMatrixAdd(branch) {
-  var name = val('m-name');
+  var name    = val('m-name');
   if (!name) { document.getElementById('m-name').focus(); return; }
-  var checks = Array.from(document.querySelectorAll('#lead-checks input[type=checkbox]:checked')).map(function(cb){ return cb.value; });
+  var checks  = Array.from(document.querySelectorAll('#lead-checks input[type=checkbox]:checked')).map(function(cb){ return cb.value; });
   if (!checks.length) { setStatus('Select at least one lead type.','err'); return; }
+  // capture all values BEFORE closeModal() removes the DOM elements
+  var desc    = val('m-desc');
+  var admin   = val('m-admin');
+  var pub     = val('m-public');
   closeModal();
-  addEntries(branch, checks, name, val('m-desc'), val('m-admin'), val('m-public'));
+  addEntries(branch, checks, name, desc, admin, pub);
 }
 
 // ── Library add modal ──────────────────────────────────────────────────────
@@ -463,8 +469,12 @@ function commitLibAdd() {
   if (!name)   { document.getElementById('l-name').focus(); return; }
   if (!branch) { document.getElementById('l-branch').focus(); return; }
   if (!checks.length) { setStatus('Select at least one lead type.','err'); return; }
+  // capture all values BEFORE closeModal() removes the DOM elements
+  var desc  = val('l-desc');
+  var admin = val('l-admin');
+  var pub   = val('l-public');
   closeModal();
-  addEntries(branch, checks, name, val('l-desc'), val('l-admin'), val('l-public'));
+  addEntries(branch, checks, name, desc, admin, pub);
 }
 
 // ── Detail modal ───────────────────────────────────────────────────────────
