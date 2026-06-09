@@ -631,6 +631,28 @@ const TYPE_COLORS={
   'client':['#dcfce7','#166534']
 };
 
+// Label UUIDs from ClickUp Labels Mastersheet (A=UUID, B=Label, C=Custom Field)
+// These are used for multi-select Labels fields (Lead/Contact Type)
+const LABEL_UUIDS={
+  'potential client':'e0825a89-720a-4212-884e-5a80fb347ed1',
+  'resource/partner':'aeda556e-cce5-4f86-9de7-57d792679483',
+  'supporter':'e37a3fe4-ddce-4108-85c0-32e81c9c8387'
+};
+// Branch label UUIDs (from row 2-5 of Labels Mastersheet)
+const BRANCH_UUIDS={
+  'jtg':'a842dfdd-2da9-4a0c-8c8f-eb27543d598d',
+  'uny':'3bf70234-24f3-47b4-99a7-6fe33287aa6b',
+  'mco':'c919face-ad76-4489-b76c-6433fd574dfc',
+  'mkc sa':'bdcde1f5-8652-4512-9dfe-933e0663c9cb'
+};
+// Sub-branches by parent branch (for Sub-Branch field dropdown)
+const SUB_BRANCHES={
+  JTG:['F5','F5 CEO','BMS','BB','PD','SD','BC','MBC','ACAD','BLM','BLK'],
+  MCO:['BCM','Anvil','MCO INV'],
+  UNY:['UNY'],
+  'MKC SA':['MKC SA']
+};
+
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
@@ -1311,31 +1333,28 @@ function switchPfTab(tab,btnEl){
 
 function renderPfDetails(task,type,cf,body){
   const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'—';
-  // Find this member's data in team directory for integration info
-  const memberRow=S.ref.team.find(r=>{
-    const fullName=`${r[2]||''} ${r[3]||''}`.toLowerCase().trim();
-    return asgn.toLowerCase().includes(r[2]?.toLowerCase()||'XXXXXX');
-  });
-
+  const subBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'—';
   let pairs=[];
   if(type==='leads'||type==='contacts'){
-    pairs=[['Branch',cf.branch],['Sub-Branch (JTG)',cf['sub-branch (jtg)']||cf['sub-branch']],['Sub-Branch (MCO)',cf['sub-branch (mco)']],
-      ['Lead/Contact Type',cf['lead/contact type']],['Lead Source',cf['lead source']],['Lead Source Notes',cf['lead source notes']],
+    pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
+      ['Lead/Contact Type',cf['lead/contact type']],
+      ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
       ['Known As',cf['known as']],['Title',cf.title],['Location',cf.location],['Industry',cf.industry],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
       ['Last Action',cf['last action']],['CRM Action',cf['lead crm action']||cf['crm action']],
       ['Recent Opt-In Action',cf['recent opt-in action']],['Assignee(s)',asgn],
       ['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]];
   }else if(type==='pipeline'){
-    pairs=[['Branch',cf.branch],['Sub-Branch (JTG)',cf['sub-branch (jtg)']||cf['sub-branch']],['Sub-Branch (MCO)',cf['sub-branch (mco)']],
-      ['Company/Account',cf['company/account name']],['Close Date',fmtDate(cf['close date'])],
+    pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
+      ['Company/Account',cf['company/account name']],
+      ['Close Date',fmtDate(cf['close date'])],
       ['Next Action',cf['next action']],['Next Action Link',cf['next action link']],['Next Action Date',fmtDate(cf['next action date'])],
       ['Last Action',cf['last action']],['Deal Status Label',cf['deal status label']],['Deal Action',cf['deal action']],
       ['Opportunity',cf.opportunity],['Plan',cf.plan],
       ['Primary Contact Email',cf['primary contact email']],['Primary Contact Phone',cf['primary contact phone']],
       ['Assignee(s)',asgn],['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]];
   }else{
-    pairs=[['Branch',cf.branch],['Sub-Branch (JTG)',cf['sub-branch (jtg)']||cf['sub-branch']],
+    pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
       ['Account Status',cf['account status']],['Industry',cf.industry],
       ['Primary Contact',cf['primary contact']],['Primary Contact Email',cf['primary contact email']],
       ['Primary Contact Phone',cf['primary contact phone']],
@@ -1352,13 +1371,15 @@ function renderPfDetails(task,type,cf,body){
     </div>`).join('')}
   </div>`:'';
 
+  const descHtml=task.description?`<div class="pf-section"><h4>Notes / Description</h4><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;white-space:pre-wrap">${esc(task.description)}</div></div>`:'';
+
   body.innerHTML=`<div class="pf-section"><h4>Fields</h4>
     <div class="field-grid">${pairs.map(([l,v])=>{
       const empty=!v||v==='—'||v==='undefined'||v==='null';
       const isLink=l.toLowerCase().includes('link')&&(v||'').startsWith('http');
       return `<div class="field-item"><label>${l}</label><div class="field-val${empty?' empty':''}${isLink?' link':''}"${isLink?` onclick="window.open('${esc(v)}','_blank')"`:''}>${esc(empty?'—':v)}</div></div>`;
     }).join('')}</div>
-  </div>${subHtml}`;
+  </div>${descHtml}${subHtml}`;
 }
 
 const ACTION_GROUPS={
@@ -1400,13 +1421,61 @@ function renderPfActions(task,type,cf,body){
   const isLead=type==='leads'||type==='contacts';
   const groups=isLead?ACTION_GROUPS.lead:ACTION_GROUPS.pipeline;
   const currentAction=cf['lead crm action']||cf['crm action']||cf['deal action']||'';
+
+  // Preflight field status — check which fields are filled
+  const fields_status={
+    'next action link':!!(cf['next action link']),
+    'recent opt-in action':!!(cf['recent opt-in action']),
+    'lead source':!!(cf['lead source']),
+    'last action':!!(cf['last action']),
+    'plan':!!(cf.plan),
+    'next action date':!!(cf['next action date']),
+    'next action':!!(cf['next action'])
+  };
+
+  const checkIcon=(ok)=>ok
+    ?'<span style="color:var(--success);font-size:13px">✓</span>'
+    :'<span style="color:var(--danger);font-size:13px">✕</span>';
+
+  const preflightHtml=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:10px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);width:100%;margin-bottom:4px">Field Status</div>
+    ${Object.entries(fields_status).map(([k,v])=>`<span style="font-size:11.5px;display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:${v?'#f0fdf4':'#fef2f2'};color:${v?'#15803d':'#dc2626'}">${checkIcon(v)} ${k}</span>`).join('')}
+  </div>`;
+
+  // Quick-fill panel for missing fields
+  const missingFills=[];
+  if(!cf['next action link'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Link</label><input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://…" value=""></div>`);
+  if(!cf['next action date'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Date</label><input type="date" id="qf-nad" class="form-select" style="height:32px;font-size:12px"></div>`);
+  if(!cf['recent opt-in action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Recent Opt-In Action</label><input type="text" id="qf-optin" class="form-select" style="height:32px;font-size:12px" placeholder="e.g. signed up for newsletter"></div>`);
+  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Follow-Up Sent','Task Completed'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
+  if(!cf['lead source'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Lead Source</label><select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select></div>`);
+
+  const quickFillHtml=missingFills.length?`<div style="margin-bottom:12px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400e;margin-bottom:8px">Quick Fill Missing Fields</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${missingFills.join('')}</div>
+    <button class="btn btn-sm" style="margin-top:8px;background:#fef3c7;border-color:#fde68a;color:#92400e" onclick="quickSaveFields()">Save Fields</button>
+  </div>`:'';
+
   const actionHtml=Object.entries(groups).map(([grp,actions])=>`
     <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${grp}</div>
-    ${actions.map(a=>`<div class="action-option" onclick="selectAction(this,'${esc(a)}')" data-action="${esc(a)}">
-      <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
-      <div class="action-name">${esc(a)}</div>
-      <div class="action-req">${ACTION_REQS[a]||''}</div>
-    </div>`).join('')}
+    ${actions.map(a=>{
+      const req=ACTION_REQS[a]||'';
+      let canTrigger=true;
+      if(req.includes('Next Action Link')&&!fields_status['next action link'])canTrigger=false;
+      if(req.includes('Recent Opt-In')&&!fields_status['recent opt-in action'])canTrigger=false;
+      if(req.includes('Lead Source')&&!fields_status['lead source'])canTrigger=false;
+      if(req.includes('Last Action')&&!fields_status['last action'])canTrigger=false;
+      if(req.includes('Plan')&&!fields_status['plan'])canTrigger=false;
+      if(req.includes('Next Action Date')&&!fields_status['next action date'])canTrigger=false;
+      return `<div class="action-option${canTrigger?'':' disabled-action'}" onclick="selectAction(this,'${esc(a)}')" data-action="${esc(a)}" style="${canTrigger?'':'opacity:.5'}">
+        <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
+        <div class="action-name">${esc(a)}</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:5px">
+          ${req?`<span class="action-req">${esc(req)}</span>`:''}
+          ${req?(canTrigger?'<span style="color:var(--success);font-size:12px">✓</span>':'<span style="color:var(--danger);font-size:12px">✕</span>'):''}
+        </div>
+      </div>`;
+    }).join('')}
   `).join('');
 
   // Lead Magnet selector — show all, col A=branch, B=leadType, C=name, D=desc, E=dateAdded, F=adminLink, G=publicLink
@@ -1444,6 +1513,8 @@ function renderPfActions(task,type,cf,body){
       <div style="font-size:13px;font-weight:500;padding:8px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:7px">${esc(currentAction)||'<span style="color:var(--text-muted);font-style:italic">None set</span>'}</div>
     </div>
     <div class="pf-section"><h4>Trigger New Action</h4>
+      ${preflightHtml}
+      ${quickFillHtml}
       ${actionHtml}
       <div class="val-warn" id="action-warn"></div>
       <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
@@ -1543,7 +1614,41 @@ async function applyLeadMagnet(target){
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
-function renderPfActivity(comments,body){
+async function quickSaveFields(){
+  if(!S.currentEntry)return;
+  const{task,type}=S.currentEntry;
+  const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[type]||'';
+  const fields=await getListFields(listId);
+  const setF=async(partial,val)=>{
+    if(!val&&val!==0)return;
+    const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+    if(!f)return;
+    try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('qf:',partial,e.message);}
+  };
+  const setDropdown=async(partial,val)=>{
+    if(!val)return;
+    const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+    if(!f)return;
+    const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
+    if(opt)try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('qf-dd:',e.message);}
+  };
+  const nal=document.getElementById('qf-nal')?.value?.trim();
+  const nad=document.getElementById('qf-nad')?.value;
+  const optin=document.getElementById('qf-optin')?.value?.trim();
+  const la=document.getElementById('qf-la')?.value;
+  const ls=document.getElementById('qf-ls')?.value;
+  if(nal)await setF('next action link',nal);
+  if(nad)await setF('next action date',new Date(nad).getTime());
+  if(optin)await setF('recent opt-in',optin);
+  if(la)await setDropdown('last action',la);
+  if(ls)await setDropdown('lead source',ls);
+  showToast('Fields saved.','success');
+  // Refresh the entry and re-render actions tab
+  const updated=await cuFetch(`/task/${task.id}?include_subtasks=true`);
+  S.currentEntry.task=updated;
+  renderPfHeader(updated,type);
+  switchPfTab('actions',null);
+}
   const html=comments.length?comments.slice(0,15).map(c=>`
     <div class="comment-item">
       <div class="comment-meta">
@@ -1585,9 +1690,16 @@ async function openUpdateProfile(){
   S.isEditMode=true;
   document.getElementById('em-title').textContent='Update Profile';
   document.getElementById('em-submit').textContent='Save & Sync';
-  const branches=(S.ref.branches||[]).map(r=>r[1]).filter(Boolean);
-  const team=(S.ref.team||[]).filter(r=>(r[1]||'').toLowerCase()==='active');
+  const branches=Object.keys(SUB_BRANCHES);
+  const currentBranch=cf.branch||'';
+  const currentSubBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'';
+  const subBranchOptions=currentBranch&&SUB_BRANCHES[currentBranch]?SUB_BRANCHES[currentBranch]:Object.values(SUB_BRANCHES).flat();
+  const sources=(S.ref.leadSources||[]).map(r=>r[0]).filter(Boolean);
   const lastActions=['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Follow-Up Sent','Task Completed'];
+  // Current Lead/Contact Type as array of labels
+  const currentTypes=(cf['lead/contact type']||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const typeOptions=['Potential Client','Resource/Partner','Supporter'];
+
   document.getElementById('em-body').innerHTML=`
     <div class="form-row">
       <div class="form-group"><label>Task Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
@@ -1595,23 +1707,59 @@ async function openUpdateProfile(){
     </div>
     <div class="form-row">
       <div class="form-group"><label>Branch</label>
-        <select class="form-select" id="up-branch"><option value="">—</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}</select>
+        <select class="form-select" id="up-branch" onchange="updateSubBranchOptions()">
+          <option value="">—</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}
+        </select>
       </div>
-      ${(type==='leads'||type==='contacts')?`<div class="form-group"><label>Lead/Contact Type</label>
-        <select class="form-select" id="up-ctype"><option value="">—</option>${['High Value','Demo Prospect','Supporter','Resource/Partner','Potential Client','Client'].map(o=>`<option${cf['lead/contact type']===o?' selected':''}>${o}</option>`).join('')}</select>
-      </div>`:'<div></div>'}
+      <div class="form-group"><label>Sub-Branch</label>
+        <select class="form-select" id="up-subbranch">
+          <option value="">—</option>${subBranchOptions.map(s=>`<option${currentSubBranch===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${(type==='leads'||type==='contacts')?`
+    <div class="form-group">
+      <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        ${typeOptions.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:13px;background:var(--bg-main)">
+          <input type="checkbox" class="up-ctype-cb" value="${t}" ${currentTypes.includes(t.toLowerCase())?' checked':''}> ${t}
+        </label>`).join('')}
+      </div>
+    </div>`:''}
+    <div class="form-row">
+      <div class="form-group"><label>Lead Source</label>
+        <select class="form-select" id="up-source">
+          <option value="">—</option>${sources.map(s=>`<option${cf['lead source']===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Lead Source Details</label>
+        <input type="text" id="up-source-notes" value="${esc(cf['lead source notes']||cf['source details']||cf['source activity']||'')}" placeholder="e.g. Met at F5 CEO event May 2026">
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Last Action</label>
         <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
       </div>
-      <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${cf['next action date']?new Date(parseInt(cf['next action date'])).toISOString().split('T')[0]:''}"></div>
+      <div class="form-group"><label>Next Action Date</label>
+        <input type="date" id="up-nad" value="${cf['next action date']?new Date(parseInt(cf['next action date'])).toISOString().split('T')[0]:''}">
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
       <div class="form-group"><label>Recent Opt-In Action</label><input type="text" id="up-optin" value="${esc(cf['recent opt-in action']||'')}"></div>
+    </div>
+    <div class="form-group"><label>Notes (Task Description)</label>
+      <textarea class="form-textarea" id="up-notes" rows="4" placeholder="Internal notes about this entry…">${esc(task.description||'')}</textarea>
     </div>`;
   document.getElementById('entry-modal').style.display='flex';
+}
+
+function updateSubBranchOptions(){
+  const branch=document.getElementById('up-branch')?.value||'';
+  const sel=document.getElementById('up-subbranch');
+  if(!sel)return;
+  const opts=branch&&SUB_BRANCHES[branch]?SUB_BRANCHES[branch]:Object.values(SUB_BRANCHES).flat();
+  sel.innerHTML='<option value="">—</option>'+opts.map(s=>`<option>${s}</option>`).join('');
 }
 
 // ═══════════════════════════════════════════
@@ -1651,9 +1799,9 @@ function openNewEntryModal(defaultType=''){
   S.isEditMode=false;
   document.getElementById('em-title').textContent='New CRM Entry';
   document.getElementById('em-submit').textContent='Create Entry';
-  const branches=(S.ref.branches||[]).map(r=>r[1]).filter(Boolean);
+  const branches=Object.keys(SUB_BRANCHES);
   const sources=(S.ref.leadSources||[]).map(r=>r[0]).filter(Boolean);
-  const team=(S.ref.team||[]).filter(r=>(r[1]||'').toLowerCase()==='active');
+  const typeOptions=['Potential Client','Resource/Partner','Supporter'];
   document.getElementById('em-body').innerHTML=`
     <div class="form-group"><label>Entry Type <span class="req">*</span></label>
       <select class="form-select" id="nf-type" onchange="updateNFFields()">
@@ -1664,25 +1812,48 @@ function openNewEntryModal(defaultType=''){
     <div id="nf-dyn"></div>
     <div class="form-row">
       <div class="form-group"><label>Branch</label>
-        <select class="form-select" id="nf-branch"><option value="">—</option>${branches.map(b=>`<option>${b}</option>`).join('')}</select>
+        <select class="form-select" id="nf-branch" onchange="updateNFSubBranch()">
+          <option value="">—</option>${branches.map(b=>`<option>${b}</option>`).join('')}
+        </select>
       </div>
-      <div class="form-group"><label>Lead/Contact Type</label>
-        <select class="form-select" id="nf-ctype"><option value="">—</option>${['High Value','Demo Prospect','Supporter','Resource/Partner','Potential Client','Client'].map(t=>`<option>${t}</option>`).join('')}</select>
+      <div class="form-group"><label>Sub-Branch</label>
+        <select class="form-select" id="nf-subbranch">
+          <option value="">—</option>${Object.values(SUB_BRANCHES).flat().map(s=>`<option>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        ${typeOptions.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:13px;background:var(--bg-main)">
+          <input type="checkbox" class="nf-ctype-cb" value="${t}"> ${t}
+        </label>`).join('')}
       </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Lead Source</label>
         <select class="form-select" id="nf-source"><option value="">—</option>${sources.map(s=>`<option>${s}</option>`).join('')}</select>
       </div>
-      <div class="form-group"><label>Next Action Date</label><input type="date" id="nf-nad"></div>
+      <div class="form-group"><label>Lead Source Details</label>
+        <input type="text" id="nf-source-notes" placeholder="e.g. Met at F5 CEO event May 2026">
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Email</label><input type="email" id="nf-email"></div>
       <div class="form-group"><label>Phone</label><input type="tel" id="nf-phone"></div>
     </div>
-    <div class="form-group"><label>Notes</label><textarea class="form-textarea" id="nf-notes" rows="3"></textarea></div>`;
+    <div class="form-group"><label>Next Action Date</label><input type="date" id="nf-nad"></div>
+    <div class="form-group"><label>Notes (Task Description)</label><textarea class="form-textarea" id="nf-notes" rows="3" placeholder="Internal notes about this entry…"></textarea></div>`;
   if(defaultType)updateNFFields();
   document.getElementById('entry-modal').style.display='flex';
+}
+
+function updateNFSubBranch(){
+  const branch=document.getElementById('nf-branch')?.value||'';
+  const sel=document.getElementById('nf-subbranch');
+  if(!sel)return;
+  const opts=branch&&SUB_BRANCHES[branch]?SUB_BRANCHES[branch]:Object.values(SUB_BRANCHES).flat();
+  sel.innerHTML='<option value="">—</option>'+opts.map(s=>`<option>${s}</option>`).join('');
 }
 
 function updateNFFields(){
@@ -1706,7 +1877,8 @@ async function submitEntry(){
   if(!listId)return showToast(`${type} list ID not configured.`,'error');
   const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Creating…';
   try{
-    const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name:name.trim(),description:document.getElementById('nf-notes')?.value?.trim()||''});
+    const notes=document.getElementById('nf-notes')?.value?.trim()||'';
+    const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name:name.trim(),description:notes});
     const fields=await getListFields(listId);
     const setF=async(partial,val)=>{
       if(!val&&val!==0)return;
@@ -1714,10 +1886,26 @@ async function submitEntry(){
       if(!f)return;
       try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('CF:',partial,e.message);}
     };
+    const setDropdown=async(partial,val)=>{
+      if(!val)return;
+      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+      if(!f)return;
+      const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
+      if(opt)try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('dd:',e.message);}
+    };
     await setF('email',document.getElementById('nf-email')?.value?.trim());
     await setF('phone',document.getElementById('nf-phone')?.value?.trim());
-    const bVal=document.getElementById('nf-branch')?.value;
-    if(bVal){const bf=fields.find(f=>f.name?.toLowerCase()==='branch');if(bf){const opt=bf.type_config?.options?.find(o=>o.name?.toLowerCase()===bVal.toLowerCase());if(opt)await cuFetch(`/task/${newTask.id}/field/${bf.id}`,'POST',{value:opt.orderindex??opt.id});}}
+    await setDropdown('branch',document.getElementById('nf-branch')?.value);
+    const sbVal=document.getElementById('nf-subbranch')?.value;
+    if(sbVal){await setDropdown('sub-branch (jtg)',sbVal);await setDropdown('sub-branch (mco)',sbVal);await setDropdown('sub-branch',sbVal);}
+    const checkedTypes=Array.from(document.querySelectorAll('.nf-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
+    const typeUuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
+    if(typeUuids.length){
+      const tf=fields.find(f=>f.name?.toLowerCase().includes('lead/contact type')||f.name?.toLowerCase().includes('contact type'));
+      if(tf)try{await cuFetch(`/task/${newTask.id}/field/${tf.id}`,'POST',{value:typeUuids});}catch(e){console.warn('type:',e.message);}
+    }
+    await setDropdown('lead source',document.getElementById('nf-source')?.value);
+    await setF('lead source notes',document.getElementById('nf-source-notes')?.value?.trim());
     const nadVal=document.getElementById('nf-nad')?.value;
     if(nadVal)await setF('next action date',new Date(nadVal).getTime());
     await syncToSheets(newTask,{Lead:'leads',Contact:'contacts',Deal:'pipeline',Account:'accounts'}[type]);
@@ -1735,31 +1923,68 @@ async function saveUpdateProfile(){
   try{
     const newName=document.getElementById('up-name')?.value?.trim()||task.name;
     const newStatus=document.getElementById('up-status')?.value?.trim();
-    await cuFetch(`/task/${task.id}`,'PUT',{name:newName,status:newStatus||undefined});
+    const newNotes=document.getElementById('up-notes')?.value?.trim();
+    // Update task name + status + description
+    const updateBody={name:newName};
+    if(newStatus)updateBody.status=newStatus;
+    if(newNotes!==undefined)updateBody.description=newNotes;
+    await cuFetch(`/task/${task.id}`,'PUT',updateBody);
+
     const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[type]||'';
     const fields=await getListFields(listId);
+
     const setDF=async(partial,val)=>{
       if(!val&&val!==0)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
       if(!f)return;
-      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('CF update:',partial,e.message);}
+      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('CF:',partial,e.message);}
     };
-    const setDropdown=async(fieldName,val)=>{
+    const setDropdown=async(partial,val)=>{
       if(!val)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(fieldName.toLowerCase()));
+      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
       if(!f)return;
       const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
-      if(opt)try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('dropdown:',e.message);}
+      if(opt)try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('dd:',e.message);}
     };
+    const setLabels=async(partial,uuidArr)=>{
+      if(!uuidArr||!uuidArr.length)return;
+      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+      if(!f)return;
+      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:uuidArr});}catch(e){console.warn('labels:',e.message);}
+    };
+
+    // Branch (dropdown)
     await setDropdown('branch',document.getElementById('up-branch')?.value);
-    await setDropdown('lead/contact type',document.getElementById('up-ctype')?.value);
+    // Sub-Branch (dropdown — one field that covers all)
+    const sbVal=document.getElementById('up-subbranch')?.value;
+    if(sbVal){
+      // Try both possible field names
+      await setDropdown('sub-branch (jtg)',sbVal);
+      await setDropdown('sub-branch (mco)',sbVal);
+      await setDropdown('sub-branch',sbVal);
+    }
+    // Lead/Contact Type — Labels field, send array of UUIDs
+    if(type==='leads'||type==='contacts'){
+      const checkedTypes=Array.from(document.querySelectorAll('.up-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
+      const uuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
+      if(uuids.length)await setLabels('lead/contact type',uuids);
+    }
+    // Lead Source (dropdown) + Lead Source Details (text)
+    await setDropdown('lead source',document.getElementById('up-source')?.value);
+    const snVal=document.getElementById('up-source-notes')?.value?.trim();
+    if(snVal)await setDF('lead source notes',snVal);
+    // Last Action (dropdown)
     await setDropdown('last action',document.getElementById('up-lastaction')?.value);
+    // Next Action Date
     const nadVal=document.getElementById('up-nad')?.value;
     if(nadVal)await setDF('next action date',new Date(nadVal).getTime());
+    // Next Action Link
     const nalVal=document.getElementById('up-nal')?.value?.trim();
     if(nalVal)await setDF('next action link',nalVal);
+    // Recent Opt-In
     const optVal=document.getElementById('up-optin')?.value?.trim();
     if(optVal)await setDF('recent opt-in',optVal);
+
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
     showToast('Profile updated & synced.','success');
