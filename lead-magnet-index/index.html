@@ -14,6 +14,8 @@
     --info-bg: #e6f1fb; --info-text: #0c447c;
     --danger-bg: #fcebeb; --danger-text: #a32d2d;
     --success-bg: #eaf3de; --success-text: #3b6d11;
+    --warn-bg: #fff8e1; --warn-text: #7a5c00;
+    --accent: #4f6ef7;
     --radius-md: 8px; --radius-lg: 12px;
   }
   @media (prefers-color-scheme: dark) {
@@ -25,52 +27,70 @@
       --info-bg: #0c2a45; --info-text: #85b7eb;
       --danger-bg: #2d1010; --danger-text: #f09595;
       --success-bg: #152208; --success-text: #97c459;
+      --warn-bg: #1f1800; --warn-text: #e6c84a;
     }
   }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-2); color: var(--text); min-height: 100vh; padding: 2rem 1.5rem; }
 
-  .top { max-width: 1060px; margin: 0 auto 1.25rem; }
+  .top { max-width: 1100px; margin: 0 auto 1.25rem; }
   .top-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
-  .top-row h1 { font-size: 22px; font-weight: 500; }
+  .top-row h1 { font-size: 22px; font-weight: 600; }
   .top-row p { font-size: 13px; color: var(--text-2); margin-top: 5px; line-height: 1.6; max-width: 520px; }
   .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
 
-  .tabs { display: flex; gap: 2px; background: var(--bg-3); border-radius: var(--radius-md); padding: 3px; width: fit-content; margin-bottom: 1.25rem; }
-  .tab { font-size: 13px; padding: 6px 16px; border-radius: 6px; border: none; background: none; color: var(--text-2); cursor: pointer; font-family: inherit; transition: all 0.15s; }
-  .tab.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .tab svg { width: 12px; height: 12px; margin-right: 5px; vertical-align: middle; }
+  /* BREADCRUMB */
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); margin-bottom: 14px; }
+  .breadcrumb a { color: var(--pill-text); text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb svg { width: 10px; height: 10px; }
 
-  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg); color: var(--text-2); cursor: pointer; font-family: inherit; transition: background 0.15s; white-space: nowrap; text-decoration: none; }
+  .tabs { display: flex; gap: 2px; background: var(--bg-3); border-radius: var(--radius-md); padding: 3px; width: fit-content; margin-bottom: 1.25rem; }
+  .tab { font-size: 13px; padding: 6px 16px; border-radius: 6px; border: none; background: none; color: var(--text-2); cursor: pointer; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+  .tab svg { width: 12px; height: 12px; }
+  .tab.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 6px 12px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg); color: var(--text-2); cursor: pointer; font-family: inherit; transition: background 0.15s; white-space: nowrap; text-decoration: none; }
   .btn:hover { background: var(--bg-3); color: var(--text); }
   .btn svg { width: 13px; height: 13px; flex-shrink: 0; }
   .btn.primary { background: var(--info-bg); color: var(--info-text); border-color: var(--pill-border); }
   .btn.primary:hover { opacity: 0.82; }
   .btn.sheet { background: var(--success-bg); color: var(--success-text); border-color: rgba(59,109,17,0.25); }
-  .btn.sheet:hover { opacity: 0.82; }
+  .btn.crm { background: #eff3ff; color: #3b5ce4; border-color: rgba(79,110,247,0.3); }
   .btn.danger { color: var(--danger-text); border-color: var(--danger-text); background: var(--danger-bg); }
 
-  .card { max-width: 1060px; margin: 0 auto; background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow-x: auto; }
+  .coverage-bar { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 14px; max-width: 1100px; margin-left: auto; margin-right: auto; flex-wrap: wrap; gap: 12px; }
+  .cov-stat { text-align: center; }
+  .cov-stat .num { font-size: 20px; font-weight: 700; color: var(--text); }
+  .cov-stat .lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+  .cov-divider { width: 1px; height: 30px; background: var(--border-2); }
+  .cov-link { margin-left: auto; font-size: 12px; }
+  .missing-alert { background: var(--warn-bg); color: var(--warn-text); border: 0.5px solid rgba(122,92,0,.2); border-radius: var(--radius-md); padding: 8px 14px; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+
+  .card { max-width: 1100px; margin: 0 auto; background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; min-width: 600px; }
   th, td { border: 0.5px solid var(--border); vertical-align: top; }
   th.corner { width: 78px; background: var(--bg-2); }
   th.lead-head { background: var(--bg-2); padding: 10px 12px; font-size: 12px; font-weight: 500; color: var(--text); text-align: left; min-width: 200px; }
   th.branch-head { background: var(--bg-2); padding: 10px 6px; font-size: 10px; font-weight: 500; color: var(--text-2); text-align: center; letter-spacing: 0.04em; text-transform: uppercase; width: 78px; }
   td.cell { padding: 6px 8px; background: var(--bg); }
+  td.cell.has-gap { background: #fffdf0; }
   .pills-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3px; min-height: 30px; }
   .pill { display: inline-flex; align-items: center; gap: 3px; background: var(--pill-bg); color: var(--pill-text); border: 0.5px solid var(--pill-border); border-radius: 20px; font-size: 11px; padding: 3px 7px 3px 9px; white-space: nowrap; cursor: pointer; transition: opacity 0.15s; }
   .pill:hover { opacity: 0.82; }
-  .pill .x { background: none; border: none; cursor: pointer; color: var(--pill-text); font-size: 14px; line-height: 1; padding: 0 0 0 1px; opacity: 0.5; }
+  .pill.no-link { background: #fff8e1; color: #7a5c00; border-color: rgba(122,92,0,.25); }
+  .pill .x { background: none; border: none; cursor: pointer; color: inherit; font-size: 14px; line-height: 1; padding: 0 0 0 1px; opacity: 0.5; }
   .pill .x:hover { opacity: 1; }
   .add-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 0.5px dashed var(--border-2); border-radius: 50%; background: none; cursor: pointer; color: var(--text-3); font-size: 16px; line-height: 1; transition: all 0.15s; flex-shrink: 0; margin-top: 1px; }
   .add-btn:hover { border-color: var(--text-2); color: var(--text-2); background: var(--bg-2); }
 
-  .lib-toolbar { max-width: 1060px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  .lib-toolbar input { font-size: 13px; padding: 6px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg); color: var(--text); font-family: inherit; width: 220px; }
+  .lib-toolbar { max-width: 1100px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .lib-toolbar input { font-size: 13px; padding: 6px 11px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg); color: var(--text); font-family: inherit; width: 240px; outline: none; }
   .lib-toolbar input:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
-  .lib-grid { max-width: 1060px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
-  .lib-card { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
-  .lib-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
-  .lib-card-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .lib-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; }
+  .lib-card { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; transition: box-shadow .15s; }
+  .lib-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .lib-card.missing-link { border-left: 3px solid var(--warn-text); }
+  .lib-card-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
   .lib-card-desc { font-size: 12px; color: var(--text-2); line-height: 1.6; }
   .lib-card-desc.empty { color: var(--text-3); font-style: italic; }
   .lib-tags { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -78,15 +98,17 @@
   .tag.lead-pc { background: #f0f7ff; color: #1a5a99; border-color: rgba(26,90,153,0.2); }
   .tag.lead-s  { background: #f5f0ff; color: #6b2fa0; border-color: rgba(107,47,160,0.2); }
   .tag.lead-p  { background: #fff4e6; color: #a0520f; border-color: rgba(160,82,15,0.2); }
-  .lib-card-links { display: flex; flex-wrap: wrap; gap: 8px; }
-  .lib-link { font-size: 11px; color: var(--pill-text); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
-  .lib-link svg { width: 10px; height: 10px; }
-  .lib-link.admin { color: var(--text-2); }
+  .lib-link-row { display: flex; flex-direction: column; gap: 4px; }
+  .lib-link-item { display: flex; align-items: center; gap: 5px; font-size: 11.5px; }
+  .lib-link-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); width: 52px; flex-shrink: 0; }
+  .lib-link-val { color: var(--pill-text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .lib-link-val.empty-link { color: var(--text-3); font-style: italic; }
+  .lib-link-val.warn-link { color: var(--warn-text); }
   .lib-card-footer { display: flex; align-items: center; justify-content: space-between; }
   .lib-date { font-size: 11px; color: var(--text-3); }
-  .lib-empty { max-width: 1060px; margin: 0 auto; text-align: center; padding: 3rem; color: var(--text-3); font-size: 14px; }
+  .lib-empty { max-width: 1100px; margin: 0 auto; text-align: center; padding: 3rem; color: var(--text-3); font-size: 14px; }
 
-  .status-bar { max-width: 1060px; margin: 8px auto 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 20px; }
+  .status-bar { max-width: 1100px; margin: 8px auto 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 20px; }
   .status-msg { font-size: 11px; color: var(--text-3); }
   .status-msg.ok { color: var(--success-text); }
   .status-msg.err { color: var(--danger-text); }
@@ -98,16 +120,15 @@
   .modal.sm { max-width: 360px; }
   .modal.lg { max-width: 520px; }
   .modal.xl { max-width: 600px; }
-  .modal h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   .modal .sub { font-size: 12px; color: var(--text-2); margin-bottom: 14px; line-height: 1.6; }
   .modal label { font-size: 12px; color: var(--text-2); display: block; margin-bottom: 5px; margin-top: 11px; }
   .modal label:first-of-type { margin-top: 0; }
-  .field { width: 100%; font-size: 13px; padding: 8px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg-2); color: var(--text); font-family: inherit; }
+  .field { width: 100%; font-size: 13px; padding: 8px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-2); background: var(--bg-2); color: var(--text); font-family: inherit; outline: none; }
   .field:focus { outline: 2px solid var(--pill-text); outline-offset: 1px; }
   textarea.field { resize: vertical; min-height: 68px; }
+  .field-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; line-height: 1.5; }
   .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-  .hint-box { font-size: 11px; color: var(--text-3); margin-top: 10px; padding: 9px 11px; background: var(--bg-2); border-radius: var(--radius-md); line-height: 1.7; }
-  .hint-box a { color: var(--pill-text); }
 
   .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
   .check-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer; padding: 5px 7px; border-radius: 6px; border: 0.5px solid var(--border); background: var(--bg-2); user-select: none; }
@@ -116,34 +137,41 @@
   .select-all-row { display: flex; gap: 6px; margin-bottom: 6px; }
   .sel-btn { font-size: 11px; color: var(--pill-text); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
 
-  .detail-grid { display: grid; grid-template-columns: 110px 1fr; gap: 10px 12px; font-size: 13px; margin-top: 12px; }
+  .detail-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px 12px; font-size: 13px; margin-top: 12px; }
   .detail-label { color: var(--text-2); font-size: 12px; padding-top: 1px; }
   .detail-val { color: var(--text); line-height: 1.5; }
   .detail-val a { color: var(--pill-text); word-break: break-all; }
   .detail-val.empty { color: var(--text-3); font-style: italic; }
-  .sheet-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--pill-text); margin-top: 14px; text-decoration: none; }
-  .sheet-link svg { width: 12px; height: 12px; }
+  .warn-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--warn-bg); color: var(--warn-text); font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-bottom: 10px; }
 
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 12px 0 0; }
   #total-count { font-size: 13px; color: var(--text-2); }
   .view { display: none; }
   .view.active { display: block; }
-
-  .divider { border: none; border-top: 0.5px solid var(--border); margin: 12px 0 0; }
 </style>
 </head>
 <body>
 
 <div class="top">
+  <div class="breadcrumb">
+    <a href="https://c1jumpw.github.io/jtg-tools/mkc-crm/">← MKC CRM</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    <span>Lead Magnet Matrix</span>
+  </div>
   <div class="top-row">
     <div>
       <h1>MKC Lead Magnet Matrix</h1>
-      <p>Map lead magnets across branches and lead types. Use Matrix view to see coverage at a glance, or Library view to manage each lead magnet once — even if it applies to multiple scenarios.</p>
+      <p>Map lead magnets across branches and lead types. Matrix view shows coverage gaps, Library view manages details including public opt-in links used by the CRM.</p>
     </div>
     <div class="top-actions">
       <span id="total-count"></span>
       <a class="btn sheet" href="https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit?gid=1249671034#gid=1249671034" target="_blank">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         Master sheet
+      </a>
+      <a class="btn crm" href="https://c1jumpw.github.io/jtg-tools/mkc-crm/" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Open CRM
       </a>
       <button class="btn" onclick="loadData()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.32"/></svg>
@@ -153,13 +181,25 @@
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('matrix',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       Matrix view
     </button>
     <button class="tab" onclick="switchTab('library',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       Library view
     </button>
+  </div>
+</div>
+
+<!-- Coverage stats bar -->
+<div class="coverage-bar" id="coverage-bar" style="max-width:1100px;margin:0 auto 14px">
+  <div class="cov-stat"><div class="num" id="cov-total">—</div><div class="lbl">Lead Magnets</div></div>
+  <div class="cov-divider"></div>
+  <div class="cov-stat"><div class="num" id="cov-missing-links">—</div><div class="lbl">Missing Public Links</div></div>
+  <div class="cov-divider"></div>
+  <div class="cov-stat"><div class="num" id="cov-branches">—</div><div class="lbl">Branches Covered</div></div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span id="missing-alert"></span>
   </div>
 </div>
 
@@ -170,10 +210,20 @@
 <div class="view" id="view-library">
   <div class="lib-toolbar">
     <input type="text" id="lib-search" placeholder="Search lead magnets…" oninput="renderLibrary()" />
-    <button class="btn primary" onclick="openLibAdd()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add lead magnet
-    </button>
+    <div style="display:flex;gap:6px">
+      <select id="lib-filter-branch" class="field" style="width:auto;height:34px;font-size:12px" onchange="renderLibrary()">
+        <option value="">All branches</option>
+      </select>
+      <select id="lib-filter-link" class="field" style="width:auto;height:34px;font-size:12px" onchange="renderLibrary()">
+        <option value="">All</option>
+        <option value="missing">Missing public link</option>
+        <option value="has">Has public link</option>
+      </select>
+      <button class="btn primary" onclick="openLibAdd()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add lead magnet
+      </button>
+    </div>
   </div>
   <div class="lib-grid" id="lib-grid"></div>
 </div>
@@ -188,6 +238,7 @@
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx0SwQ1Wgu1anj1W78DTar8_V9DL8fOh4otUFcoGruwb-otaRi4-UtKTVxS5gtfO-8e1A/exec';
 const SHEET_URL  = 'https://docs.google.com/spreadsheets/d/1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw/edit?gid=1249671034#gid=1249671034';
+const CRM_URL    = 'https://c1jumpw.github.io/jtg-tools/mkc-crm/';
 
 const BRANCHES = ['BMS','F5','PD','BB','BCM','Anvil','MCO INV','Uny','F5 CEO','SD','BC','MBC','ACAD','BLM','BLK'];
 const LEADS    = ['Potential client','Supporter','Partner'];
@@ -217,11 +268,10 @@ function switchTab(tab, btn) {
   if (tab === 'library') renderLibrary();
 }
 
-// ── API ────────────────────────────────────────────────────────────────────
 async function apiCall(params) {
   try {
     params._t = Date.now();
-    var res = await fetch(SCRIPT_URL + "?" + new URLSearchParams(params).toString());
+    var res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params).toString());
     var json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Script error');
     return json;
@@ -234,14 +284,43 @@ async function loadData() {
   if (res) {
     rows = res.data || [];
     setStatus('Loaded \u2713', 'ok');
-    setTimeout(function(){ setStatus(''); }, 2000);
+    setTimeout(function(){ setStatus(''); }, 2500);
   } else {
     setStatus('Could not reach Apps Script — check deployment is active', 'err');
   }
   renderMatrix();
+  renderStats();
+  populateBranchFilter();
   if (currentTab === 'library') renderLibrary();
   updateCount();
   busy(false);
+}
+
+function renderStats() {
+  var unique = {}, missingLinks = {}, branchSet = {};
+  rows.forEach(function(r) {
+    var key = r.branch+'||'+r.name;
+    if (!unique[key]) { unique[key] = r; branchSet[r.branch] = true; }
+    if (!r.publicLink) missingLinks[key] = true;
+  });
+  var total = Object.keys(unique).length;
+  var missing = Object.keys(missingLinks).length;
+  var branches = Object.keys(branchSet).length;
+  document.getElementById('cov-total').textContent = total;
+  document.getElementById('cov-missing-links').textContent = missing;
+  document.getElementById('cov-branches').textContent = branches;
+  var alert = document.getElementById('missing-alert');
+  if (missing > 0) {
+    alert.innerHTML = '<span class="missing-alert">⚠ '+missing+' magnet'+(missing===1?'':'s')+' missing public opt-in link — CRM cannot apply them automatically</span>';
+  } else {
+    alert.innerHTML = '<span style="font-size:12px;color:var(--success-text)">✓ All public links set</span>';
+  }
+}
+
+function populateBranchFilter() {
+  var sel = document.getElementById('lib-filter-branch');
+  var used = [...new Set(rows.map(function(r){ return r.branch; }))].sort();
+  sel.innerHTML = '<option value="">All branches</option>' + used.map(function(b){ return '<option>'+esc(b)+'</option>'; }).join('');
 }
 
 async function addEntries(branch, leadTypes, name, description, adminLink, publicLink) {
@@ -251,15 +330,7 @@ async function addEntries(branch, leadTypes, name, description, adminLink, publi
     var lt = leadTypes[i];
     var exists = rows.find(function(r){ return r.branch===branch && r.leadType===lt && r.name===name; });
     if (exists) continue;
-    var res = await apiCall({
-      action: 'add',
-      branch: branch,
-      leadType: lt,
-      name: name,
-      description: description || '',
-      adminLink: adminLink || '',
-      publicLink: publicLink || ''
-    });
+    var res = await apiCall({action:'add', branch:branch, leadType:lt, name:name, description:description||'', adminLink:adminLink||'', publicLink:publicLink||''});
     if (res) {
       rows.push({branch:branch, leadType:lt, name:name, description:description||'', dateAdded:'', adminLink:adminLink||'', publicLink:publicLink||''});
       added++;
@@ -267,10 +338,9 @@ async function addEntries(branch, leadTypes, name, description, adminLink, publi
   }
   setStatus('Saved '+added+' entr'+(added===1?'y':'ies')+' \u2713', 'ok');
   setTimeout(function(){ setStatus(''); }, 2500);
-  renderMatrix();
+  renderMatrix(); renderStats(); populateBranchFilter();
   if (currentTab === 'library') renderLibrary();
-  updateCount();
-  busy(false);
+  updateCount(); busy(false);
 }
 
 async function deleteEntry(branch, leadType, name) {
@@ -281,10 +351,9 @@ async function deleteEntry(branch, leadType, name) {
     setStatus('Removed \u2713', 'ok');
     setTimeout(function(){ setStatus(''); }, 2000);
   }
-  renderMatrix();
+  renderMatrix(); renderStats();
   if (currentTab === 'library') renderLibrary();
-  updateCount();
-  busy(false);
+  updateCount(); busy(false);
 }
 
 async function deleteAllForMagnet(branch, name) {
@@ -296,30 +365,32 @@ async function deleteAllForMagnet(branch, name) {
   rows = rows.filter(function(r){ return !(r.branch===branch && r.name===name); });
   setStatus('Removed \u2713', 'ok');
   setTimeout(function(){ setStatus(''); }, 2000);
-  renderMatrix(); renderLibrary(); updateCount(); busy(false);
+  renderMatrix(); renderStats(); renderLibrary(); updateCount(); busy(false);
 }
 
 function updateCount() {
   var unique = {};
   rows.forEach(function(r){ unique[r.branch+'||'+r.name] = true; });
   var n = Object.keys(unique).length;
-  document.getElementById('total-count').textContent = n+' lead magnet'+(n!==1?'s':'');
+  document.getElementById('total-count').textContent = n + ' lead magnet' + (n!==1?'s':'');
 }
 
-// ── Matrix render ──────────────────────────────────────────────────────────
+// ── Matrix ──────────────────────────────────────────────────────────────────
 function renderMatrix() {
   var tbl = document.getElementById('matrix-table');
   var heads = LEADS.map(function(l){ return '<th class="lead-head">'+esc(l)+'</th>'; }).join('');
   var bodyRows = BRANCHES.map(function(branch) {
     var cells = LEADS.map(function(lead) {
       var items = rows.filter(function(r){ return r.branch===branch && r.leadType===lead; });
+      var isEmpty = items.length === 0;
       var pills = items.map(function(item) {
-        return '<span class="pill" onclick="openDetail(\''+escA(item.branch)+'\',\''+escA(item.leadType)+'\',\''+escA(item.name)+'\')" title="View details">'+
-          esc(item.name)+
-          '<button class="x" onclick="event.stopPropagation();confirmRemove(\''+escA(item.branch)+'\',\''+escA(item.leadType)+'\',\''+escA(item.name)+'\')">\xd7</button>'+
-        '</span>';
+        var hasLink = !!item.publicLink;
+        return '<span class="pill'+(hasLink?'':' no-link')+'" onclick="openDetail(\''+escA(item.branch)+'\',\''+escA(item.leadType)+'\',\''+escA(item.name)+'\')" title="'+(hasLink?'Has public link':'⚠ Missing public opt-in link')+'">'
+          + esc(item.name)
+          + '<button class="x" onclick="event.stopPropagation();confirmRemove(\''+escA(item.branch)+'\',\''+escA(item.leadType)+'\',\''+escA(item.name)+'\')">\xd7</button>'
+          + '</span>';
       }).join('');
-      return '<td class="cell"><div class="pills-wrap">'+pills+
+      return '<td class="cell'+(isEmpty?' has-gap':'')+'"><div class="pills-wrap">'+pills+
         '<button class="add-btn" onclick="openMatrixAdd(\''+escA(branch)+'\',\''+escA(lead)+'\')">+</button>'+
         '</div></td>';
     }).join('');
@@ -328,102 +399,115 @@ function renderMatrix() {
   tbl.innerHTML = '<thead><tr><th class="corner"></th>'+heads+'</tr></thead><tbody>'+bodyRows+'</tbody>';
 }
 
-// ── Library render ─────────────────────────────────────────────────────────
+// ── Library ─────────────────────────────────────────────────────────────────
 function renderLibrary() {
   var q = (document.getElementById('lib-search').value||'').toLowerCase();
+  var branchFilter = document.getElementById('lib-filter-branch').value;
+  var linkFilter = document.getElementById('lib-filter-link').value;
   var map = {};
   rows.forEach(function(r) {
     var key = r.branch+'||'+r.name;
     if (!map[key]) map[key] = {branch:r.branch, name:r.name, leadTypes:[], description:'', dateAdded:'', adminLink:'', publicLink:''};
     if (map[key].leadTypes.indexOf(r.leadType)===-1) map[key].leadTypes.push(r.leadType);
-    if (r.description  && !map[key].description)  map[key].description  = r.description;
-    if (r.dateAdded    && !map[key].dateAdded)     map[key].dateAdded    = r.dateAdded;
-    if (r.adminLink    && !map[key].adminLink)     map[key].adminLink    = r.adminLink;
-    if (r.publicLink   && !map[key].publicLink)    map[key].publicLink   = r.publicLink;
+    if (r.description && !map[key].description) map[key].description = r.description;
+    if (r.dateAdded   && !map[key].dateAdded)   map[key].dateAdded   = r.dateAdded;
+    if (r.adminLink   && !map[key].adminLink)   map[key].adminLink   = r.adminLink;
+    if (r.publicLink  && !map[key].publicLink)  map[key].publicLink  = r.publicLink;
   });
   var items = Object.values(map).filter(function(item) {
-    return !q || item.name.toLowerCase().indexOf(q)>-1 || item.branch.toLowerCase().indexOf(q)>-1;
+    if (q && !(item.name.toLowerCase().indexOf(q)>-1 || item.branch.toLowerCase().indexOf(q)>-1)) return false;
+    if (branchFilter && item.branch !== branchFilter) return false;
+    if (linkFilter === 'missing' && item.publicLink) return false;
+    if (linkFilter === 'has' && !item.publicLink) return false;
+    return true;
   });
   var grid = document.getElementById('lib-grid');
   if (!items.length) {
-    grid.innerHTML = '<div class="lib-empty">'+(q?'No results for "'+esc(q)+'"':'No lead magnets yet. Click \u201cAdd lead magnet\u201d to get started.')+'</div>';
+    grid.innerHTML = '<div class="lib-empty">'+(q?'No results for "'+esc(q)+'"':'No lead magnets yet. Click "Add lead magnet" to get started.')+'</div>';
     return;
   }
-  var extIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+  var extIcon = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
   grid.innerHTML = items.map(function(item) {
+    var hasMissingLink = !item.publicLink;
     var tags = '<span class="tag">'+esc(item.branch)+'</span>'+
       item.leadTypes.map(function(lt){ return '<span class="tag '+LEAD_TAG_CLASS[lt]+'">'+esc(lt)+'</span>'; }).join('');
     var desc = item.description
       ? '<div class="lib-card-desc">'+esc(item.description)+'</div>'
       : '<div class="lib-card-desc empty">No description yet</div>';
-    var links = '';
-    if (item.publicLink) links += '<a class="lib-link" href="'+esc(item.publicLink)+'" target="_blank">'+extIcon+' Public link</a>';
-    if (item.adminLink)  links += '<a class="lib-link admin" href="'+esc(item.adminLink)+'" target="_blank">'+extIcon+' Admin link</a>';
-    var linksHtml = links ? '<div class="lib-card-links">'+links+'</div>' : '';
-    return '<div class="lib-card">'+
+    var linkRow = '<div class="lib-link-row">'
+      + '<div class="lib-link-item"><span class="lib-link-label">CRM Link</span>'
+      + (item.publicLink
+          ? '<a class="lib-link-val" href="'+esc(item.publicLink)+'" target="_blank" title="'+esc(item.publicLink)+'">'+extIcon+' '+esc(item.publicLink.replace(/^https?:\/\//,'').substring(0,40))+'…</a>'
+          : '<span class="lib-link-val warn-link">⚠ Not set — CRM cannot auto-apply</span>')
+      + '</div>'
+      + (item.adminLink
+          ? '<div class="lib-link-item"><span class="lib-link-label">Admin</span><a class="lib-link-val" href="'+esc(item.adminLink)+'" target="_blank" title="'+esc(item.adminLink)+'">'+extIcon+' Admin resource</a></div>'
+          : '')
+      + '</div>';
+    return '<div class="lib-card'+(hasMissingLink?' missing-link':'')+'">'+
+      (hasMissingLink?'<div class="warn-chip">⚠ Missing public opt-in link</div>':'')+
       '<div class="lib-card-name">'+esc(item.name)+'</div>'+
       desc+
       '<div class="lib-tags">'+tags+'</div>'+
-      linksHtml+
+      linkRow+
       '<hr class="divider">'+
       '<div class="lib-card-footer">'+
         '<span class="lib-date">'+esc(item.dateAdded||'')+'</span>'+
-        '<button class="btn" style="font-size:11px;padding:3px 9px" onclick="confirmDeleteAll(\''+escA(item.branch)+'\',\''+escA(item.name)+'\')">Remove</button>'+
+        '<div style="display:flex;gap:5px">'+
+          '<button class="btn" style="font-size:11px;padding:3px 9px" onclick="openDetail(\''+escA(item.branch)+'\',\''+escA(item.leadTypes[0]||'')+'\',\''+escA(item.name)+'\')">Edit</button>'+
+          '<button class="btn danger" style="font-size:11px;padding:3px 9px" onclick="confirmDeleteAll(\''+escA(item.branch)+'\',\''+escA(item.name)+'\')">Remove</button>'+
+        '</div>'+
       '</div>'+
     '</div>';
   }).join('');
 }
 
-// ── Matrix add modal ───────────────────────────────────────────────────────
+// ── Matrix add modal ────────────────────────────────────────────────────────
 function openMatrixAdd(branch, preselectedLead) {
   closeModal();
   var checkboxes = LEADS.map(function(lead) {
     return '<label class="check-item"><input type="checkbox" value="'+escA(lead)+'"'+(lead===preselectedLead?' checked':'')+'>'+esc(lead)+'</label>';
   }).join('');
-  showModal('lg',
-    '<h3>Add lead magnet</h3>'+
-    '<div class="sub">'+esc(branch)+' \u2014 fill in the details below</div>'+
-    '<label>Name</label>'+
-    '<input type="text" class="field" id="m-name" placeholder="e.g. Newsletter signup guide" autocomplete="off" />'+
-    '<label>Brief description <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<textarea class="field" id="m-desc" placeholder="What is this lead magnet and who is it for?"></textarea>'+
-    '<label>Admin resource link <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<input type="text" class="field" id="m-admin" placeholder="https://…" autocomplete="off" />'+
-    '<label>Public resource link <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<input type="text" class="field" id="m-public" placeholder="https://…" autocomplete="off" />'+
-    '<label>Applies to</label>'+
+  showModal('xl',
+    '<h3>Add lead magnet — '+esc(branch)+'</h3>'+
+    '<div class="sub">Fill in the details. The <strong>public link</strong> is the opt-in URL that the CRM will auto-fill into Next Action Link.</div>'+
+    '<label>Name *</label>'+
+    '<input type="text" class="field" id="m-name" placeholder="e.g. Business Discovery Session" autocomplete="off" />'+
+    '<label>Brief description <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>'+
+    '<textarea class="field" id="m-desc" placeholder="Who is this for and what do they get?"></textarea>'+
+    '<label>Public opt-in link <span style="font-weight:400;color:var(--warn-text)">⚠ required for CRM auto-apply</span></label>'+
+    '<input type="url" class="field" id="m-public" placeholder="https://… (the opt-in page)" autocomplete="off" />'+
+    '<div class="field-hint">This URL gets auto-filled into Next Action Link when a team member selects this lead magnet in the CRM.</div>'+
+    '<label>Admin resource link <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>'+
+    '<input type="url" class="field" id="m-admin" placeholder="https://… (Notion, Drive, etc.)" autocomplete="off" />'+
+    '<label>Applies to lead types</label>'+
     '<div class="select-all-row">'+
       '<button class="sel-btn" onclick="setAllChecks(true)">Select all</button>'+
-      '<span style="color:var(--text-3);font-size:11px">&nbsp;&middot;&nbsp;</span>'+
+      '<span style="color:var(--text-3);font-size:11px">&nbsp;·&nbsp;</span>'+
       '<button class="sel-btn" onclick="setAllChecks(false)">Clear</button>'+
     '</div>'+
     '<div class="check-grid" id="lead-checks">'+checkboxes+'</div>'+
     '<div class="modal-btns">'+
     '<button class="btn" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn primary" onclick="commitMatrixAdd(\''+escA(branch)+'\')">Add</button>'+
+    '<button class="btn primary" onclick="commitMatrixAdd(\''+escA(branch)+'\')">Save</button>'+
     '</div>',
     function() { var el = document.getElementById('m-name'); if(el) el.focus(); }
   );
 }
 
-function setAllChecks(v) {
-  document.querySelectorAll('#lead-checks input[type=checkbox]').forEach(function(cb){ cb.checked=v; });
-}
+function setAllChecks(v) { document.querySelectorAll('#lead-checks input[type=checkbox]').forEach(function(cb){ cb.checked=v; }); }
 
 function commitMatrixAdd(branch) {
-  var name    = val('m-name');
+  var name = val('m-name');
   if (!name) { document.getElementById('m-name').focus(); return; }
-  var checks  = Array.from(document.querySelectorAll('#lead-checks input[type=checkbox]:checked')).map(function(cb){ return cb.value; });
+  var checks = Array.from(document.querySelectorAll('#lead-checks input[type=checkbox]:checked')).map(function(cb){ return cb.value; });
   if (!checks.length) { setStatus('Select at least one lead type.','err'); return; }
-  // capture all values BEFORE closeModal() removes the DOM elements
-  var desc    = val('m-desc');
-  var admin   = val('m-admin');
-  var pub     = val('m-public');
+  var desc = val('m-desc'), admin = val('m-admin'), pub = val('m-public');
   closeModal();
   addEntries(branch, checks, name, desc, admin, pub);
 }
 
-// ── Library add modal ──────────────────────────────────────────────────────
+// ── Library add modal ───────────────────────────────────────────────────────
 function openLibAdd() {
   closeModal();
   var branchOpts = BRANCHES.map(function(b){ return '<option value="'+escA(b)+'">'+esc(b)+'</option>'; }).join('');
@@ -433,72 +517,65 @@ function openLibAdd() {
   showModal('xl',
     '<h3>Add lead magnet</h3>'+
     '<div class="sub">Create once and assign to any branch and lead type combination.</div>'+
-    '<label>Name</label>'+
-    '<input type="text" class="field" id="l-name" placeholder="e.g. Newsletter signup guide" autocomplete="off" />'+
-    '<label>Branch</label>'+
-    '<select class="field" id="l-branch"><option value="">Select branch\u2026</option>'+branchOpts+'</select>'+
-    '<label>Brief description <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<textarea class="field" id="l-desc" placeholder="What is this lead magnet and who is it for?"></textarea>'+
-    '<label>Admin resource link <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<input type="text" class="field" id="l-admin" placeholder="https://…" autocomplete="off" />'+
-    '<label>Public resource link <span style="color:var(--text-3);font-weight:400">(optional)</span></label>'+
-    '<input type="text" class="field" id="l-public" placeholder="https://…" autocomplete="off" />'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+    '<div><label>Name *</label><input type="text" class="field" id="l-name" placeholder="e.g. Business Discovery Session" autocomplete="off" /></div>'+
+    '<div><label>Branch *</label><select class="field" id="l-branch"><option value="">Select branch…</option>'+branchOpts+'</select></div>'+
+    '</div>'+
+    '<label>Brief description <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>'+
+    '<textarea class="field" id="l-desc" placeholder="Who is this for and what do they get?"></textarea>'+
+    '<label>Public opt-in link <span style="font-weight:400;color:var(--warn-text)">⚠ required for CRM auto-apply</span></label>'+
+    '<input type="url" class="field" id="l-public" placeholder="https://… (the opt-in page)" autocomplete="off" />'+
+    '<div class="field-hint">This URL gets auto-filled into Next Action Link when a team member selects this lead magnet in the CRM.</div>'+
+    '<label>Admin resource link <span style="font-weight:400;color:var(--text-3)">(optional)</span></label>'+
+    '<input type="url" class="field" id="l-admin" placeholder="https://… (Notion, Drive, etc.)" autocomplete="off" />'+
     '<label>Applies to lead types</label>'+
     '<div class="select-all-row">'+
       '<button class="sel-btn" onclick="setLibChecks(true)">Select all</button>'+
-      '<span style="color:var(--text-3);font-size:11px">&nbsp;&middot;&nbsp;</span>'+
+      '<span style="color:var(--text-3);font-size:11px">&nbsp;·&nbsp;</span>'+
       '<button class="sel-btn" onclick="setLibChecks(false)">Clear</button>'+
     '</div>'+
     '<div class="check-grid" id="lib-lead-checks">'+checkboxes+'</div>'+
     '<div class="modal-btns">'+
     '<button class="btn" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn primary" onclick="commitLibAdd()">Add to sheet</button>'+
+    '<button class="btn primary" onclick="commitLibAdd()">Save to sheet</button>'+
     '</div>',
     function() { var el = document.getElementById('l-name'); if(el) el.focus(); }
   );
 }
 
-function setLibChecks(v) {
-  document.querySelectorAll('#lib-lead-checks input[type=checkbox]').forEach(function(cb){ cb.checked=v; });
-}
+function setLibChecks(v) { document.querySelectorAll('#lib-lead-checks input[type=checkbox]').forEach(function(cb){ cb.checked=v; }); }
 
 function commitLibAdd() {
-  var name   = val('l-name');
-  var branch = val('l-branch');
+  var name = val('l-name'), branch = val('l-branch');
   var checks = Array.from(document.querySelectorAll('#lib-lead-checks input[type=checkbox]:checked')).map(function(cb){ return cb.value; });
   if (!name)   { document.getElementById('l-name').focus(); return; }
   if (!branch) { document.getElementById('l-branch').focus(); return; }
   if (!checks.length) { setStatus('Select at least one lead type.','err'); return; }
-  // capture all values BEFORE closeModal() removes the DOM elements
-  var desc  = val('l-desc');
-  var admin = val('l-admin');
-  var pub   = val('l-public');
+  var desc = val('l-desc'), admin = val('l-admin'), pub = val('l-public');
   closeModal();
   addEntries(branch, checks, name, desc, admin, pub);
 }
 
-// ── Detail modal ───────────────────────────────────────────────────────────
+// ── Detail/edit modal ───────────────────────────────────────────────────────
 function openDetail(branch, leadType, name) {
   var item = rows.find(function(r){ return r.branch===branch && r.leadType===leadType && r.name===name; });
   if (!item) return;
   closeModal();
-  function dv(v) { return v ? esc(v) : '<span class="empty">Not added yet</span>'; }
-  function lv(v, label) {
-    return v ? '<a href="'+esc(v)+'" target="_blank" style="color:var(--pill-text)">'+esc(v)+'</a>' : '<span class="empty">Not added yet</span>';
-  }
+  var hasLink = !!item.publicLink;
   showModal('lg',
     '<h3>'+esc(name)+'</h3>'+
-    '<div class="sub">'+esc(branch)+' \u2014 '+esc(leadType)+'</div>'+
+    '<div class="sub">'+esc(branch)+' — '+esc(leadType)+'</div>'+
+    (!hasLink?'<div class="warn-chip">⚠ No public link — CRM cannot auto-apply this lead magnet</div>':'')+
     '<div class="detail-grid">'+
-      '<span class="detail-label">Description</span><span class="detail-val">'+dv(item.description)+'</span>'+
-      '<span class="detail-label">Date added</span><span class="detail-val">'+(item.dateAdded?esc(item.dateAdded):'<span class="empty">\u2014</span>')+'</span>'+
-      '<span class="detail-label">Admin link</span><span class="detail-val">'+lv(item.adminLink)+'</span>'+
-      '<span class="detail-label">Public link</span><span class="detail-val">'+lv(item.publicLink)+'</span>'+
+      '<span class="detail-label">Description</span><span class="detail-val">'+(item.description?esc(item.description):'<span class="empty">—</span>')+'</span>'+
+      '<span class="detail-label">Date added</span><span class="detail-val">'+(item.dateAdded?esc(item.dateAdded):'<span class="empty">—</span>')+'</span>'+
+      '<span class="detail-label">Public link</span><span class="detail-val">'+(item.publicLink?'<a href="'+esc(item.publicLink)+'" target="_blank">'+esc(item.publicLink)+'</a>':'<span class="empty warn-link" style="color:var(--warn-text)">Not set — add it in master sheet</span>')+'</span>'+
+      '<span class="detail-label">Admin link</span><span class="detail-val">'+(item.adminLink?'<a href="'+esc(item.adminLink)+'" target="_blank">'+esc(item.adminLink)+'</a>':'<span class="empty">—</span>')+'</span>'+
     '</div>'+
-    '<a class="sheet-link" href="'+SHEET_URL+'" target="_blank">'+
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'+
-      'Edit in master sheet'+
-    '</a>'+
+    '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<a class="btn sheet" href="'+SHEET_URL+'" target="_blank">Edit in master sheet ↗</a>'+
+      '<a class="btn crm" href="'+CRM_URL+'" target="_blank">Open CRM ↗</a>'+
+    '</div>'+
     '<div class="modal-btns">'+
     '<button class="btn" onclick="closeModal()">Close</button>'+
     '<button class="btn danger" onclick="closeModal();confirmRemove(\''+escA(branch)+'\',\''+escA(leadType)+'\',\''+escA(name)+'\')">Remove</button>'+
@@ -510,10 +587,10 @@ function confirmRemove(branch, leadType, name) {
   closeModal();
   showModal('sm',
     '<h3>Remove this entry?</h3>'+
-    '<div class="sub">Removes <strong>'+esc(name)+'</strong> from <strong>'+esc(leadType)+'</strong> only. Other lead type assignments stay intact.</div>'+
+    '<div class="sub">Removes <strong>'+esc(name)+'</strong> from <strong>'+esc(leadType)+'</strong> only. Other lead type assignments stay.</div>'+
     '<div class="modal-btns">'+
     '<button class="btn" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn danger" onclick="closeModal();deleteEntry(\''+escA(branch)+'\',\''+escA(leadType)+'\',\''+escA(name)+'\')">Yes, remove</button>'+
+    '<button class="btn danger" onclick="closeModal();deleteEntry(\''+escA(branch)+'\',\''+escA(leadType)+'\',\''+escA(name)+'\')">Remove</button>'+
     '</div>'
   );
 }
@@ -540,9 +617,11 @@ function showModal(size, html, onOpen) {
   ov.addEventListener('click', function(e){ if(e.target===ov) closeModal(); });
   document.getElementById('modal-root').appendChild(ov);
   activeModal = ov;
+  document.addEventListener('keydown', handleEsc);
   if (onOpen) setTimeout(onOpen, 30);
 }
-function closeModal() { if(activeModal){ activeModal.remove(); activeModal=null; } }
+function closeModal() { if(activeModal){ activeModal.remove(); activeModal=null; document.removeEventListener('keydown',handleEsc); } }
+function handleEsc(e) { if(e.key==='Escape') closeModal(); }
 
 renderMatrix();
 loadData();
