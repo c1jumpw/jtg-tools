@@ -700,21 +700,17 @@ async function getGSToken(){
   return S.gsToken;
 }
 
-// READ — uses API key (sheet must be "Anyone with link can view")
+// READ — uses service account JWT (sheet stays private)
 async function gsFetch(range){
-  const url=`${GS_BASE}/${encodeURIComponent(range)}?key=${GS_API_KEY}`;
-  try{
-    const r=await fetch(url);
-    if(r.ok)return(await r.json()).values||[];
+  const t=await getGSToken();
+  const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}`,{headers:{Authorization:`Bearer ${t}`}});
+  if(!r.ok){
     const errBody=await r.text();
-    let msg=`Sheets read error ${r.status}`;
+    let msg=`Sheets ${r.status}`;
     try{const j=JSON.parse(errBody);msg=j.error?.message||msg;}catch(e2){}
-    if(r.status===403)msg='Sheet access denied. Make sure the sheet is set to "Anyone with the link can view".';
-    if(r.status===400)msg='Sheet API key error. Check the API key is valid for this project.';
     throw new Error(msg);
-  }catch(e){
-    throw e;
   }
+  return(await r.json()).values||[];
 }
 
 // WRITE — uses service account JWT (sheet must be shared with service account as Editor)
@@ -1685,6 +1681,8 @@ async function quickSaveFields(){
   renderPfHeader(updated,type);
   switchPfTab('actions',null);
 }
+
+function renderPfActivity(comments,body){
   const html=comments.length?comments.slice(0,15).map(c=>`
     <div class="comment-item">
       <div class="comment-meta">
