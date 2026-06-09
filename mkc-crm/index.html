@@ -545,7 +545,7 @@ const SHEETS_ID='1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw';
 const CU_BASE='https://api.clickup.com/api/v2';
 const GS_BASE=`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values`;
 const APP_CONFIG={
-  cuToken:'pk_90161137399_XXXXXXXXXXXXXXXXXXXXXXXXXXX',
+  cuToken:'pk_43609696_KQTIW3GY2DYU9SIW9CE8UTLOTRHEQ3VV',
   wsId:'90161137399',spaceId:'90176102006',
   listLeads:'901710477809',listPipeline:'901710326878',
   listContacts:'901710477009',listAccounts:'901710481777'
@@ -1409,16 +1409,35 @@ function renderPfActions(task,type,cf,body){
     </div>`).join('')}
   `).join('');
 
-  // Lead Magnet selector
-  const bKey=(cf.branch||'').toLowerCase();
-  const tKey=(cf['lead/contact type']||'').toLowerCase();
-  const magnets=(S.ref.leadMagnets||[]).filter(r=>{
-    const rb=(r[0]||'').toLowerCase(),rt=(r[1]||'').toLowerCase();
-    return(!rb||bKey.includes(rb)||rb.includes(bKey))&&(!rt||tKey.includes(rt)||rt.includes(tKey));
+  // Lead Magnet selector — show all, col A=branch, B=leadType, C=name, D=desc, E=dateAdded, F=adminLink, G=publicLink
+  const allMagnets=S.ref.leadMagnets||[];
+  // Group unique names with their public link (col G index 6)
+  const magnetMap={};
+  allMagnets.forEach(r=>{
+    const name=r[2]||'';
+    const branch=r[0]||'';
+    const pubLink=r[6]||'';
+    const key=branch+'||'+name;
+    if(!magnetMap[key])magnetMap[key]={name,branch,pubLink,desc:r[3]||''};
+    if(pubLink&&!magnetMap[key].pubLink)magnetMap[key].pubLink=pubLink;
   });
-  const lmHtml=magnets.length?`<select class="form-select" id="lm-sel" style="margin-bottom:8px"><option value="">— Select Lead Magnet —</option>${magnets.map(m=>`<option value="${esc(m[2])}">${esc(m[2])}</option>`).join('')}</select>
-    <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet()">Apply to Recent Opt-In</button>`
-    :'<div style="font-size:13px;color:var(--text-muted)">No lead magnets for this entry\'s branch/type.</div>';
+  const magnetList=Object.values(magnetMap);
+  const lmHtml=magnetList.length?`
+    <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Select a lead magnet to auto-fill the Next Action Link field.</div>
+    <select class="form-select" id="lm-sel" style="margin-bottom:8px" onchange="previewMagnet(this)">
+      <option value="">— Select Lead Magnet —</option>
+      ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.pubLink)}" data-name="${esc(m.name)}">[${esc(m.branch)}] ${esc(m.name)}</option>`).join('')}
+    </select>
+    <div id="lm-preview" style="display:none;font-size:12px;padding:8px 10px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-secondary)"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('nal')">→ Set as Next Action Link</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('optin')">→ Set as Recent Opt-In</button>
+    </div>
+    <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:10px;text-decoration:none">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      Manage lead magnets →
+    </a>`
+    :'<div style="font-size:13px;color:var(--text-muted)">No lead magnets found. <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="color:var(--accent)">Add some →</a></div>';
 
   body.innerHTML=`
     <div class="pf-section"><h4>Current CRM Action</h4>
@@ -1482,16 +1501,45 @@ async function triggerAction(){
   }catch(e){if(statusEl)statusEl.textContent='';showToast('Trigger failed: '+e.message,'error');}
 }
 
-async function applyLeadMagnet(){
-  const val=document.getElementById('lm-sel')?.value;
-  if(!val)return showToast('Select a lead magnet.','error');
+function previewMagnet(sel){
+  const opt=sel.options[sel.selectedIndex];
+  const preview=document.getElementById('lm-preview');
+  if(!preview)return;
+  if(!sel.value){preview.style.display='none';return;}
+  const pubLink=opt.dataset.pub||'';
+  const name=opt.dataset.name||'';
+  preview.style.display='block';
+  preview.innerHTML=`<strong>${esc(name)}</strong>${pubLink?`<br><span style="color:var(--accent)">${esc(pubLink)}</span>`:'<br><span style="color:var(--text-muted);font-style:italic">No public link on file</span>'}`;
+}
+
+async function applyLeadMagnet(target){
+  const sel=document.getElementById('lm-sel');
+  if(!sel||!sel.value)return showToast('Select a lead magnet first.','error');
+  const opt=sel.options[sel.selectedIndex];
+  const pubLink=opt.dataset.pub||'';
+  const name=opt.dataset.name||'';
+  if(!pubLink)return showToast('This lead magnet has no public link on file. Add it in the Lead Magnet Matrix.','error');
   const{task}=S.currentEntry;
-  const fid=findCFId(task,'recent opt-in');
-  if(!fid)return showToast('Recent Opt-In field not found.','error');
+  const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[S.currentEntry.type]||'';
+  const fields=await getListFields(listId);
   try{
-    await cuFetch(`/task/${task.id}/field/${fid}`,'POST',{value:val});
+    if(target==='nal'){
+      // Set Next Action Link
+      const f=fields.find(f=>f.name?.toLowerCase().includes('next action link'))||(task.custom_fields||[]).find(f=>f.name?.toLowerCase().includes('next action link'));
+      if(!f)return showToast('Next Action Link field not found on this task.','error');
+      await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:pubLink});
+      showToast(`Next Action Link set: ${name}`,'success');
+    } else {
+      // Set Recent Opt-In Action (by name, not link)
+      const f=fields.find(f=>f.name?.toLowerCase().includes('recent opt-in'))||(task.custom_fields||[]).find(f=>f.name?.toLowerCase().includes('recent opt-in'));
+      if(!f)return showToast('Recent Opt-In field not found on this task.','error');
+      await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:name});
+      showToast(`Recent Opt-In set: ${name}`,'success');
+    }
     await syncToSheets(task,S.currentEntry.type);
-    showToast('Lead magnet applied: '+val,'success');
+    // Refresh entry
+    const updated=await cuFetch(`/task/${task.id}?include_subtasks=true`);
+    S.currentEntry.task=updated;
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
