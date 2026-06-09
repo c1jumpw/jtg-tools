@@ -957,52 +957,54 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #c0c7d4; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
 </style>
 </head>
 <body>
 
-<!-- SETUP OVERLAY -->
-<div id="setup-overlay" style="display:none;">
-  <div class="setup-card">
-    <h2>Welcome to MKC CRM</h2>
-    <p>Enter your credentials to get started. These are stored locally in your browser and never sent to any external server.</p>
-    <div class="form-group">
-      <label>ClickUp Personal API Token <span class="req">*</span></label>
-      <input type="password" id="setup-cu-token" placeholder="pk_...">
-    </div>
-    <div class="form-group">
-      <label>Google Sheets API Key <span class="req">*</span></label>
-      <input type="password" id="setup-gs-key" placeholder="AIza...">
-    </div>
-    <div class="form-group">
-      <label>ClickUp Workspace ID <span class="req">*</span></label>
-      <input type="text" id="setup-ws-id" placeholder="Workspace / Team ID">
-    </div>
-    <div class="form-group">
-      <label>ClickUp CRM Space ID</label>
-      <input type="text" id="setup-space-id" placeholder="Space ID">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Leads List ID</label>
-        <input type="text" id="setup-list-leads">
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay" style="display:flex;position:fixed;inset:0;background:rgba(17,19,24,0.97);z-index:900;align-items:center;justify-content:center;padding:20px;">
+  <div class="setup-card" style="max-width:420px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div style="width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       </div>
-      <div class="form-group">
-        <label>Pipeline List ID</label>
-        <input type="text" id="setup-list-pipeline">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary);">MKC CRM</div>
+        <div style="font-size:12px;color:var(--text-muted);">Operations Platform — Team Access</div>
       </div>
     </div>
-    <div class="form-row">
+
+    <div id="login-step-1">
       <div class="form-group">
-        <label>Contacts List ID</label>
-        <input type="text" id="setup-list-contacts">
+        <label>Select Your MKC ID</label>
+        <select class="form-select" id="login-mkc-id" onchange="onLoginIDChange()">
+          <option value="">— Loading team directory… —</option>
+        </select>
+      </div>
+      <div class="form-group" id="login-name-display" style="display:none;">
+        <label>Team Member</label>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary);padding:8px 0;" id="login-name-text"></div>
       </div>
       <div class="form-group">
-        <label>Accounts List ID</label>
-        <input type="text" id="setup-list-accounts">
+        <label>Workspace Passcode</label>
+        <input type="password" id="login-passcode" placeholder="Enter your passcode…" onkeydown="if(event.key==='Enter')attemptLogin()">
+      </div>
+      <div id="login-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:12px;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;height:42px;font-size:14px;" onclick="attemptLogin()" id="login-btn">
+        Sign In
+      </button>
+      <div style="margin-top:14px;font-size:11.5px;color:var(--text-muted);text-align:center;">
+        Access is limited to active MKC team members.<br>Contact your workspace admin if you need access.
       </div>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveSetup()">Save & Continue</button>
   </div>
 </div>
 
@@ -1353,52 +1355,23 @@
     <div class="view" id="view-settings">
       <div class="settings-section">
         <h3>API Credentials</h3>
-        <div class="form-row">
-          <div class="form-group">
-            <label>ClickUp API Token</label>
-            <input type="password" id="s-cu-token" placeholder="pk_...">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">API credentials are configured by your workspace admin and embedded in this app. They are not editable here.</p>
+        <div style="display:flex;gap:8px;font-size:12.5px;color:var(--text-secondary);flex-wrap:wrap;">
+          <div style="padding:8px 14px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">
+            Workspace: <strong>90161137399</strong>
           </div>
-          <div class="form-group">
-            <label>Google Sheets API Key</label>
-            <input type="password" id="s-gs-key" placeholder="AIza...">
+          <div style="padding:8px 14px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">
+            Space: <strong>90176102006</strong>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>ClickUp Workspace ID</label>
-            <input type="text" id="s-ws-id">
-          </div>
-          <div class="form-group">
-            <label>ClickUp Space ID</label>
-            <input type="text" id="s-space-id">
+          <div style="padding:8px 14px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">
+            Lists: Leads · Pipeline · Contacts · Accounts
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Leads List ID</label>
-            <input type="text" id="s-list-leads">
-          </div>
-          <div class="form-group">
-            <label>Pipeline List ID</label>
-            <input type="text" id="s-list-pipeline">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Contacts List ID</label>
-            <input type="text" id="s-list-contacts">
-          </div>
-          <div class="form-group">
-            <label>Accounts List ID</label>
-            <input type="text" id="s-list-accounts">
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px;">
-          <button class="btn btn-primary" onclick="saveSettings()">Save Credentials</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
           <button class="btn btn-secondary" onclick="testClickUp()">Test ClickUp</button>
           <button class="btn btn-secondary" onclick="testGoogleSheets()">Test Google Sheets</button>
           <span id="settings-test-result"></span>
-          <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="clearCredentials()">Clear All Credentials</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="clearCredentials()">Sign Out</button>
         </div>
       </div>
 
@@ -1535,11 +1508,23 @@
 
 <script>
 // ════════════════════════════════════════════
-// CONSTANTS & CONFIG
+// CONSTANTS & CONFIG — hardcoded credentials
 // ════════════════════════════════════════════
 const SHEETS_ID = '1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw';
 const CU_BASE = 'https://api.clickup.com/api/v2';
 const GS_BASE = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values`;
+
+// ── Hardcoded API credentials (not entered by users) ──
+const APP_CONFIG = {
+  cuToken:      'pk_90161137399_XXXXXXXXXXXXXXXXXXXXXXXXXXX', // ← replace with your ClickUp token
+  gsKey:        'AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg',
+  wsId:         '90161137399',
+  spaceId:      '90176102006',
+  listLeads:    '901710477809',
+  listPipeline: '901710326878',
+  listContacts: '901710477009',
+  listAccounts: '901710481777'
+};
 
 // ════════════════════════════════════════════
 // STATE
@@ -1566,26 +1551,144 @@ const state = {
 };
 
 // ════════════════════════════════════════════
-// INIT
+// INIT & AUTH
 // ════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  loadCredentials();
-  if (!state.credentials.cuToken || !state.credentials.gsKey) {
-    document.getElementById('setup-overlay').style.display = 'flex';
+  // Always inject hardcoded credentials into state
+  Object.assign(state.credentials, APP_CONFIG);
+
+  // Check if already logged in this session
+  const savedSession = sessionStorage.getItem('mkc_session');
+  if (savedSession) {
+    try {
+      const session = JSON.parse(savedSession);
+      state.activeUser = session;
+      document.getElementById('login-overlay').style.display = 'none';
+      updateActiveUserUI();
+      init();
+    } catch(e) {
+      showLoginScreen();
+    }
   } else {
-    init();
+    showLoginScreen();
   }
   setupGlobalSearch();
 });
 
+async function showLoginScreen() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  // Load team directory from Sheets to populate the dropdown
+  try {
+    const rows = await gsFetch('MKC Team Member Directory!A:T');
+    const headers = rows[0] || [];
+    const data = rows.slice(1);
+    // Col A=MKC ID, B=Status, C=First Name, D=Last Name, T=Workspace Passcode (index 19)
+    const active = data.filter(r => (r[1]||'').toLowerCase() === 'active' && r[0]);
+    state.referenceData.teamDirectory = data;
+    state._loginDirectory = active;
+
+    const sel = document.getElementById('login-mkc-id');
+    sel.innerHTML = '<option value="">— Select your MKC ID —</option>' +
+      active.map(r => `<option value="${r[0]}">${r[0]} — ${r[2]||''} ${r[3]||''}</option>`).join('');
+  } catch(e) {
+    const sel = document.getElementById('login-mkc-id');
+    sel.innerHTML = '<option value="">— Could not load team directory —</option>';
+    showLoginError('Could not load team directory. Check your connection.');
+  }
+}
+
+function onLoginIDChange() {
+  const id = document.getElementById('login-mkc-id').value;
+  const nameDisplay = document.getElementById('login-name-display');
+  const nameText = document.getElementById('login-name-text');
+  if (!id) { nameDisplay.style.display = 'none'; return; }
+  const row = (state._loginDirectory || []).find(r => r[0] === id);
+  if (row) {
+    nameText.textContent = `${row[2]||''} ${row[3]||''} · ${row[4]||''}`.trim();
+    nameDisplay.style.display = 'block';
+  }
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-passcode').focus();
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  // shake animation
+  el.style.animation = 'none';
+  setTimeout(() => el.style.animation = 'shake 0.3s ease', 10);
+}
+
+async function attemptLogin() {
+  const mkcId = document.getElementById('login-mkc-id').value;
+  const passcode = document.getElementById('login-passcode').value.trim();
+  const btn = document.getElementById('login-btn');
+
+  if (!mkcId) { showLoginError('Please select your MKC ID.'); return; }
+  if (!passcode) { showLoginError('Please enter your passcode.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Verifying…';
+
+  try {
+    // Re-fetch the team directory fresh to get latest passcodes
+    const rows = await gsFetch('MKC Team Member Directory!A:T');
+    const data = rows.slice(1);
+    // Col T = index 19 = Workspace Passcode
+    const memberRow = data.find(r => r[0] === mkcId && (r[1]||'').toLowerCase() === 'active');
+
+    if (!memberRow) {
+      showLoginError('MKC ID not found or account is not active.');
+      btn.disabled = false; btn.textContent = 'Sign In';
+      return;
+    }
+
+    const storedPasscode = String(memberRow[19] || '').trim();
+    if (!storedPasscode) {
+      showLoginError('No passcode set for this account. Contact your workspace admin.');
+      btn.disabled = false; btn.textContent = 'Sign In';
+      return;
+    }
+
+    if (String(passcode) !== storedPasscode) {
+      showLoginError('Incorrect passcode. Please try again.');
+      document.getElementById('login-passcode').value = '';
+      document.getElementById('login-passcode').focus();
+      btn.disabled = false; btn.textContent = 'Sign In';
+      return;
+    }
+
+    // ✓ Authenticated
+    const session = {
+      mkcId,
+      name: `${memberRow[2]||''} ${memberRow[3]||''}`.trim(),
+      knownAs: memberRow[7] || memberRow[2] || '',
+      branch: memberRow[4] || '',
+      role: memberRow[14] || '',
+      row: memberRow
+    };
+    state.activeUser = session;
+    state.referenceData.teamDirectory = data;
+    sessionStorage.setItem('mkc_session', JSON.stringify(session));
+
+    document.getElementById('login-overlay').style.display = 'none';
+    updateActiveUserUI();
+    init();
+
+  } catch(e) {
+    showLoginError('Authentication failed: ' + e.message);
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
 function loadCredentials() {
-  const keys = ['cuToken','gsKey','wsId','spaceId','listLeads','listPipeline','listContacts','listAccounts'];
-  keys.forEach(k => {
-    const val = localStorage.getItem('mkc_' + k);
-    if (val) state.credentials[k] = val;
-  });
-  state.activeUser = localStorage.getItem('mkc_activeUser') ? JSON.parse(localStorage.getItem('mkc_activeUser')) : null;
-  updateActiveUserUI();
+  // credentials are hardcoded via APP_CONFIG — no localStorage needed
+  // session user loaded in DOMContentLoaded
+}
+
+function saveSetup() {
+  // no-op — replaced by passcode login
 }
 
 async function init() {
@@ -1596,28 +1699,6 @@ async function init() {
   loadRecentActivity();
   loadPipelineSnapshot();
   checkTodayAlerts();
-}
-
-function saveSetup() {
-  const fields = {
-    cuToken: 'setup-cu-token', gsKey: 'setup-gs-key', wsId: 'setup-ws-id',
-    spaceId: 'setup-space-id', listLeads: 'setup-list-leads',
-    listPipeline: 'setup-list-pipeline', listContacts: 'setup-list-contacts',
-    listAccounts: 'setup-list-accounts'
-  };
-  let valid = true;
-  Object.entries(fields).forEach(([k, id]) => {
-    const v = document.getElementById(id)?.value?.trim();
-    if (v) {
-      state.credentials[k] = v;
-      localStorage.setItem('mkc_' + k, v);
-    } else if (k === 'cuToken' || k === 'gsKey' || k === 'wsId') {
-      valid = false;
-    }
-  });
-  if (!valid) { showToast('ClickUp token, Google Sheets key, and Workspace ID are required.', 'error'); return; }
-  document.getElementById('setup-overlay').style.display = 'none';
-  init();
 }
 
 // ════════════════════════════════════════════
@@ -1778,7 +1859,7 @@ async function loadAllEntries() {
 async function fetchAllTasks(listId) {
   let page = 0, all = [];
   while (true) {
-    const data = await cuFetch(`/list/${listId}/task?include_closed=true&custom_fields=true&page=${page}`);
+    const data = await cuFetch(`/list/${listId}/task?include_closed=true&subtasks=true&page=${page}`);
     const tasks = data.tasks || [];
     all = all.concat(tasks);
     if (tasks.length < 100) break;
@@ -2136,7 +2217,7 @@ async function openProfile(taskId, type) {
   document.getElementById('profile-overlay').classList.add('open');
 
   try {
-    const task = await cuFetch(`/task/${taskId}?include_subtasks=true&custom_fields=true`);
+    const task = await cuFetch(`/task/${taskId}?include_subtasks=true`);
     const comments = await cuFetch(`/task/${taskId}/comment`);
     state.currentEntry = { task, type, comments: comments.comments || [] };
     renderProfile(task, type, comments.comments || []);
@@ -3140,8 +3221,10 @@ async function testGoogleSheets() {
 function setActiveUser(name) {
   if (!name) return;
   const row = state.referenceData.teamDirectory.find(r => `${r[2]} ${r[3]}` === name);
-  state.activeUser = { name, row };
-  localStorage.setItem('mkc_activeUser', JSON.stringify(state.activeUser));
+  const updated = { ...state.activeUser, name };
+  if (row) { updated.branch = row[4]; updated.role = row[14]; updated.row = row; }
+  state.activeUser = updated;
+  sessionStorage.setItem('mkc_session', JSON.stringify(updated));
   updateActiveUserUI();
   showToast(`Active user set to ${name}.`, 'success');
 }
@@ -3156,10 +3239,8 @@ function updateActiveUserUI() {
 }
 
 function clearCredentials() {
-  if (!confirm('Clear all saved credentials? You will need to re-enter them.')) return;
-  ['cuToken','gsKey','wsId','spaceId','listLeads','listPipeline','listContacts','listAccounts','activeUser'].forEach(k => localStorage.removeItem('mkc_' + k));
-  state.credentials = {};
-  state.activeUser = null;
+  if (!confirm('Sign out of MKC CRM?')) return;
+  sessionStorage.removeItem('mkc_session');
   location.reload();
 }
 
