@@ -1516,8 +1516,7 @@ const GS_BASE = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/valu
 
 // ── Hardcoded API credentials (not entered by users) ──
 const APP_CONFIG = {
-  cuToken:      'pk_90161137399_XXXXXXXXXXXXXXXXXXXXXXXXXXX', // ← replace with your ClickUp token
-  gsKey:        'AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg',
+  cuToken:      'pk_43609696_KQTIW3GY2DYU9SIW9CE8UTLOTRHEQ3VV', // ← replace with your ClickUp token
   wsId:         '90161137399',
   spaceId:      '90176102006',
   listLeads:    '901710477809',
@@ -1525,6 +1524,102 @@ const APP_CONFIG = {
   listContacts: '901710477009',
   listAccounts: '901710481777'
 };
+
+// ── Google Service Account credentials ──
+const SA = {
+  clientEmail: 'mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com',
+  privateKeyId: 'ef091ebab75785dd8b3cdfdd6fdef6712ea48aa5',
+  privateKey: `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAI+SEzvG7GegJ
+4VB39gQI1stgUK8FtZwVVHdz3mZU7eMiR2Ro1ooZQRJ7i5V2i+9HYwc03Du9W99v
+O5mMQhmagVJ9C5f14NsPbKBIY1AbpGOrGbdVMTpok9p79EJy4DkYC/y/SWRIuCQn
+cO4k4I1ba5+OA9AZAhNhCU5brKWxgdmE7mmZbxTQBxDka67GLghDqLAiVp1yOHYk
+lYUzAUcIgHrhPJIav/x2jkWeJn1xXPaI2DluG1oD/x0MJyz4FuKsRcSbsRuFbWlQ
+9OymLl9WLkKUpVRFrkoqHVXfE3in8E6PjBaX5O+WNU1UTR52QmGALGoaiWVB529x
+kvhjO0dHAgMBAAECggEAVjOkMgtQO1N/nXMnMXK/06FeRBteso6MdKtdHjBQs9i4
+Vug1va1G7taZbrEsgK9+TgY5NPd7m9RslVBlbp43M3DCq9Q4PHlBfpWLAX8A8S3b
+A2f5rvBzlniDBKqM51H+e3HhVoacRd3LZqCNTyEpejL6NfIy+g1K2XWd4JZADjb9
+UopXaSzGJ3F6iVPboXJSDbHGu0nM1dHQgTJO68nk2iBkCdfnC4Bvtx7ErgAP1zjX
+Cm6FoB0DPUbVE4eHN7qh2JzbyfSC6YfybyI75Zyn/70asIMbRKyvMMxiYLN8Y+4/
+AVqVccSvE5q0bsHZFCOkqYWQ9zrlfrx6/lVTJw57eQKBgQD8P8e+WnrtWowToiHj
+tJ58/Iez7ym2/hg6DkEPec8069GCNbwoZySWI+/XGp7sK3Ah6JJOb3JhouzZwHiy
+/4P3KPHMaaK38pE/oiYhLlpeRKk5/uqjNqaKSbedaa/FTClmoQytluRZ3jfDshLy
+e4g8tIfkX4YN25Ts4g2OKPU/7wKBgQDC/0y+ctBXJw2kOJt2fRgBPJYikMtbhOKV
+dADHQKTFq8fx+gzNJ7qg/znQYA9/n0JS+vUodpOpaS5ZBkZb6/n/mgdwJ4BC4SXd
+nrq1RGj2Z1HBfA8oXEOLU8CYe3fLhB5UuLTn+cLyYc7/8PW5pH96u+PixKgvJ+4U
+gBTRyWKWKQKBgQC5H5HXCI5I3XgJ/KZEd80My0RIcJA7xTVAfi+PTQUdwKeMmSUS
+vcejDJK7WcUibCqqKAYf3DikoS6UDGZIb6+I15rFOw15VGL2wWicV2lo35kWgBfx
+Wm1U9g70Tpj6AhAsSquERkYmEij4zRqMrM5qRs+ocdZvGySryKbMGxEKLwKBgCX+
+GhTNR/yDFmxVvyyR6Phsto/biFO3i3I1HOW1maUN+DIUVyQtxnYR5FDONpbWD9Ud
+ImEU4WZToP0ldNX6H0aG20Yl3B6rwXXxtE0XHCBONyaspkNl3p8p3U+YVtnnTwWQ
+y2abSjlxhyRk7WuTOmdObnNDf8VYUVHbNrM9OqEpAoGBAPCcEw5F83aVBF+LH8wd
+qg0U017XGFp1RUsPgighP/DDzqHsXn2pCy+eiUOHpfSdVuHUa0aL7wMSYAwQKW3Y
+AYsrNvN5YxEyyLge6BkcojpvP7XrUGBcfTS0dMhRONFiBfYjCadlhmqM5mvktEAk
+EYlMHf+sgnyhzgldQNBFFlkT
+-----END PRIVATE KEY-----`
+};
+
+// ── JWT / OAuth token cache ──
+let _gsToken = null;
+let _gsTokenExpiry = 0;
+
+async function getGoogleAccessToken() {
+  const now = Math.floor(Date.now() / 1000);
+  if (_gsToken && now < _gsTokenExpiry - 60) return _gsToken;
+
+  // Build JWT
+  const header = { alg: 'RS256', typ: 'JWT', kid: SA.privateKeyId };
+  const payload = {
+    iss: SA.clientEmail,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now
+  };
+
+  const b64 = (obj) => btoa(JSON.stringify(obj))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+  const signingInput = `${b64(header)}.${b64(payload)}`;
+
+  // Import the private key
+  const keyData = SA.privateKey
+    .replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g, '');
+  const binaryKey = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', binaryKey.buffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5', cryptoKey,
+    new TextEncoder().encode(signingInput)
+  );
+
+  const b64sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+  const jwt = `${signingInput}.${b64sig}`;
+
+  // Exchange JWT for access token
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Google auth failed: ${err}`);
+  }
+
+  const tokenData = await tokenRes.json();
+  _gsToken = tokenData.access_token;
+  _gsTokenExpiry = now + (tokenData.expires_in || 3600);
+  return _gsToken;
+}
 
 // ════════════════════════════════════════════
 // STATE
@@ -1577,12 +1672,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function showLoginScreen() {
   document.getElementById('login-overlay').style.display = 'flex';
-  // Load team directory from Sheets to populate the dropdown
   try {
     const rows = await gsFetch('MKC Team Member Directory!A:T');
-    const headers = rows[0] || [];
     const data = rows.slice(1);
-    // Col A=MKC ID, B=Status, C=First Name, D=Last Name, T=Workspace Passcode (index 19)
     const active = data.filter(r => (r[1]||'').toLowerCase() === 'active' && r[0]);
     state.referenceData.teamDirectory = data;
     state._loginDirectory = active;
@@ -1593,7 +1685,17 @@ async function showLoginScreen() {
   } catch(e) {
     const sel = document.getElementById('login-mkc-id');
     sel.innerHTML = '<option value="">— Could not load team directory —</option>';
-    showLoginError('Could not load team directory. Check your connection.');
+    let msg = 'Could not load team directory. ';
+    if (e.message.includes('403')) {
+      msg += 'The Google Sheet is not publicly accessible. Share it as "Anyone with the link — Viewer".';
+    } else if (e.message.includes('400')) {
+      msg += 'Google Sheets API key is invalid or not enabled for Sheets API.';
+    } else if (e.message.includes('404')) {
+      msg += 'Sheet not found. Verify the spreadsheet ID is correct.';
+    } else {
+      msg += e.message;
+    }
+    showLoginError(msg);
   }
 }
 
@@ -1737,35 +1839,46 @@ async function cuFetch(path, method='GET', body=null) {
 }
 
 async function gsFetch(range) {
-  const key = state.credentials.gsKey;
-  const url = `${GS_BASE}/${encodeURIComponent(range)}?key=${key}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Sheets API error ${res.status}`);
+  const token = await getGoogleAccessToken();
+  const url = `${GS_BASE}/${encodeURIComponent(range)}`;
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Sheets API error ${res.status}: ${err}`);
+  }
   const data = await res.json();
   return data.values || [];
 }
 
 async function gsAppend(range, values) {
-  const key = state.credentials.gsKey;
-  const url = `${GS_BASE}/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&key=${key}`;
+  const token = await getGoogleAccessToken();
+  const url = `${GS_BASE}/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values })
   });
-  if (!res.ok) throw new Error(`Sheets append error ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Sheets append error ${res.status}: ${err}`);
+  }
   return res.json();
 }
 
 async function gsUpdate(range, value) {
-  const key = state.credentials.gsKey;
-  const url = `${GS_BASE}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&key=${key}`;
+  const token = await getGoogleAccessToken();
+  const url = `${GS_BASE}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [[value]] })
   });
-  if (!res.ok) throw new Error(`Sheets update error ${res.status}`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Sheets update error ${res.status}: ${err}`);
+  }
   return res.json();
 }
 
@@ -1773,7 +1886,6 @@ async function gsUpdate(range, value) {
 // REFERENCE DATA
 // ════════════════════════════════════════════
 async function loadAllReferenceData() {
-  if (!state.credentials.gsKey) return;
   const sheets = [
     ['Master CRM Entries!A:Z', 'masterCRM'],
     ['ClickUp Labels Mastersheet!A:C', 'labelsMaster'],
@@ -3207,6 +3319,7 @@ async function testGoogleSheets() {
   statusEl.className = 'connection-status pending';
   statusEl.innerHTML = '<span class="status-dot dot-gray"></span>Testing…';
   try {
+    await getGoogleAccessToken();
     await gsFetch('Entities & Branches!A1:A2');
     statusEl.className = 'connection-status ok';
     statusEl.innerHTML = '<span class="status-dot dot-green"></span>Connected';
