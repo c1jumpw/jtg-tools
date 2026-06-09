@@ -678,6 +678,8 @@ const S={
 // ═══════════════════════════════════════════
 // GOOGLE AUTH — Service Account JWT
 // ═══════════════════════════════════════════
+const GS_API_KEY='AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg';
+
 async function getGSToken(){
   const now=Math.floor(Date.now()/1000);
   if(S.gsToken&&now<S.gsTokenExp-60)return S.gsToken;
@@ -697,36 +699,41 @@ async function getGSToken(){
   S.gsToken=d.access_token;S.gsTokenExp=now+(d.expires_in||3600);
   return S.gsToken;
 }
+
+// READ — uses API key (sheet must be "Anyone with link can view")
 async function gsFetch(range){
-  // Try service account JWT first
+  const url=`${GS_BASE}/${encodeURIComponent(range)}?key=${GS_API_KEY}`;
   try{
-    const t=await getGSToken();
-    const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}`,{headers:{Authorization:`Bearer ${t}`}});
+    const r=await fetch(url);
     if(r.ok)return(await r.json()).values||[];
-    const errText=await r.text();
-    console.warn('SA fetch failed:',r.status,errText);
-    throw new Error(`Sheets ${r.status}: ${errText}`);
-  }catch(saErr){
-    // Fallback: try API key (works if sheet is shared with "Anyone with the link")
-    console.warn('SA auth failed, trying API key fallback:',saErr.message);
-    const apiKey='AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg';
-    const r2=await fetch(`${GS_BASE}/${encodeURIComponent(range)}?key=${apiKey}`);
-    if(r2.ok)return(await r2.json()).values||[];
-    const err2=await r2.text();
-    // Both failed — throw the original SA error with context
-    throw new Error(`Auth failed. Make sure Google Sheets API is enabled in Google Cloud Console for project abiding-state-496720-i4. Original error: ${saErr.message}`);
+    const errBody=await r.text();
+    let msg=`Sheets read error ${r.status}`;
+    try{const j=JSON.parse(errBody);msg=j.error?.message||msg;}catch(e2){}
+    if(r.status===403)msg='Sheet access denied. Make sure the sheet is set to "Anyone with the link can view".';
+    if(r.status===400)msg='Sheet API key error. Check the API key is valid for this project.';
+    throw new Error(msg);
+  }catch(e){
+    throw e;
   }
 }
-async function gsAppend(range,values){
-  const t=await getGSToken();
-  const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`,{method:'POST',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({values})});
-  if(!r.ok)throw new Error(`Sheets append ${r.status}`);
+
+// WRITE — uses service account JWT (sheet must be shared with service account as Editor)
+async function gsWrite(range,values,method='append'){
+  try{
+    const t=await getGSToken();
+    if(method==='append'){
+      const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`,{method:'POST',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({values})});
+      if(!r.ok){const e=await r.text();console.warn('gsAppend failed:',e);}
+    }else{
+      const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:'PUT',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({values:[[values]]})});
+      if(!r.ok){const e=await r.text();console.warn('gsUpdate failed:',e);}
+    }
+  }catch(e){
+    console.warn('gsWrite failed (non-critical):',e.message);
+  }
 }
-async function gsUpdate(range,value){
-  const t=await getGSToken();
-  const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,{method:'PUT',headers:{Authorization:`Bearer ${t}`,'Content-Type':'application/json'},body:JSON.stringify({values:[[value]]})});
-  if(!r.ok)throw new Error(`Sheets update ${r.status}`);
-}
+async function gsAppend(range,values){await gsWrite(range,values,'append');}
+async function gsUpdate(range,value){await gsWrite(range,value,'update');}
 
 // Sync entry to Master CRM Entries sheet — find row by task ID or append
 async function syncToSheets(task,type){
@@ -793,8 +800,6 @@ async function showLogin(){
   const sel=document.getElementById('login-id');
   sel.innerHTML='<option value="">— Loading… —</option>';
   try{
-    // First get a token to confirm auth works
-    await getGSToken();
     const rows=await gsFetch('MKC Team Member Directory!A:T');
     S.ref.team=rows.slice(1);
     const active=S.ref.team.filter(r=>(r[1]||'').toLowerCase()==='active'&&r[0]);
@@ -2162,8 +2167,11 @@ async function testClickUp(){
 async function testSheets(){
   const el=document.getElementById('gs-status');
   el.className='conn-status pending';el.textContent='Testing…';
-  try{await getGSToken();await gsFetch('Entities & Branches!A1');el.className='conn-status ok';el.textContent='● Connected';showToast('Google Sheets connected.','success');}
-  catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Sheets: '+e.message,'error');}
+  try{
+    await gsFetch('Entities & Branches!A1');
+    el.className='conn-status ok';el.textContent='● Connected';
+    showToast('Google Sheets connected.','success');
+  }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Sheets: '+e.message,'error');}
 }
 function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
 
