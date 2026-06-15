@@ -413,11 +413,6 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </button>
         </div>
         <div style="display:flex;gap:6px">
-          <select class="filter-select" id="tf-source" onchange="renderTasks()">
-            <option value="all">All Tasks</option>
-            <option value="master">Master CRM Tasks</option>
-            <option value="subtasks">Entry Subtasks</option>
-          </select>
           <button class="btn btn-primary btn-sm" onclick="openNewTaskModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Task
           </button>
@@ -427,14 +422,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div class="list-toolbar" style="margin-bottom:12px">
         <select class="filter-select" id="tf-assignee" onchange="renderTasks()"><option value="">All Assignees</option></select>
         <select class="filter-select" id="tf-type" onchange="renderTasks()">
-          <option value="">All Entry Types</option><option>Lead</option><option>Pipeline</option><option>Contact</option><option>Account</option>
+          <option value="">All Linked Types</option><option>Lead/Contact</option><option>Pipeline</option><option>Account</option>
         </select>
         <select class="filter-select" id="tf-urgency" onchange="renderTasks()">
           <option value="">All Due Dates</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option>
         </select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer">
-          <input type="checkbox" id="tf-subs" checked onchange="renderTasks()"> Show subtasks
-        </label>
       </div>
       <div id="tasks-list-view"><div id="tasks-container"></div></div>
       <div id="tasks-kanban-view" style="display:none"></div>
@@ -529,7 +521,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
   <div class="pf-body" id="pf-body"></div>
   <div class="pf-footer">
-    <button class="btn btn-primary" onclick="openUpdateProfile()">Update Profile</button>
+    <button class="btn btn-primary" onclick="openUpdateProfile()">Update Record</button>
     <button class="btn btn-secondary" onclick="openActivityModal()">Log New Activity</button>
     <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook ↗</button>
     <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp ↗</button>
@@ -1181,11 +1173,12 @@ function buildToolbar(type){
 function getStatuses(type){
   if(type==='leads')return['PRE-ENGAGEMENT','MANUAL OUTREACH CUE','INITIAL CONTACT MADE','NURTURING','ATTENTION NEEDED','CHURNED/DISQUALIFIED','READY FOR PIPELINE'];
   if(type==='pipeline')return['OPPURTUNITY','SCHEDULED DS / INTRO','QUALIFIED LEAD/PROSPECT','DEMO PRESENTED','PROPOSAL PENDING','OFFER PRSNTD / NEGOTIATION','DISQUALIFIED','CLOSED / WON','CLOSED / LOST'];
-  if(type==='contacts'||type==='accounts')return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
+  if(type==='contacts')return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
+  if(type==='accounts')return['LISTED','IN REVIEW','BURNT','COMPLETED'];
   if(type==='master')return['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
-  return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
+  return['LISTED','IN REVIEW','BURNT','COMPLETED'];
 }
-// Alias used in Update Profile status dropdown
+// Alias used in Update Record status dropdown
 function getStatusesForType(type){ return getStatuses(type); }
 
 function toggleSubs(type,show){
@@ -1372,23 +1365,20 @@ function renderTasks(){
   const aFilter=(document.getElementById('tf-assignee')?.value||'').toLowerCase();
   const tFilter=document.getElementById('tf-type')?.value||'';
   const uFilter=document.getElementById('tf-urgency')?.value||'';
-  const showSubs=document.getElementById('tf-subs')?.checked!==false;
-  const sourceFilter=document.getElementById('tf-source')?.value||'all';
   const now=Date.now();
   const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
   const weekEnd=new Date(todayEnd);weekEnd.setDate(weekEnd.getDate()+7);
 
   let all=[];
 
-  // SOURCE: Master CRM Tasks list
-  if(sourceFilter==='all'||sourceFilter==='master'){
-    S_masterTasks.forEach(t=>{
-      const cf=getCF(t);
-      const dueMs=t.due_date?parseInt(t.due_date):null;
-      const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
-      if(aFilter&&!asgn.includes(aFilter))return;
-      // Determine linked entry type from Related fields
-      const relLead=cf['related lead/contact id']||cf['related lead']||'';
+  // ACTION HUB: Master CRM Tasks only
+  S_masterTasks.forEach(t=>{
+    const cf=getCF(t);
+    const dueMs=t.due_date?parseInt(t.due_date):null;
+    const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
+    if(aFilter&&!asgn.includes(aFilter))return;
+    // Determine linked entry type from Related fields
+    const relLead=cf['related lead/contact id']||cf['related lead']||'';
       const relDeal=cf['related deal id']||cf['related deal']||'';
       const relAcct=cf['related account id']||cf['related account']||'';
       const linkedType=relLead?'Lead/Contact':relDeal?'Pipeline':relAcct?'Account':'Task';
@@ -1402,34 +1392,7 @@ function renderTasks(){
       if(uFilter&&urgency!==uFilter)return;
       all.push({task:t,type:linkedType,key:'master',urgency,eff:dueMs,asgn,isMaster:true,
         linkedId:relLead||relDeal||relAcct,linkedLabel:cf['related lead/contact id']||cf['related deal id']||cf['related account id']||''});
-    });
-  }
-
-  // SOURCE: Subtasks from Big 4 entries
-  if(sourceFilter==='all'||sourceFilter==='subtasks'){
-    const typeMap={leads:'Lead',pipeline:'Pipeline',contacts:'Contact',accounts:'Account'};
-    Object.entries(typeMap).forEach(([key,label])=>{
-      if(tFilter&&tFilter!==label)return;
-      S.entries[key].forEach(t=>{
-        // CRITICAL FIX: Only include actual subtasks (have parent), not parent entries themselves
-        // Parent entries (leads, contacts, etc.) should NOT appear in Action Hub
-        if(!t.parent)return; // Skip all parent-level entries
-        if(!showSubs)return;
-        const dueMs=t.due_date?parseInt(t.due_date):null;
-        const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
-        if(aFilter&&!asgn.includes(aFilter))return;
-        let urgency='none';
-        if(dueMs){
-          if(dueMs<now)urgency='overdue';
-          else if(dueMs<=todayEnd.getTime())urgency='today';
-          else if(dueMs<=weekEnd.getTime())urgency='week';
-        }
-        if(uFilter&&urgency!==uFilter)return;
-        const parentName=S.entries[key].find(p=>p.id===t.parent)?.name||'';
-        all.push({task:t,type:label,key,urgency,eff:dueMs,asgn,isMaster:false,parentName});
-      });
-    });
-  }
+  });
 
   all.sort((a,b)=>{const o={overdue:0,today:1,week:2,none:3};return o[a.urgency]!==o[b.urgency]?o[a.urgency]-o[b.urgency]:(a.eff||99e12)-(b.eff||99e12);});
 
@@ -2022,37 +1985,97 @@ function renderPfActivity(comments,body){
 }
 
 function renderPfRelated(task,body){
-  const rels=task.relationships||[];
   const taskId=task.id||'';
-  // Find Master CRM Tasks linked to this entry
+
+  // Find Master CRM Tasks linked to this entry by checking Related ID fields
   const linkedTasks=S_masterTasks.filter(t=>{
     const cf=getCF(t);
-    const allLinked=[cf['related lead/contact id']||'',cf['related deal id']||'',cf['related account id']||'',cf['related lead']||'',cf['related deal']||'',cf['related contact']||'',cf['related account']||''].join(' ').toLowerCase();
-    return allLinked.includes(taskId.toLowerCase());
+    const allRefs=[
+      cf['related lead/contact id']||'',
+      cf['related deal id']||'',
+      cf['related account id']||'',
+      cf['related lead']||'',
+      cf['related deal']||'',
+      cf['related contact']||'',
+      cf['related account']||''
+    ].join(' ').toLowerCase();
+    return allRefs.includes(taskId.toLowerCase());
   });
 
-  const relsHtml=rels.length?rels.map(r=>`<div class="related-item">
-    <div style="flex:1;font-size:13px;font-weight:500">${esc(r.name||r.id)}</div>
-    <span style="font-size:11px;color:var(--text-muted)">${r.type||''}</span>
-  </div>`).join(''):'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No ClickUp relationships set. Set these in ClickUp directly.</div>';
+  // ClickUp relationship custom fields on the task itself
+  // These show up as type='url' or type='list_relationship' custom fields
+  const relFields=(task.custom_fields||[]).filter(f=>
+    f.type==='list_relationship'||f.type==='url'||
+    (f.name||'').toLowerCase().includes('related')||
+    (f.name||'').toLowerCase().includes('relationship')
+  );
 
-  const tasksHtml=linkedTasks.length?linkedTasks.map(t=>`<div class="related-item" onclick="openTaskProfile('${t.id}')">
-    ${makeSB(t.status?.status||'')}
-    <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
-    ${t.due_date?`<span style="font-size:11.5px;color:var(--text-muted)">${fmtDateShort(parseInt(t.due_date))}</span>`:''}
-  </div>`).join(''):'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No tasks linked to this entry yet.</div>';
+  // Build related entries from relationship custom fields
+  const relEntries=[];
+  relFields.forEach(f=>{
+    const val=f.value;
+    if(!val)return;
+    if(Array.isArray(val)){
+      val.forEach(v=>{
+        if(v.id||v.name)relEntries.push({id:v.id||'',name:v.name||v.id||'',type:f.name||'Related'});
+      });
+    }else if(typeof val==='object'&&val.id){
+      relEntries.push({id:val.id,name:val.name||val.id,type:f.name||'Related'});
+    }
+  });
+
+  // Also scan all Big 4 entries for any that reference this task
+  const crossRefs=[];
+  const typeMap={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
+  Object.entries(typeMap).forEach(([key,label])=>{
+    S.entries[key].filter(t=>!t.parent&&t.id!==taskId).forEach(t=>{
+      const cf=getCF(t);
+      const fields=['company/account name','primary contact','related'];
+      // Check if any relationship field references this task
+      if((t.custom_fields||[]).some(f=>{
+        const v=String(f.value||'');
+        return v.toLowerCase().includes(taskId.toLowerCase());
+      })){
+        crossRefs.push({id:t.id,name:t.name,type:label});
+      }
+    });
+  });
+
+  const tasksHtml=linkedTasks.length
+    ?linkedTasks.map(t=>`<div class="related-item" onclick="openTaskProfile('${t.id}')">
+        ${makeSB(t.status?.status||'')}
+        <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
+        ${t.due_date?`<span style="font-size:11.5px;color:var(--text-muted)">${fmtDateShort(parseInt(t.due_date))}</span>`:''}
+      </div>`).join('')
+    :'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No tasks linked yet.</div>';
+
+  const relHtml=relEntries.length
+    ?relEntries.map(r=>`<div class="related-item" onclick="openProfile('${r.id}','${(r.type||'').toLowerCase()}')">
+        <span class="badge" style="background:var(--accent-light);color:var(--accent);font-size:11px">${esc(r.type)}</span>
+        <div style="flex:1;font-size:13px;font-weight:500">${esc(r.name)}</div>
+        <span style="font-size:11px;color:var(--text-muted)">${r.id.toUpperCase()}</span>
+      </div>`).join('')
+    :'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No ClickUp relationships found on this entry.</div>';
+
+  const crossHtml=crossRefs.length
+    ?`<div class="pf-section"><h4>Referenced By</h4>${crossRefs.map(r=>`<div class="related-item" onclick="openProfile('${r.id}','${r.type.toLowerCase()}s')">
+        <span class="badge" style="background:var(--accent-light);color:var(--accent);font-size:11px">${esc(r.type)}</span>
+        <div style="flex:1;font-size:13px;font-weight:500">${esc(r.name)}</div>
+      </div>`).join('')}</div>`
+    :'';
 
   body.innerHTML=`
     <div class="pf-section">
-      <h4>Linked Tasks (Master CRM Tasks)</h4>
+      <h4>Linked Tasks</h4>
       ${tasksHtml}
       <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="openNewTaskModal('${taskId}','${esc(task.name||'')}')">+ Add Task for this Entry</button>
     </div>
     <div class="pf-section">
       <h4>ClickUp Relationships</h4>
-      ${relsHtml}
-      <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">To create relationships between entries, use ClickUp → Relate items.</div>
-    </div>`;
+      ${relHtml}
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px">ClickUp relationships are set in ClickUp → task → Relate items. They will appear here automatically.</p>
+    </div>
+    ${crossHtml}`;
 }
 
 function closeProfile(){
@@ -2072,7 +2095,7 @@ async function openUpdateProfile(){
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   S.isEditMode=true;
-  document.getElementById('em-title').textContent='Update Profile';
+  document.getElementById('em-title').textContent='Update Record';
   document.getElementById('em-submit').textContent='Save & Sync';
   const branches=Object.keys(SUB_BRANCHES);
   const currentBranch=cf.branch||'';
