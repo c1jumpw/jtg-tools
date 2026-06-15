@@ -286,7 +286,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   <div class="sidebar-section">
     <div class="sidebar-section-label">Tools</div>
     <div class="nav-item" data-view="tasks">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Pending Tasks <span class="nav-badge" id="badge-tasks">0</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Action Hub <span class="nav-badge" id="badge-tasks">0</span>
     </div>
     <div class="nav-item" data-view="search-view">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search
@@ -402,13 +402,42 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
     <!-- PENDING TASKS -->
     <div class="view" id="view-tasks">
-      <div class="list-toolbar" style="margin-bottom:14px">
-        <select class="filter-select" id="tf-assignee" onchange="renderTasks()"><option value="">All Assignees</option></select>
-        <select class="filter-select" id="tf-type" onchange="renderTasks()"><option value="">All Types</option><option>Lead</option><option>Pipeline</option><option>Contact</option><option>Account</option></select>
-        <select class="filter-select" id="tf-urgency" onchange="renderTasks()"><option value="">All Due Dates</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option></select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer"><input type="checkbox" id="tf-subs" checked onchange="renderTasks()"> Show subtasks</label>
+      <!-- View Toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="view-toggle" id="vt-tasks">
+          <button class="vt-btn active" onclick="setTasksView('list',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>List
+          </button>
+          <button class="vt-btn" onclick="setTasksView('kanban',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="12"/><rect x="17" y="3" width="5" height="15"/></svg>Kanban
+          </button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <select class="filter-select" id="tf-source" onchange="renderTasks()">
+            <option value="all">All Tasks</option>
+            <option value="master">Master CRM Tasks</option>
+            <option value="subtasks">Entry Subtasks</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="openNewTaskModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Task
+          </button>
+        </div>
       </div>
-      <div id="tasks-container"></div>
+      <!-- Filters -->
+      <div class="list-toolbar" style="margin-bottom:12px">
+        <select class="filter-select" id="tf-assignee" onchange="renderTasks()"><option value="">All Assignees</option></select>
+        <select class="filter-select" id="tf-type" onchange="renderTasks()">
+          <option value="">All Entry Types</option><option>Lead</option><option>Pipeline</option><option>Contact</option><option>Account</option>
+        </select>
+        <select class="filter-select" id="tf-urgency" onchange="renderTasks()">
+          <option value="">All Due Dates</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer">
+          <input type="checkbox" id="tf-subs" checked onchange="renderTasks()"> Show subtasks
+        </label>
+      </div>
+      <div id="tasks-list-view"><div id="tasks-container"></div></div>
+      <div id="tasks-kanban-view" style="display:none"></div>
     </div>
 
     <!-- SEARCH -->
@@ -536,6 +565,33 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
 </div>
 
+<div id="task-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h3 id="tm-title">New Task</h3><button class="pf-close" onclick="closeModal('task-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Task Name <span class="req">*</span></label><input type="text" id="nt-name" placeholder="e.g. Follow up call with Nina"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Due Date</label><input type="date" id="nt-due"></div>
+        <div class="form-group"><label>Status</label>
+          <select class="form-select" id="nt-status">
+            <option value="TO DO">To Do</option>
+            <option value="IN PROGRESS">In Progress</option>
+            <option value="FOR REVIEW">For Review</option>
+            <option value="COMPLETED/APPROVED">Completed/Approved</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Link to CRM Entry (search by name or ID)</label>
+        <input type="text" id="nt-search" placeholder="Type name to search…" oninput="searchForTaskLink(this.value)" autocomplete="off">
+        <div id="nt-results" style="border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:180px;overflow-y:auto;background:var(--bg-card)"></div>
+        <div id="nt-linked" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea class="form-textarea" id="nt-notes" rows="3" placeholder="Task details…"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('task-modal')">Cancel</button><button class="btn btn-primary" onclick="submitNewTask()">Create Task</button></div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 <script>
 // ═══════════════════════════════════════════
@@ -548,7 +604,8 @@ const APP_CONFIG={
   cuToken:'pk_43609696_KQTIW3GY2DYU9SIW9CE8UTLOTRHEQ3VV',
   wsId:'90161137399',spaceId:'90176102006',
   listLeads:'901710477809',listPipeline:'901710326878',
-  listContacts:'901710477009',listAccounts:'901710481777'
+  listContacts:'901710477009',listAccounts:'901710481777',
+  listTasks:'901714539764'  // Master CRM Tasks list
 };
 const SA={
   clientEmail:'mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com',
@@ -587,6 +644,7 @@ EYlMHf+sgnyhzgldQNBFFlkT
 // STATUS / BRANCH / TYPE COLOR MAPS
 // ═══════════════════════════════════════════
 const STATUS_COLORS={
+  // ── Leads ──────────────────────────────────────
   'pre-engagement':['#e5e7eb','#374151'],
   'manual outreach cue':['#374151','#ffffff'],
   'initial contact made':['#6366f1','#ffffff'],
@@ -594,8 +652,7 @@ const STATUS_COLORS={
   'attention needed':['#f59e0b','#ffffff'],
   'churned/disqualified':['#ef4444','#ffffff'],
   'ready for pipeline':['#22c55e','#ffffff'],
-  'task/not started':['#e5e7eb','#374151'],
-  'task/in progress':['#3b82f6','#ffffff'],
+  // ── Pipeline ───────────────────────────────────
   'oppurtunity':['#8b5cf6','#ffffff'],
   'opportunity':['#8b5cf6','#ffffff'],
   'scheduled ds / intro':['#60a5fa','#ffffff'],
@@ -606,21 +663,27 @@ const STATUS_COLORS={
   'disqualified':['#ef4444','#ffffff'],
   'closed / won':['#22c55e','#ffffff'],
   'closed / lost':['#dc2626','#ffffff'],
+  // ── Contacts & Accounts ────────────────────────
   'listed':['#e5e7eb','#374151'],
   'to do':['#6b7280','#ffffff'],
   'in progress':['#3b82f6','#ffffff'],
   'in review':['#f59e0b','#ffffff'],
   'burnt':['#ef4444','#ffffff'],
   'completed':['#22c55e','#ffffff'],
+  // ── Account status labels ──────────────────────
   'active':['#22c55e','#ffffff'],
   'inactive':['#ef4444','#ffffff'],
   'under review':['#f59e0b','#ffffff'],
   'pre-deal':['#6b7280','#ffffff'],
   'onboarding cue':['#818cf8','#ffffff'],
+  // ── Deal status labels ─────────────────────────
   'closed/won':['#22c55e','#ffffff'],
   'close/lost':['#dc2626','#ffffff'],
   'upsell':['#10b981','#ffffff'],
-  'payments in progress':['#f59e0b','#ffffff']
+  'payments in progress':['#f59e0b','#ffffff'],
+  // ── Master CRM Tasks ───────────────────────────
+  'for review':['#f59e0b','#ffffff'],
+  'completed/approved':['#22c55e','#ffffff']
 };
 const TYPE_COLORS={
   'high value':['#fce7f3','#be185d'],
@@ -749,6 +812,20 @@ async function syncToSheets(task,type){
   }catch(e){console.warn('Sheets sync:',e.message);}
 }
 
+// Sync a Master CRM Task update to the Tasks sheet
+async function syncTaskUpdateToSheets(taskName,status,relLead,relDeal,relAcct,dueStr,assignee){
+  try{
+    // Find existing row by task name (col A) and update status (col B)
+    const rows=await gsFetch('Master CRM Tasks!A:B');
+    const idx=rows.findIndex((r,i)=>i>0&&r[0]===taskName);
+    if(idx>0){
+      await gsUpdate(`Master CRM Tasks!B${idx+1}`,status);
+    }else{
+      await gsAppend('Master CRM Tasks!A:H',[[taskName,status,relLead||'',relDeal||'',relAcct||'',dueStr||'',assignee||'','']]);
+    }
+  }catch(e){console.warn('Task sheet sync:',e.message);}
+}
+
 // ═══════════════════════════════════════════
 // CLICKUP API
 // ═══════════════════════════════════════════
@@ -872,6 +949,7 @@ async function init(){
   setSyncState('syncing','Loading…');
   await loadRef();
   await loadAllEntries();
+  await loadMasterTasks();
   renderDashboard();
   startAutoRefresh();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
@@ -891,6 +969,7 @@ async function refreshAll(){
   setSyncState('syncing','Refreshing…');
   await loadRef();
   await loadAllEntries();
+  await loadMasterTasks();
   renderDashboard();
   renderTasks();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
@@ -966,7 +1045,7 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el=document.getElementById(`view-${view}`);
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Pending Tasks','search-view':'Search',export:'Export',settings:'Settings'};
+  const titles={dashboard:'Dashboard',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub','search-view':'Search',export:'Export',settings:'Settings'};
   document.getElementById('page-title').textContent=titles[view]||view;
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
@@ -1101,9 +1180,13 @@ function buildToolbar(type){
 
 function getStatuses(type){
   if(type==='leads')return['PRE-ENGAGEMENT','MANUAL OUTREACH CUE','INITIAL CONTACT MADE','NURTURING','ATTENTION NEEDED','CHURNED/DISQUALIFIED','READY FOR PIPELINE'];
-  if(type==='pipeline')return['TASK/NOT STARTED','TASK/IN PROGRESS','OPPURTUNITY','SCHEDULED DS / INTRO','QUALIFIED LEAD/PROSPECT','DEMO PRESENTED','PROPOSAL PENDING','OFFER PRSNTD / NEGOTIATION','DISQUALIFIED','CLOSED / WON','CLOSED / LOST'];
+  if(type==='pipeline')return['OPPURTUNITY','SCHEDULED DS / INTRO','QUALIFIED LEAD/PROSPECT','DEMO PRESENTED','PROPOSAL PENDING','OFFER PRSNTD / NEGOTIATION','DISQUALIFIED','CLOSED / WON','CLOSED / LOST'];
+  if(type==='contacts'||type==='accounts')return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
+  if(type==='master')return['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
   return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
 }
+// Alias used in Update Profile status dropdown
+function getStatusesForType(type){ return getStatuses(type); }
 
 function toggleSubs(type,show){
   S.filtered[type]=show?S.entries[type]:S.entries[type].filter(t=>!t.parent);
@@ -1143,9 +1226,11 @@ function renderKanban(type){
   const items=S.entries[type].filter(t=>!t.parent);
   const grouped={};
   statuses.forEach(s=>grouped[s.toLowerCase()]=[]);
+  grouped['other']=[];  // catch-all for statuses being migrated
   items.forEach(t=>{
     const s=(t.status?.status||'').toLowerCase();
-    if(grouped[s]!==undefined)grouped[s].push(t);
+    if(grouped[s]!==undefined){grouped[s].push(t);}
+    else{grouped['other'].push(t);}  // entries with old/transitional statuses
   });
 
   el.innerHTML='<div class="kanban-board">'+statuses.map(status=>{
@@ -1176,7 +1261,19 @@ function renderKanban(type){
       </div>
       <div class="kanban-col-body">${cardsHtml}</div>
     </div>`;
-  }).join('')+'</div>';
+  }).join('')+
+  // Show catch-all column only if there are transitional entries
+  (grouped['other']?.length?`<div class="kanban-col">
+    <div class="kanban-col-header" style="background:#e5e7eb;color:#374151">
+      <span>Other (Migrating)</span><span style="font-size:11px;opacity:.8">${grouped['other'].length}</span>
+    </div>
+    <div class="kanban-col-body">${grouped['other'].map(task=>`
+      <div class="kanban-card" onclick="openProfile('${task.id}','${type}')">
+        <div class="kc-name">${esc(task.name)}</div>
+        <div class="kc-meta">${makeSB(task.status?.status||'')}</div>
+      </div>`).join('')}</div>
+  </div>`:'')
+  +'</div>';
 }
 
 async function quickAction(taskId,type){
@@ -1248,6 +1345,27 @@ function calNav(type,d){
 // ═══════════════════════════════════════════
 // PENDING TASKS
 // ═══════════════════════════════════════════
+// ── ACTION HUB STATE ──────────────────────────────
+let S_tasksView='list';
+let S_masterTasks=[];
+
+function setTasksView(mode,btn){
+  S_tasksView=mode;
+  document.getElementById('vt-tasks')?.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+  btn?.classList.add('active');
+  document.getElementById('tasks-list-view').style.display=mode==='list'?'block':'none';
+  document.getElementById('tasks-kanban-view').style.display=mode==='kanban'?'block':'none';
+  if(mode==='kanban')renderTasksKanban();
+}
+
+async function loadMasterTasks(){
+  if(!S.creds.listTasks)return;
+  try{
+    const d=await cuFetch(`/list/${S.creds.listTasks}/task?include_closed=true&subtasks=true`);
+    S_masterTasks=d.tasks||[];
+  }catch(e){console.warn('Master tasks load:',e.message);}
+}
+
 function renderTasks(){
   const el=document.getElementById('tasks-container');
   if(!el)return;
@@ -1255,51 +1373,259 @@ function renderTasks(){
   const tFilter=document.getElementById('tf-type')?.value||'';
   const uFilter=document.getElementById('tf-urgency')?.value||'';
   const showSubs=document.getElementById('tf-subs')?.checked!==false;
+  const sourceFilter=document.getElementById('tf-source')?.value||'all';
   const now=Date.now();
   const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
   const weekEnd=new Date(todayEnd);weekEnd.setDate(weekEnd.getDate()+7);
-  const typeMap={leads:'Lead',pipeline:'Pipeline',contacts:'Contact',accounts:'Account'};
+
   let all=[];
-  Object.entries(typeMap).forEach(([key,label])=>{
-    if(tFilter&&tFilter!==label)return;
-    S.entries[key].forEach(t=>{
-      if(!showSubs&&t.parent)return;
+
+  // SOURCE: Master CRM Tasks list
+  if(sourceFilter==='all'||sourceFilter==='master'){
+    S_masterTasks.forEach(t=>{
       const cf=getCF(t);
       const dueMs=t.due_date?parseInt(t.due_date):null;
-      const nadMs=cf['next action date']?parseInt(cf['next action date']):null;
-      const eff=dueMs||nadMs;
       const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
       if(aFilter&&!asgn.includes(aFilter))return;
+      // Determine linked entry type from Related fields
+      const relLead=cf['related lead/contact id']||cf['related lead']||'';
+      const relDeal=cf['related deal id']||cf['related deal']||'';
+      const relAcct=cf['related account id']||cf['related account']||'';
+      const linkedType=relLead?'Lead/Contact':relDeal?'Pipeline':relAcct?'Account':'Task';
+      if(tFilter&&tFilter!==linkedType&&linkedType!=='Task'){}  // skip type filter for tasks with no link
       let urgency='none';
-      if(eff){
-        if(eff<now)urgency='overdue';
-        else if(eff<=todayEnd.getTime())urgency='today';
-        else if(eff<=weekEnd.getTime())urgency='week';
+      if(dueMs){
+        if(dueMs<now)urgency='overdue';
+        else if(dueMs<=todayEnd.getTime())urgency='today';
+        else if(dueMs<=weekEnd.getTime())urgency='week';
       }
       if(uFilter&&urgency!==uFilter)return;
-      all.push({task:t,type:label,key,urgency,eff,asgn});
+      all.push({task:t,type:linkedType,key:'master',urgency,eff:dueMs,asgn,isMaster:true,
+        linkedId:relLead||relDeal||relAcct,linkedLabel:cf['related lead/contact id']||cf['related deal id']||cf['related account id']||''});
     });
-  });
+  }
+
+  // SOURCE: Subtasks from Big 4 entries
+  if(sourceFilter==='all'||sourceFilter==='subtasks'){
+    const typeMap={leads:'Lead',pipeline:'Pipeline',contacts:'Contact',accounts:'Account'};
+    Object.entries(typeMap).forEach(([key,label])=>{
+      if(tFilter&&tFilter!==label)return;
+      S.entries[key].forEach(t=>{
+        // CRITICAL FIX: Only include actual subtasks (have parent), not parent entries themselves
+        // Parent entries (leads, contacts, etc.) should NOT appear in Action Hub
+        if(!t.parent)return; // Skip all parent-level entries
+        if(!showSubs)return;
+        const dueMs=t.due_date?parseInt(t.due_date):null;
+        const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
+        if(aFilter&&!asgn.includes(aFilter))return;
+        let urgency='none';
+        if(dueMs){
+          if(dueMs<now)urgency='overdue';
+          else if(dueMs<=todayEnd.getTime())urgency='today';
+          else if(dueMs<=weekEnd.getTime())urgency='week';
+        }
+        if(uFilter&&urgency!==uFilter)return;
+        const parentName=S.entries[key].find(p=>p.id===t.parent)?.name||'';
+        all.push({task:t,type:label,key,urgency,eff:dueMs,asgn,isMaster:false,parentName});
+      });
+    });
+  }
+
   all.sort((a,b)=>{const o={overdue:0,today:1,week:2,none:3};return o[a.urgency]!==o[b.urgency]?o[a.urgency]-o[b.urgency]:(a.eff||99e12)-(b.eff||99e12);});
+
   const badge=document.getElementById('badge-tasks');
   if(badge){badge.textContent=all.length;badge.className='nav-badge'+(all.length?' has-items':'');}
-  if(!all.length){el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>No pending tasks</p><small>Adjust filters or you\'re all clear!</small></div>';return;}
+
+  if(!all.length){
+    el.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>No tasks found</p><small>Adjust filters or create a new task.</small></div>';
+    return;
+  }
+
   const urgColors={overdue:'var(--danger)',today:'var(--warning)',week:'var(--accent)',none:'var(--border)'};
-  el.innerHTML='<div class="tasks-list">'+all.map(({task,type,key,urgency,eff,asgn})=>{
-    const pName=task.parent?(S.entries[key].find(t=>t.id===task.parent)?.name||''):'';
-    return `<div class="task-item ${urgency}" onclick="openProfile('${task.id}','${key}')">
+  el.innerHTML='<div class="tasks-list">'+all.map(({task,type,key,urgency,eff,asgn,isMaster,parentName,linkedLabel})=>{
+    const clickTarget=isMaster?`openTaskProfile('${task.id}')`:`openProfile('${task.id}','${key}')`;
+    const subLabel=isMaster
+      ?`Master Task${linkedLabel?' · linked to '+esc(linkedLabel.substring(0,12).toUpperCase()):''}${asgn?' · 👤 '+esc(asgn):''}`
+      :`${type}${parentName?' · ↳ '+esc(parentName):''}${asgn?' · 👤 '+esc(asgn):''}`;
+    const quickStatus=isMaster?`<select class="filter-select" style="height:26px;font-size:11px;padding:0 6px;margin-left:4px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${task.id}','${esc(task.name)}',this.value)">
+      <option value="">Change…</option>
+      <option value="TO DO"${(task.status?.status||'').toUpperCase()==='TO DO'?' selected':''}>To Do</option>
+      <option value="IN PROGRESS"${(task.status?.status||'').toUpperCase()==='IN PROGRESS'?' selected':''}>In Progress</option>
+      <option value="FOR REVIEW"${(task.status?.status||'').toUpperCase()==='FOR REVIEW'?' selected':''}>For Review</option>
+      <option value="COMPLETED/APPROVED"${(task.status?.status||'').toUpperCase().includes('COMPLETED')?' selected':''}>Completed/Approved</option>
+    </select>`:'';
+    return `<div class="task-item ${urgency}" onclick="${clickTarget}" style="border-left-color:${urgColors[urgency]}">
       <div class="task-dot" style="background:${urgColors[urgency]}"></div>
       <div class="task-info">
-        <div class="task-name">${esc(task.name)}</div>
-        <div class="task-parent">${type}${pName?' · ↳ '+esc(pName):''}${asgn?' · 👤 '+esc(asgn):''}</div>
+        <div class="task-name">${esc(task.name)}${isMaster?'<span style="font-size:10px;background:var(--accent-light);color:var(--accent);padding:1px 6px;border-radius:10px;margin-left:6px;font-weight:600">TASK</span>':''}</div>
+        <div class="task-parent">${subLabel}</div>
       </div>
-      <div class="task-meta">
+      <div class="task-meta" style="flex-shrink:0">
         ${makeSB(task.status?.status||'')}
         ${eff?`<span style="font-size:11.5px;color:${urgency==='overdue'?'var(--danger)':urgency==='today'?'var(--warning)':'var(--text-muted)'}">${fmtDateShort(eff)}</span>`:''}
+        ${quickStatus}
       </div>
     </div>`;
   }).join('')+'</div>';
 }
+
+function renderTasksKanban(){
+  const el=document.getElementById('tasks-kanban-view');
+  if(!el)return;
+  const statuses=['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
+  const statusColors={
+    'TO DO':['#e5e7eb','#374151'],
+    'IN PROGRESS':['#3b82f6','#ffffff'],
+    'FOR REVIEW':['#f59e0b','#ffffff'],
+    'COMPLETED/APPROVED':['#22c55e','#ffffff']
+  };
+
+  // Combine master tasks + subtasks
+  let all=[...S_masterTasks.map(t=>({...t,_src:'master'}))];
+  Object.values(S.entries).forEach(list=>list.filter(t=>t.parent).forEach(t=>all.push({...t,_src:'sub'})));
+
+  const grouped={};
+  statuses.forEach(s=>grouped[s]=[]);
+  all.forEach(t=>{
+    const s=(t.status?.status||'').toUpperCase().trim();
+    let bucket='TO DO';
+    if(s.includes('IN PROGRESS'))bucket='IN PROGRESS';
+    else if(s.includes('FOR REVIEW')||s.includes('REVIEW'))bucket='FOR REVIEW';
+    else if(s.includes('COMPLETED')||s.includes('APPROVED')||s.includes('DONE'))bucket='COMPLETED/APPROVED';
+    else if(s.includes('TO DO')||s.includes('NOT STARTED'))bucket='TO DO';
+    if(grouped[bucket])grouped[bucket].push(t);
+  });
+
+  el.innerHTML='<div class="kanban-board">'+statuses.map(status=>{
+    const[bg,fg]=statusColors[status]||['#e5e7eb','#374151'];
+    const cards=(grouped[status]||[]).map(task=>`
+      <div class="kanban-card" onclick="${task._src==='master'?`openTaskProfile('${task.id}')`:`openProfile('${task.id}','${Object.entries({leads:S.entries.leads,pipeline:S.entries.pipeline,contacts:S.entries.contacts,accounts:S.entries.accounts}).find(([k,arr])=>arr.some(t=>t.id===task.id))?.[0]||'leads'}')`}">
+        <div class="kc-name">${esc(task.name)}</div>
+        <div class="kc-footer"><span style="font-size:11px;color:var(--text-muted)">${task._src==='master'?'Master Task':'Subtask'}</span></div>
+      </div>`).join('')||'<div style="font-size:11.5px;color:var(--text-muted);text-align:center;padding:18px">Empty</div>';
+    return `<div class="kanban-col">
+      <div class="kanban-col-header" style="background:${bg};color:${fg}"><span>${status}</span><span style="font-size:11px;opacity:.8">${(grouped[status]||[]).length}</span></div>
+      <div class="kanban-col-body">${cards}</div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+// Quick status update for Master CRM Tasks inline from list
+async function quickUpdateTaskStatus(taskId,taskName,newStatus){
+  if(!newStatus)return;
+  try{
+    // Update in ClickUp
+    await cuFetch(`/task/${taskId}`,'PUT',{status:newStatus});
+    // Update in Google Sheet
+    await syncTaskUpdateToSheets(taskName,newStatus,'','','','',S.user?.name||'');
+    showToast(`Status → ${newStatus}`,'success');
+    // Refresh master tasks
+    await loadMasterTasks();
+    renderTasks();
+    if(S_tasksView==='kanban')renderTasksKanban();
+  }catch(e){showToast('Status update failed: '+e.message,'error');}
+}
+
+// Open a Master CRM Task profile (reuses main profile panel)
+async function openTaskProfile(taskId){
+  await openProfile(taskId,'master');
+}
+
+// New Task modal
+function openNewTaskModal(prelinkedId='',prelinkedName=''){
+  S._taskLinks=prelinkedId?[{id:prelinkedId,name:prelinkedName}]:[];
+  document.getElementById('nt-name').value='';
+  document.getElementById('nt-due').value='';
+  document.getElementById('nt-notes').value='';
+  document.getElementById('nt-search').value='';
+  document.getElementById('nt-results').style.display='none';
+  renderTaskLinks();
+  document.getElementById('task-modal').style.display='flex';
+  document.getElementById('nt-name').focus();
+}
+
+function searchForTaskLink(q){
+  const res=document.getElementById('nt-results');
+  if(!q||q.length<2){res.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const matches=[];
+  const typeMap={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
+  Object.entries(typeMap).forEach(([key,label])=>{
+    S.entries[key].filter(t=>!t.parent).forEach(t=>{
+      if((t.name||'').toLowerCase().includes(ql)||(t.id||'').toLowerCase().includes(ql)){
+        matches.push({id:t.id,name:t.name,type:label});
+      }
+    });
+  });
+  if(!matches.length){res.innerHTML='<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No entries found</div>';res.style.display='block';return;}
+  res.innerHTML=matches.slice(0,8).map(m=>`<div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmousedown="linkTask('${m.id}','${esc(m.name)}');document.getElementById('nt-search').value=''">${makeSB(m.type)}<span><strong>${esc(m.name)}</strong> <span style="color:var(--text-muted);font-size:11px">${m.id.toUpperCase()}</span></span></div>`).join('');
+  res.style.display='block';
+}
+
+function linkTask(id,name){
+  if(!S._taskLinks)S._taskLinks=[];
+  if(!S._taskLinks.find(l=>l.id===id))S._taskLinks.push({id,name});
+  document.getElementById('nt-results').style.display='none';
+  renderTaskLinks();
+}
+
+function unlinkTask(id){
+  S._taskLinks=(S._taskLinks||[]).filter(l=>l.id!==id);
+  renderTaskLinks();
+}
+
+function renderTaskLinks(){
+  const el=document.getElementById('nt-linked');
+  if(!el)return;
+  el.innerHTML=(S._taskLinks||[]).map(l=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500">${esc(l.name)}<button onclick="unlinkTask('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:14px;padding:0;opacity:.6">×</button></span>`).join('');
+}
+
+async function submitNewTask(){
+  const name=document.getElementById('nt-name')?.value?.trim();
+  if(!name)return showToast('Task name required.','error');
+  if(!S.creds.listTasks)return showToast('Master CRM Tasks list ID not configured.','error');
+  const btn=document.querySelector('#task-modal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
+  try{
+    const due=document.getElementById('nt-due')?.value;
+    const notes=document.getElementById('nt-notes')?.value?.trim()||'';
+    const status=document.getElementById('nt-status')?.value||'TO DO';
+    const body={name,description:notes,status};
+    if(due)body.due_date=new Date(due).getTime();
+    const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
+    // Set linked entry IDs as custom fields
+    if(S._taskLinks?.length){
+      const fields=await getListFields(S.creds.listTasks);
+      const idStr=S._taskLinks.map(l=>l.id).join(', ');
+      // Try to find the appropriate field by type
+      const setF=async(partial,val)=>{
+        const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+        if(!f)return;
+        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}catch(e){}
+      };
+      await setF('related lead',idStr);
+      await setF('related deal',idStr);
+      await setF('related contact',idStr);
+    }
+    // Sync to Master CRM Tasks Google Sheet
+    // Columns: A=Task Name, B=Status, C=Related Lead/Contact ID, D=Related Deal ID, E=Related Account ID, F=Next Action Date, G=Assignee, H=Notebook Link
+    try{
+      const assignee=S.user?.name||'';
+      const linkedLead=S._taskLinks?.find(l=>!l.type||l.type==='Lead'||l.type==='Contact')?.[`id`]||'';
+      const linkedDeal=S._taskLinks?.find(l=>l.type==='Deal'||l.type==='Pipeline')?.[`id`]||'';
+      const linkedAcct=S._taskLinks?.find(l=>l.type==='Account')?.[`id`]||'';
+      const dueStr=due?new Date(due).toLocaleDateString():'';
+      await gsAppend('Master CRM Tasks!A:H',[[name,status,linkedLead,linkedDeal,linkedAcct,dueStr,assignee,'']]);
+    }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
+    closeModal('task-modal');
+    showToast(`Task "${name}" created!`,'success');
+    await loadMasterTasks();
+    renderTasks();
+    if(S_tasksView==='kanban')renderTasksKanban();
+  }catch(e){showToast('Failed: '+e.message,'error');console.error(e);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Create Task';}}
+}
+
 // ═══════════════════════════════════════════
 // PROFILE PANEL
 // ═══════════════════════════════════════════
@@ -1697,12 +2023,36 @@ function renderPfActivity(comments,body){
 
 function renderPfRelated(task,body){
   const rels=task.relationships||[];
-  body.innerHTML=`<div class="pf-section"><h4>Related Entries</h4>
-    ${rels.length?rels.map(r=>`<div class="related-item">
-      <div style="flex:1;font-size:13px;font-weight:500">${esc(r.name||r.id)}</div>
-      <span style="font-size:11px;color:var(--text-muted)">${r.type||''}</span>
-    </div>`).join(''):'<div style="font-size:13px;color:var(--text-muted)">No related entries via ClickUp relationships.</div>'}
-  </div>`;
+  const taskId=task.id||'';
+  // Find Master CRM Tasks linked to this entry
+  const linkedTasks=S_masterTasks.filter(t=>{
+    const cf=getCF(t);
+    const allLinked=[cf['related lead/contact id']||'',cf['related deal id']||'',cf['related account id']||'',cf['related lead']||'',cf['related deal']||'',cf['related contact']||'',cf['related account']||''].join(' ').toLowerCase();
+    return allLinked.includes(taskId.toLowerCase());
+  });
+
+  const relsHtml=rels.length?rels.map(r=>`<div class="related-item">
+    <div style="flex:1;font-size:13px;font-weight:500">${esc(r.name||r.id)}</div>
+    <span style="font-size:11px;color:var(--text-muted)">${r.type||''}</span>
+  </div>`).join(''):'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No ClickUp relationships set. Set these in ClickUp directly.</div>';
+
+  const tasksHtml=linkedTasks.length?linkedTasks.map(t=>`<div class="related-item" onclick="openTaskProfile('${t.id}')">
+    ${makeSB(t.status?.status||'')}
+    <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
+    ${t.due_date?`<span style="font-size:11.5px;color:var(--text-muted)">${fmtDateShort(parseInt(t.due_date))}</span>`:''}
+  </div>`).join(''):'<div style="font-size:13px;color:var(--text-muted);padding:4px 0">No tasks linked to this entry yet.</div>';
+
+  body.innerHTML=`
+    <div class="pf-section">
+      <h4>Linked Tasks (Master CRM Tasks)</h4>
+      ${tasksHtml}
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="openNewTaskModal('${taskId}','${esc(task.name||'')}')">+ Add Task for this Entry</button>
+    </div>
+    <div class="pf-section">
+      <h4>ClickUp Relationships</h4>
+      ${relsHtml}
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">To create relationships between entries, use ClickUp → Relate items.</div>
+    </div>`;
 }
 
 function closeProfile(){
@@ -1737,7 +2087,12 @@ async function openUpdateProfile(){
   document.getElementById('em-body').innerHTML=`
     <div class="form-row">
       <div class="form-group"><label>Task Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
-      <div class="form-group"><label>Status</label><input type="text" id="up-status" value="${esc(task.status?.status||'')}" placeholder="e.g. NURTURING"></div>
+      <div class="form-group"><label>Status</label>
+        <select class="form-select" id="up-status">
+          <option value="">— Keep current (${esc(task.status?.status||'')}) —</option>
+          ${getStatusesForType(type).map(s=>`<option value="${s}"${(task.status?.status||'').toLowerCase()===s.toLowerCase()?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Branch</label>
@@ -1858,13 +2213,13 @@ function openNewEntryModal(defaultType=''){
     </div>
     <div class="form-group">
       <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      <div id="nf-type-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         ${typeOptions.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:13px;background:var(--bg-main)">
           <input type="checkbox" class="nf-ctype-cb" value="${t}"> ${t}
         </label>`).join('')}
       </div>
     </div>
-    <div class="form-row">
+    <div id="nf-source-row" class="form-row">
       <div class="form-group"><label>Lead Source</label>
         <select class="form-select" id="nf-source"><option value="">—</option>${sources.map(s=>`<option>${s}</option>`).join('')}</select>
       </div>
@@ -1872,7 +2227,7 @@ function openNewEntryModal(defaultType=''){
         <input type="text" id="nf-source-notes" placeholder="e.g. Met at F5 CEO event May 2026">
       </div>
     </div>
-    <div class="form-row">
+    <div id="nf-shared-email-row" class="form-row">
       <div class="form-group"><label>Email</label><input type="email" id="nf-email"></div>
       <div class="form-group"><label>Phone</label><input type="tel" id="nf-phone"></div>
     </div>
@@ -1893,10 +2248,56 @@ function updateNFSubBranch(){
 function updateNFFields(){
   const type=document.getElementById('nf-type')?.value;
   const d=document.getElementById('nf-dyn');if(!d)return;
-  if(type==='Lead'||type==='Contact')d.innerHTML=`<div class="form-row"><div class="form-group"><label>First Name <span class="req">*</span></label><input type="text" id="nf-fname"></div><div class="form-group"><label>Last Name</label><input type="text" id="nf-lname"></div></div>`;
-  else if(type==='Deal')d.innerHTML=`<div class="form-row"><div class="form-group"><label>Deal Name <span class="req">*</span></label><input type="text" id="nf-dealname"></div><div class="form-group"><label>Account Name</label><input type="text" id="nf-acctname"></div></div>`;
-  else if(type==='Account')d.innerHTML=`<div class="form-group"><label>Account Name <span class="req">*</span></label><input type="text" id="nf-acctname-s"></div>`;
-  else d.innerHTML='';
+  const sources=(S.ref.leadSources||[]).map(r=>r[0]).filter(Boolean);
+
+  if(type==='Lead'||type==='Contact'){
+    d.innerHTML=`
+      <div class="form-row">
+        <div class="form-group"><label>First Name <span class="req">*</span></label><input type="text" id="nf-fname"></div>
+        <div class="form-group"><label>Last Name</label><input type="text" id="nf-lname"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Known As / Nickname</label><input type="text" id="nf-knownAs" placeholder="Preferred name"></div>
+        <div class="form-group"><label>Title / Role</label><input type="text" id="nf-title" placeholder="e.g. CEO, Director"></div>
+      </div>`;
+  } else if(type==='Deal'){
+    d.innerHTML=`
+      <div class="form-row">
+        <div class="form-group"><label>Deal Name <span class="req">*</span></label><input type="text" id="nf-dealname"></div>
+        <div class="form-group"><label>Company / Account Name</label><input type="text" id="nf-acctname"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Opportunity / Value</label><input type="text" id="nf-opportunity" placeholder="e.g. $5,000/mo"></div>
+        <div class="form-group"><label>Plan</label>
+          <select class="form-select" id="nf-plan"><option value="">—</option><option>Basic</option><option>Premium</option><option>Custom</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
+        <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="nf-phone"></div>
+      </div>`;
+  } else if(type==='Account'){
+    d.innerHTML=`
+      <div class="form-group"><label>Account Name <span class="req">*</span></label><input type="text" id="nf-acctname-s"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Industry</label><input type="text" id="nf-industry" placeholder="e.g. Real Estate, Tech"></div>
+        <div class="form-group"><label>Primary Contact</label><input type="text" id="nf-primary-contact" placeholder="Contact name"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
+        <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="nf-phone"></div>
+      </div>`;
+  } else { d.innerHTML=''; return; }
+
+  // Show/hide Lead/Contact specific fields
+  const isLeadContact=type==='Lead'||type==='Contact';
+  const typeRow=document.getElementById('nf-type-row');
+  const sourceRow=document.getElementById('nf-source-row');
+  if(typeRow)typeRow.style.display=isLeadContact?'':'none';
+  if(sourceRow)sourceRow.style.display=isLeadContact?'':'none';
+  // For Deal/Account, show email/phone already in dynamic section
+  const sharedEmailRow=document.getElementById('nf-shared-email-row');
+  if(sharedEmailRow)sharedEmailRow.style.display=isLeadContact?'grid':'none';
 }
 
 async function submitEntry(){
