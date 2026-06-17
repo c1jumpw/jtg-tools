@@ -421,12 +421,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <!-- Filters -->
       <div class="list-toolbar" style="margin-bottom:12px">
         <select class="filter-select" id="tf-assignee" onchange="renderTasks()"><option value="">All Assignees</option></select>
-        <select class="filter-select" id="tf-type" onchange="renderTasks()">
-          <option value="">All Linked Types</option><option>Lead/Contact</option><option>Pipeline</option><option>Account</option>
-        </select>
         <select class="filter-select" id="tf-urgency" onchange="renderTasks()">
           <option value="">All Due Dates</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option>
         </select>
+        <select class="filter-select" id="tf-rel-lead" onchange="renderTasks()"><option value="">All Lead/Contacts</option></select>
+        <select class="filter-select" id="tf-rel-deal" onchange="renderTasks()"><option value="">All Deals</option></select>
+        <select class="filter-select" id="tf-rel-acct" onchange="renderTasks()"><option value="">All Accounts</option></select>
       </div>
       <div id="tasks-list-view"><div id="tasks-container"></div></div>
       <div id="tasks-kanban-view" style="display:none"></div>
@@ -445,14 +445,28 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
     <!-- EXPORT -->
     <div class="view" id="view-export">
-      <div class="settings-section" style="max-width:600px">
+      <div class="settings-section" style="max-width:700px">
         <h3>Export CRM Data</h3>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:1px solid var(--border);border-radius:8px"><div><strong style="font-size:13px">Leads</strong><div class="text-sm text-muted">Current filtered view</div></div><button class="btn btn-secondary btn-sm" onclick="exportView('leads')">CSV</button></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:1px solid var(--border);border-radius:8px"><div><strong style="font-size:13px">Pipeline</strong><div class="text-sm text-muted">Current filtered view</div></div><button class="btn btn-secondary btn-sm" onclick="exportView('pipeline')">CSV</button></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:1px solid var(--border);border-radius:8px"><div><strong style="font-size:13px">Contacts</strong><div class="text-sm text-muted">Current filtered view</div></div><button class="btn btn-secondary btn-sm" onclick="exportView('contacts')">CSV</button></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border:1px solid var(--border);border-radius:8px"><div><strong style="font-size:13px">Accounts</strong><div class="text-sm text-muted">Current filtered view</div></div><button class="btn btn-secondary btn-sm" onclick="exportView('accounts')">CSV</button></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px"><div><strong style="font-size:13px">Master CRM Entries</strong><div class="text-sm" style="color:var(--accent)">Full sheet — all types</div></div><button class="btn btn-primary btn-sm" onclick="exportMaster()">Export All</button></div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">Select a list, choose which fields to include, then export.</p>
+        <div class="form-group"><label>Entry Type</label>
+          <select class="form-select" id="exp-type" onchange="updateExportFields()" style="max-width:220px">
+            <option value="leads">Leads</option>
+            <option value="pipeline">Pipeline (Deals)</option>
+            <option value="contacts">Contacts</option>
+            <option value="accounts">Accounts</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fields to Export</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="btn btn-secondary btn-sm" onclick="setAllExportFields(true)">Select All</button>
+            <button class="btn btn-secondary btn-sm" onclick="setAllExportFields(false)">Clear All</button>
+          </div>
+          <div id="exp-fields" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;max-height:280px;overflow-y:auto"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary" onclick="runExport()">Export CSV</button>
+          <button class="btn btn-secondary" onclick="exportMaster()">Export Master Sheet</button>
         </div>
       </div>
     </div>
@@ -942,6 +956,7 @@ async function init(){
   await loadRef();
   await loadAllEntries();
   await loadMasterTasks();
+  populateTaskFilters();
   renderDashboard();
   startAutoRefresh();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
@@ -962,6 +977,7 @@ async function refreshAll(){
   await loadRef();
   await loadAllEntries();
   await loadMasterTasks();
+  populateTaskFilters();
   renderDashboard();
   renderTasks();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
@@ -1042,6 +1058,8 @@ function switchView(view){
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
   }
+  if(view==='export')updateExportFields();
+  if(view==='tasks'){populateTaskFilters();renderTasks();}
 }
 
 function setViewMode(type,mode,btn){
@@ -1359,15 +1377,57 @@ async function loadMasterTasks(){
   }catch(e){console.warn('Master tasks load:',e.message);}
 }
 
+// Build lookup map: taskId → entry name, from all Big 4 lists
+function buildEntryLookup(){
+  const map={};
+  const lists={leads:S.entries.leads,pipeline:S.entries.pipeline,contacts:S.entries.contacts,accounts:S.entries.accounts};
+  Object.entries(lists).forEach(([key,arr])=>{
+    arr.filter(t=>!t.parent).forEach(t=>{map[t.id]={name:t.name,type:key};});
+  });
+  return map;
+}
+
+// Populate Action Hub filter dropdowns with real entry names
+function populateTaskFilters(){
+  const lookup=buildEntryLookup();
+  // Assignees
+  const assignees=new Set();
+  S_masterTasks.forEach(t=>t.assignees?.forEach(a=>{const n=a.username||a.email;if(n)assignees.add(n);}));
+  const aEl=document.getElementById('tf-assignee');
+  if(aEl){const cur=aEl.value;aEl.innerHTML='<option value="">All Assignees</option>'+[...assignees].sort().map(a=>`<option value="${esc(a)}"${a===cur?' selected':''}>${esc(a)}</option>`).join('');}
+  // Linked names per type
+  const leads=new Map(),deals=new Map(),accts=new Map();
+  S_masterTasks.forEach(t=>{
+    const cf=getCF(t);
+    const rl=cf['related lead/contact id']||cf['related lead']||'';
+    const rd=cf['related deal id']||cf['related deal']||'';
+    const ra=cf['related account id']||cf['related account']||'';
+    if(rl){const entry=lookup[rl];leads.set(rl,entry?.name||rl.toUpperCase());}
+    if(rd){const entry=lookup[rd];deals.set(rd,entry?.name||rd.toUpperCase());}
+    if(ra){const entry=lookup[ra];accts.set(ra,entry?.name||ra.toUpperCase());}
+  });
+  const fillSel=(id,map,label)=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value;
+    el.innerHTML=`<option value="">${label}</option>`+[...map.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${esc(id)}"${id===cur?' selected':''}>${esc(name)}</option>`).join('');
+  };
+  fillSel('tf-rel-lead',leads,'All Lead/Contacts');
+  fillSel('tf-rel-deal',deals,'All Deals');
+  fillSel('tf-rel-acct',accts,'All Accounts');
+}
+
 function renderTasks(){
   const el=document.getElementById('tasks-container');
   if(!el)return;
   const aFilter=(document.getElementById('tf-assignee')?.value||'').toLowerCase();
-  const tFilter=document.getElementById('tf-type')?.value||'';
   const uFilter=document.getElementById('tf-urgency')?.value||'';
+  const relLeadFilter=document.getElementById('tf-rel-lead')?.value||'';
+  const relDealFilter=document.getElementById('tf-rel-deal')?.value||'';
+  const relAcctFilter=document.getElementById('tf-rel-acct')?.value||'';
   const now=Date.now();
   const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
   const weekEnd=new Date(todayEnd);weekEnd.setDate(weekEnd.getDate()+7);
+  const lookup=buildEntryLookup();
 
   let all=[];
 
@@ -1375,23 +1435,35 @@ function renderTasks(){
   S_masterTasks.forEach(t=>{
     const cf=getCF(t);
     const dueMs=t.due_date?parseInt(t.due_date):null;
-    const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
-    if(aFilter&&!asgn.includes(aFilter))return;
-    // Determine linked entry type from Related fields
+    const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'');
+    if(aFilter&&!asgn.toLowerCase().includes(aFilter))return;
+
+    // Related entry IDs
     const relLead=cf['related lead/contact id']||cf['related lead']||'';
-      const relDeal=cf['related deal id']||cf['related deal']||'';
-      const relAcct=cf['related account id']||cf['related account']||'';
-      const linkedType=relLead?'Lead/Contact':relDeal?'Pipeline':relAcct?'Account':'Task';
-      if(tFilter&&tFilter!==linkedType&&linkedType!=='Task'){}  // skip type filter for tasks with no link
-      let urgency='none';
-      if(dueMs){
-        if(dueMs<now)urgency='overdue';
-        else if(dueMs<=todayEnd.getTime())urgency='today';
-        else if(dueMs<=weekEnd.getTime())urgency='week';
-      }
-      if(uFilter&&urgency!==uFilter)return;
-      all.push({task:t,type:linkedType,key:'master',urgency,eff:dueMs,asgn,isMaster:true,
-        linkedId:relLead||relDeal||relAcct,linkedLabel:cf['related lead/contact id']||cf['related deal id']||cf['related account id']||''});
+    const relDeal=cf['related deal id']||cf['related deal']||'';
+    const relAcct=cf['related account id']||cf['related account']||'';
+
+    // Apply named filters
+    if(relLeadFilter&&relLead!==relLeadFilter)return;
+    if(relDealFilter&&relDeal!==relDealFilter)return;
+    if(relAcctFilter&&relAcct!==relAcctFilter)return;
+
+    // Resolve entry names from lookup
+    const leadEntry=relLead?lookup[relLead]:null;
+    const dealEntry=relDeal?lookup[relDeal]:null;
+    const acctEntry=relAcct?lookup[relAcct]:null;
+    const linkedName=leadEntry?.name||dealEntry?.name||acctEntry?.name||'';
+    const linkedType=leadEntry?'Lead/Contact':dealEntry?'Pipeline':acctEntry?'Account':'';
+    const linkedId=relLead||relDeal||relAcct;
+
+    let urgency='none';
+    if(dueMs){
+      if(dueMs<now)urgency='overdue';
+      else if(dueMs<=todayEnd.getTime())urgency='today';
+      else if(dueMs<=weekEnd.getTime())urgency='week';
+    }
+    if(uFilter&&urgency!==uFilter)return;
+    all.push({task:t,urgency,eff:dueMs,asgn,linkedName,linkedType,linkedId});
   });
 
   all.sort((a,b)=>{const o={overdue:0,today:1,week:2,none:3};return o[a.urgency]!==o[b.urgency]?o[a.urgency]-o[b.urgency]:(a.eff||99e12)-(b.eff||99e12);});
@@ -1405,28 +1477,28 @@ function renderTasks(){
   }
 
   const urgColors={overdue:'var(--danger)',today:'var(--warning)',week:'var(--accent)',none:'var(--border)'};
-  el.innerHTML='<div class="tasks-list">'+all.map(({task,type,key,urgency,eff,asgn,isMaster,parentName,linkedLabel})=>{
-    const clickTarget=isMaster?`openTaskProfile('${task.id}')`:`openProfile('${task.id}','${key}')`;
-    const subLabel=isMaster
-      ?`Master Task${linkedLabel?' · linked to '+esc(linkedLabel.substring(0,12).toUpperCase()):''}${asgn?' · 👤 '+esc(asgn):''}`
-      :`${type}${parentName?' · ↳ '+esc(parentName):''}${asgn?' · 👤 '+esc(asgn):''}`;
-    const quickStatus=isMaster?`<select class="filter-select" style="height:26px;font-size:11px;padding:0 6px;margin-left:4px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${task.id}','${esc(task.name)}',this.value)">
-      <option value="">Change…</option>
-      <option value="TO DO"${(task.status?.status||'').toUpperCase()==='TO DO'?' selected':''}>To Do</option>
-      <option value="IN PROGRESS"${(task.status?.status||'').toUpperCase()==='IN PROGRESS'?' selected':''}>In Progress</option>
-      <option value="FOR REVIEW"${(task.status?.status||'').toUpperCase()==='FOR REVIEW'?' selected':''}>For Review</option>
-      <option value="COMPLETED/APPROVED"${(task.status?.status||'').toUpperCase().includes('COMPLETED')?' selected':''}>Completed/Approved</option>
-    </select>`:'';
-    return `<div class="task-item ${urgency}" onclick="${clickTarget}" style="border-left-color:${urgColors[urgency]}">
+  el.innerHTML='<div class="tasks-list">'+all.map(({task,urgency,eff,asgn,linkedName,linkedType})=>{
+    const curStatus=(task.status?.status||'').toUpperCase();
+    const statusLine=linkedName
+      ?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span>${linkedType?` <span style="font-size:10.5px;color:var(--text-muted)">· ${linkedType}</span>`:''}`
+      :'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>';
+    const asgnLine=asgn?` · <span style="font-size:11px">👤 ${esc(asgn)}</span>`:'';
+    return `<div class="task-item ${urgency}" onclick="openTaskProfile('${task.id}')" style="border-left-color:${urgColors[urgency]}">
       <div class="task-dot" style="background:${urgColors[urgency]}"></div>
       <div class="task-info">
-        <div class="task-name">${esc(task.name)}${isMaster?'<span style="font-size:10px;background:var(--accent-light);color:var(--accent);padding:1px 6px;border-radius:10px;margin-left:6px;font-weight:600">TASK</span>':''}</div>
-        <div class="task-parent">${subLabel}</div>
+        <div class="task-name">${esc(task.name)}</div>
+        <div class="task-parent">${statusLine}${asgnLine}</div>
       </div>
-      <div class="task-meta" style="flex-shrink:0">
+      <div class="task-meta" style="flex-shrink:0;display:flex;align-items:center;gap:6px">
         ${makeSB(task.status?.status||'')}
         ${eff?`<span style="font-size:11.5px;color:${urgency==='overdue'?'var(--danger)':urgency==='today'?'var(--warning)':'var(--text-muted)'}">${fmtDateShort(eff)}</span>`:''}
-        ${quickStatus}
+        <select class="filter-select" style="height:26px;font-size:11px;padding:0 6px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${task.id}','${esc(task.name)}',this.value)">
+          <option value="">Status…</option>
+          <option value="TO DO"${curStatus==='TO DO'?' selected':''}>To Do</option>
+          <option value="IN PROGRESS"${curStatus==='IN PROGRESS'?' selected':''}>In Progress</option>
+          <option value="FOR REVIEW"${curStatus==='FOR REVIEW'?' selected':''}>For Review</option>
+          <option value="COMPLETED/APPROVED"${curStatus.includes('COMPLETED')?' selected':''}>Completed/Approved</option>
+        </select>
       </div>
     </div>`;
   }).join('')+'</div>';
@@ -1436,40 +1508,46 @@ function renderTasksKanban(){
   const el=document.getElementById('tasks-kanban-view');
   if(!el)return;
   const statuses=['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
-  const statusColors={
-    'TO DO':['#e5e7eb','#374151'],
-    'IN PROGRESS':['#3b82f6','#ffffff'],
-    'FOR REVIEW':['#f59e0b','#ffffff'],
-    'COMPLETED/APPROVED':['#22c55e','#ffffff']
-  };
-
-  // Combine master tasks + subtasks
-  let all=[...S_masterTasks.map(t=>({...t,_src:'master'}))];
-  Object.values(S.entries).forEach(list=>list.filter(t=>t.parent).forEach(t=>all.push({...t,_src:'sub'})));
-
+  const statusColors={'TO DO':['#e5e7eb','#374151'],'IN PROGRESS':['#3b82f6','#ffffff'],'FOR REVIEW':['#f59e0b','#ffffff'],'COMPLETED/APPROVED':['#22c55e','#ffffff']};
+  const lookup=buildEntryLookup();
   const grouped={};
   statuses.forEach(s=>grouped[s]=[]);
-  all.forEach(t=>{
+  grouped['other']=[];
+  S_masterTasks.forEach(t=>{
     const s=(t.status?.status||'').toUpperCase().trim();
     let bucket='TO DO';
     if(s.includes('IN PROGRESS'))bucket='IN PROGRESS';
     else if(s.includes('FOR REVIEW')||s.includes('REVIEW'))bucket='FOR REVIEW';
-    else if(s.includes('COMPLETED')||s.includes('APPROVED')||s.includes('DONE'))bucket='COMPLETED/APPROVED';
-    else if(s.includes('TO DO')||s.includes('NOT STARTED'))bucket='TO DO';
-    if(grouped[bucket])grouped[bucket].push(t);
+    else if(s.includes('COMPLETED')||s.includes('APPROVED'))bucket='COMPLETED/APPROVED';
+    (grouped[bucket]||grouped['other']).push(t);
   });
-
   el.innerHTML='<div class="kanban-board">'+statuses.map(status=>{
-    const[bg,fg]=statusColors[status]||['#e5e7eb','#374151'];
-    const cards=(grouped[status]||[]).map(task=>`
-      <div class="kanban-card" onclick="${task._src==='master'?`openTaskProfile('${task.id}')`:`openProfile('${task.id}','${Object.entries({leads:S.entries.leads,pipeline:S.entries.pipeline,contacts:S.entries.contacts,accounts:S.entries.accounts}).find(([k,arr])=>arr.some(t=>t.id===task.id))?.[0]||'leads'}')`}">
-        <div class="kc-name">${esc(task.name)}</div>
-        <div class="kc-footer"><span style="font-size:11px;color:var(--text-muted)">${task._src==='master'?'Master Task':'Subtask'}</span></div>
-      </div>`).join('')||'<div style="font-size:11.5px;color:var(--text-muted);text-align:center;padding:18px">Empty</div>';
-    return `<div class="kanban-col">
-      <div class="kanban-col-header" style="background:${bg};color:${fg}"><span>${status}</span><span style="font-size:11px;opacity:.8">${(grouped[status]||[]).length}</span></div>
-      <div class="kanban-col-body">${cards}</div>
-    </div>`;
+    const[bg,fg]=statusColors[status];
+    const cards=grouped[status]||[];
+    const cardsHtml=cards.map(task=>{
+      const cf=getCF(task);
+      const relId=cf['related lead/contact id']||cf['related lead']||cf['related deal id']||cf['related deal']||cf['related account id']||cf['related account']||'';
+      const linked=relId?lookup[relId]:null;
+      const linkedName=linked?.name||'';
+      const linkedType={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'}[linked?.type||'']||'';
+      const asgn=task.assignees?.[0]?.username||'';
+      const curSt=(task.status?.status||'').toUpperCase();
+      const cardId=task.id;
+      return '<div class="kanban-card" onclick="openTaskProfile(\'' +cardId+ '\')">'+
+        '<div class="kc-name">'+esc(task.name)+'</div>'+
+        '<div style="margin-top:5px">'+
+          (linkedName?'<div style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">'+esc(linkedName)+(linkedType?' <span style="color:var(--text-muted);font-weight:400">· '+linkedType+'</span>':'')+'</div>':'<div style="font-size:11px;color:var(--text-muted)">No linked entry</div>')+
+          (asgn?'<div style="font-size:11px;color:var(--text-muted)">👤 '+esc(asgn)+'</div>':'')+
+          '<select class="filter-select" style="height:23px;font-size:10.5px;padding:0 4px;margin-top:4px;width:100%" onclick="event.stopPropagation()" data-tid="'+cardId+'" data-tname="'+task.name.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" onchange="quickUpdateTaskStatus(this.dataset.tid,this.dataset.tname,this.value)">'+
+            '<option value="TO DO"'+(curSt==='TO DO'?' selected':'')+'>To Do</option>'+
+            '<option value="IN PROGRESS"'+(curSt==='IN PROGRESS'?' selected':'')+'>In Progress</option>'+
+            '<option value="FOR REVIEW"'+(curSt==='FOR REVIEW'?' selected':'')+'>For Review</option>'+
+            '<option value="COMPLETED/APPROVED"'+(curSt.includes('COMPLETED')?' selected':'')+'>Completed/Approved</option>'+
+          '</select>'+
+        '</div>'+
+      '</div>';
+    }).join('')||'<div style="font-size:11.5px;color:var(--text-muted);text-align:center;padding:18px">Empty</div>';
+    return '<div class="kanban-col"><div class="kanban-col-header" style="background:'+bg+';color:'+fg+'"><span>'+status+'</span><span style="font-size:11px;opacity:.8">'+cards.length+'</span></div><div class="kanban-col-body">'+cardsHtml+'</div></div>';
   }).join('')+'</div>';
 }
 
@@ -2561,13 +2639,169 @@ function runFullSearch(q){
 // ═══════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════
-function exportView(type){
-  const items=S.filtered[type].filter(t=>!t.parent);
-  if(!items.length)return showToast('No entries to export.','error');
-  const hdrs=['MKC ID','Name','Email','Phone','Status','Branch','Type','Last Action','Next Action Date','Last Updated'];
-  const rows=items.map(t=>{const cf=getCF(t);return[(t.id||'').toUpperCase(),t.name,cf['primary contact email']||cf.email||'',cf.phone||'',t.status?.status||'',cf.branch||'',cf['lead/contact type']||'',cf['last action']||'',cf['next action date']||'',fmtDate(t.date_updated)];});
-  dlCSV([hdrs,...rows],`mkc-${type}-${Date.now()}.csv`);showToast(`Exported ${items.length} entries.`,'success');
+// ── EXPORT WITH FIELD SELECTOR ────────────────────────────────────────────
+const EXPORT_FIELDS={
+  leads:[
+    {id:'id',label:'MKC ID',default:true},
+    {id:'name',label:'Full Name',default:true},
+    {id:'email',label:'Email',default:true},
+    {id:'phone',label:'Phone',default:true},
+    {id:'status',label:'Status',default:true},
+    {id:'branch',label:'Branch',default:true},
+    {id:'sub_branch',label:'Sub-Branch',default:true},
+    {id:'lead_contact_type',label:'Lead/Contact Type',default:true},
+    {id:'lead_source',label:'Lead Source',default:true},
+    {id:'lead_source_notes',label:'Lead Source Details',default:false},
+    {id:'known_as',label:'Known As',default:false},
+    {id:'title',label:'Title',default:false},
+    {id:'location',label:'Location',default:false},
+    {id:'industry',label:'Industry',default:false},
+    {id:'last_action',label:'Last Action',default:true},
+    {id:'crm_action',label:'CRM Action',default:true},
+    {id:'recent_optin',label:'Recent Opt-In Action',default:false},
+    {id:'next_action_date',label:'Next Action Date',default:true},
+    {id:'next_action_link',label:'Next Action Link',default:false},
+    {id:'assignee',label:'Assignee',default:true},
+    {id:'notebook_link',label:'Notebook Link',default:false},
+    {id:'date_updated',label:'Last Updated',default:true},
+    {id:'date_created',label:'Date Created',default:false},
+    {id:'description',label:'Notes/Description',default:false},
+  ],
+  pipeline:[
+    {id:'id',label:'MKC ID',default:true},
+    {id:'name',label:'Deal Name',default:true},
+    {id:'company',label:'Company/Account',default:true},
+    {id:'status',label:'Status',default:true},
+    {id:'branch',label:'Branch',default:true},
+    {id:'sub_branch',label:'Sub-Branch',default:false},
+    {id:'last_action',label:'Last Action',default:true},
+    {id:'deal_action',label:'Deal Action',default:true},
+    {id:'deal_status_label',label:'Deal Status Label',default:false},
+    {id:'opportunity',label:'Opportunity/Value',default:true},
+    {id:'plan',label:'Plan',default:true},
+    {id:'next_action_date',label:'Next Action Date',default:true},
+    {id:'next_action_link',label:'Next Action Link',default:false},
+    {id:'close_date',label:'Close Date',default:false},
+    {id:'email',label:'Primary Contact Email',default:true},
+    {id:'phone',label:'Primary Contact Phone',default:false},
+    {id:'assignee',label:'Assignee',default:true},
+    {id:'notebook_link',label:'Notebook Link',default:false},
+    {id:'date_updated',label:'Last Updated',default:true},
+    {id:'description',label:'Notes/Description',default:false},
+  ],
+  contacts:[
+    {id:'id',label:'MKC ID',default:true},
+    {id:'name',label:'Full Name',default:true},
+    {id:'email',label:'Email',default:true},
+    {id:'phone',label:'Phone',default:true},
+    {id:'status',label:'Status',default:true},
+    {id:'branch',label:'Branch',default:true},
+    {id:'sub_branch',label:'Sub-Branch',default:true},
+    {id:'lead_contact_type',label:'Lead/Contact Type',default:true},
+    {id:'lead_source',label:'Lead Source',default:true},
+    {id:'lead_source_notes',label:'Lead Source Details',default:false},
+    {id:'known_as',label:'Known As',default:false},
+    {id:'title',label:'Title',default:false},
+    {id:'last_action',label:'Last Action',default:true},
+    {id:'crm_action',label:'CRM Action',default:false},
+    {id:'next_action_date',label:'Next Action Date',default:true},
+    {id:'assignee',label:'Assignee',default:true},
+    {id:'notebook_link',label:'Notebook Link',default:false},
+    {id:'date_updated',label:'Last Updated',default:true},
+    {id:'description',label:'Notes/Description',default:false},
+  ],
+  accounts:[
+    {id:'id',label:'MKC ID',default:true},
+    {id:'name',label:'Account Name',default:true},
+    {id:'status',label:'Task Status',default:true},
+    {id:'account_status',label:'Account Status',default:true},
+    {id:'branch',label:'Branch',default:true},
+    {id:'sub_branch',label:'Sub-Branch',default:false},
+    {id:'industry',label:'Industry',default:true},
+    {id:'primary_contact',label:'Primary Contact',default:true},
+    {id:'email',label:'Primary Contact Email',default:true},
+    {id:'phone',label:'Primary Contact Phone',default:false},
+    {id:'next_action_date',label:'Next Action Date',default:false},
+    {id:'assignee',label:'Assignee',default:true},
+    {id:'notebook_link',label:'Notebook Link',default:false},
+    {id:'date_updated',label:'Last Updated',default:true},
+    {id:'description',label:'Notes/Description',default:false},
+  ]
+};
+
+function updateExportFields(){
+  const type=document.getElementById('exp-type')?.value||'leads';
+  const fields=EXPORT_FIELDS[type]||[];
+  const el=document.getElementById('exp-fields');
+  if(!el)return;
+  el.innerHTML=fields.map(f=>`
+    <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card)">
+      <input type="checkbox" id="ef-${f.id}" ${f.default?'checked':''}>
+      ${esc(f.label)}
+    </label>`).join('');
 }
+
+function setAllExportFields(check){
+  document.querySelectorAll('[id^="ef-"]').forEach(cb=>cb.checked=check);
+}
+
+function getFieldVal(task,fieldId){
+  const cf=getCF(task);
+  const s=task.status?.status||'';
+  const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'';
+  const map={
+    id:(task.id||'').toUpperCase(),
+    name:task.name||'',
+    email:cf['primary contact email']||cf.email||'',
+    phone:cf.phone||cf['primary contact phone']||'',
+    status:s,
+    branch:cf.branch||'',
+    sub_branch:cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'',
+    lead_contact_type:cf['lead/contact type']||'',
+    lead_source:cf['lead source']||'',
+    lead_source_notes:cf['lead source notes']||cf['source details']||'',
+    known_as:cf['known as']||'',
+    title:cf.title||'',
+    location:cf.location||'',
+    industry:cf.industry||'',
+    last_action:cf['last action']||'',
+    crm_action:cf['lead crm action']||cf['crm action']||'',
+    deal_action:cf['deal action']||'',
+    recent_optin:cf['recent opt-in action']||'',
+    next_action_date:cf['next action date']?fmtDate(cf['next action date']):'',
+    next_action_link:cf['next action link']||'',
+    next_action:cf['next action']||'',
+    company:cf['company/account name']||'',
+    opportunity:cf.opportunity||'',
+    plan:cf.plan||'',
+    close_date:cf['close date']?fmtDate(cf['close date']):'',
+    deal_status_label:cf['deal status label']||'',
+    account_status:cf['account status']||'',
+    primary_contact:cf['primary contact']||'',
+    assignee:asgn,
+    notebook_link:cf['notebook link']||'',
+    date_updated:fmtDate(task.date_updated),
+    date_created:fmtDate(task.date_created),
+    description:task.description||''
+  };
+  return map[fieldId]||'';
+}
+
+function runExport(){
+  const type=document.getElementById('exp-type')?.value||'leads';
+  const allFields=EXPORT_FIELDS[type]||[];
+  const selected=allFields.filter(f=>document.getElementById(`ef-${f.id}`)?.checked);
+  if(!selected.length)return showToast('Select at least one field.','error');
+  const items=(S.filtered[type]||S.entries[type]||[]).filter(t=>!t.parent);
+  if(!items.length)return showToast('No entries to export.','error');
+  const hdrs=selected.map(f=>f.label);
+  const rows=items.map(t=>selected.map(f=>getFieldVal(t,f.id)));
+  dlCSV([hdrs,...rows],`mkc-${type}-${Date.now()}.csv`);
+  showToast(`Exported ${items.length} entries (${selected.length} fields).`,'success');
+}
+
+function exportView(type){runExport();}  // legacy alias
+
 async function exportMaster(){
   try{const rows=await gsFetch('Master CRM Entries!A:K');dlCSV(rows,`mkc-master-${Date.now()}.csv`);showToast('Master export complete.','success');}
   catch(e){showToast('Export failed: '+e.message,'error');}
