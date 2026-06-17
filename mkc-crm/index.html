@@ -420,13 +420,13 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </div>
       <!-- Filters -->
       <div class="list-toolbar" style="margin-bottom:12px">
-        <select class="filter-select" id="tf-assignee" onchange="renderTasks()"><option value="">All Assignees</option></select>
-        <select class="filter-select" id="tf-urgency" onchange="renderTasks()">
+        <select class="filter-select" id="tf-assignee" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">All Assignees</option></select>
+        <select class="filter-select" id="tf-urgency" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()">
           <option value="">All Due Dates</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option>
         </select>
-        <select class="filter-select" id="tf-rel-lead" onchange="renderTasks()"><option value="">All Lead/Contacts</option></select>
-        <select class="filter-select" id="tf-rel-deal" onchange="renderTasks()"><option value="">All Deals</option></select>
-        <select class="filter-select" id="tf-rel-acct" onchange="renderTasks()"><option value="">All Accounts</option></select>
+        <select class="filter-select" id="tf-rel-lead" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">All Lead/Contacts</option></select>
+        <select class="filter-select" id="tf-rel-deal" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">All Deals</option></select>
+        <select class="filter-select" id="tf-rel-acct" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">All Accounts</option></select>
       </div>
       <div id="tasks-list-view"><div id="tasks-container"></div></div>
       <div id="tasks-kanban-view" style="display:none"></div>
@@ -1510,10 +1510,38 @@ function renderTasksKanban(){
   const statuses=['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
   const statusColors={'TO DO':['#e5e7eb','#374151'],'IN PROGRESS':['#3b82f6','#ffffff'],'FOR REVIEW':['#f59e0b','#ffffff'],'COMPLETED/APPROVED':['#22c55e','#ffffff']};
   const lookup=buildEntryLookup();
+  // Apply same filters as list view
+  const aFilter=(document.getElementById('tf-assignee')?.value||'').toLowerCase();
+  const uFilter=document.getElementById('tf-urgency')?.value||'';
+  const relLeadFilter=document.getElementById('tf-rel-lead')?.value||'';
+  const relDealFilter=document.getElementById('tf-rel-deal')?.value||'';
+  const relAcctFilter=document.getElementById('tf-rel-acct')?.value||'';
+  const now=Date.now();
+  const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+  const weekEnd=new Date(todayEnd);weekEnd.setDate(weekEnd.getDate()+7);
   const grouped={};
   statuses.forEach(s=>grouped[s]=[]);
   grouped['other']=[];
   S_masterTasks.forEach(t=>{
+    const cf=getCF(t);
+    const dueMs=t.due_date?parseInt(t.due_date):null;
+    const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase();
+    if(aFilter&&!asgn.includes(aFilter))return;
+    const relLead=cf['related lead/contact id']||cf['related lead']||'';
+    const relDeal=cf['related deal id']||cf['related deal']||'';
+    const relAcct=cf['related account id']||cf['related account']||'';
+    if(relLeadFilter&&relLead!==relLeadFilter)return;
+    if(relDealFilter&&relDeal!==relDealFilter)return;
+    if(relAcctFilter&&relAcct!==relAcctFilter)return;
+    if(uFilter){
+      let urgency='none';
+      if(dueMs){
+        if(dueMs<now)urgency='overdue';
+        else if(dueMs<=todayEnd.getTime())urgency='today';
+        else if(dueMs<=weekEnd.getTime())urgency='week';
+      }
+      if(urgency!==uFilter)return;
+    }
     const s=(t.status?.status||'').toUpperCase().trim();
     let bucket='TO DO';
     if(s.includes('IN PROGRESS'))bucket='IN PROGRESS';
@@ -1698,12 +1726,24 @@ function renderPfHeader(task,type){
   const status=task.status?.status||'';
   const branch=cf.branch||'';
   const notebookLink=cf['notebook link']||'';
-  const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'}[type]||type;
+  const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account',master:'Task'}[type]||type;
+  const statuses=getStatusesForType(type);
+  // Clickable status badge with inline dropdown
+  const[sbg,sfg]=STATUS_COLORS[status.toLowerCase()]||['#e5e7eb','#374151'];
+  const statusBadge=`<span style="position:relative;display:inline-flex">
+    <select id="pf-status-select" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;border:none" onchange="quickUpdateEntryStatus(this.value)">
+      ${statuses.map(s=>`<option value="${esc(s)}"${s.toLowerCase()===status.toLowerCase()?' selected':''}>${esc(s)}</option>`).join('')}
+    </select>
+    <span class="badge" style="background:${sbg};color:${sfg};cursor:pointer;padding-right:20px" title="Click to change status">
+      ${esc(status||'—')} <span style="font-size:9px;opacity:.7">▼</span>
+    </span>
+  </span>`;
+
   document.getElementById('pf-name').textContent=name;
   document.getElementById('pf-mkcid').textContent=(task.id||'').toUpperCase();
   document.getElementById('pf-badges').innerHTML=`
     <span class="badge" style="background:var(--accent-light);color:var(--accent)">${typeLabel}</span>
-    ${makeSB(status)}${branch?makeBB(branch):''}
+    ${statusBadge}${branch?makeBB(branch):''}
     ${cf['lead/contact type']?makeTypeBadge(cf['lead/contact type']):''}
   `;
   document.getElementById('pf-contacts-row').innerHTML=`
@@ -1713,6 +1753,25 @@ function renderPfHeader(task,type){
   S._notebookLink=notebookLink;
   S._clickupLink=`https://app.clickup.com/t/${task.id}`;
   document.getElementById('pf-nb-btn').style.display=notebookLink?'inline-flex':'none';
+}
+
+async function quickUpdateEntryStatus(newStatus){
+  if(!S.currentEntry||!newStatus)return;
+  const{task,type}=S.currentEntry;
+  try{
+    await cuFetch(`/task/${task.id}`,'PUT',{status:newStatus});
+    // Update in-memory and re-render header
+    task.status={status:newStatus};
+    S.currentEntry.task=task;
+    renderPfHeader(task,type);
+    showToast(`Status → ${newStatus}`,'success');
+    // If it's a master task, also update sheet
+    if(type==='master')await syncTaskUpdateToSheets(task.name,newStatus,'','','','',S.user?.name||'');
+    else await syncToSheets(task,type);
+    // Refresh the relevant list in background
+    if(type==='master'){await loadMasterTasks();renderTasks();if(S_tasksView==='kanban')renderTasksKanban();}
+    else loadAllEntries();
+  }catch(e){showToast('Status update failed: '+e.message,'error');}
 }
 
 function switchPfTab(tab,btnEl){
