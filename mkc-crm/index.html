@@ -908,8 +908,8 @@ async function fetchAllTasks(listId){
   return all;
 }
 async function getListFields(listId){
-  if(S.fieldCache[listId])return S.fieldCache[listId];
-  try{const d=await cuFetch(`/list/${listId}/field`);S.fieldCache[listId]=d.fields||[];return d.fields||[];}
+  // Always fetch fresh — don't cache, field definitions can change
+  try{const d=await cuFetch(`/list/${listId}/field`);return d.fields||[];}
   catch(e){return[];}
 }
 
@@ -1231,28 +1231,29 @@ function buildToolbar(type){
   el.innerHTML=`
     <div style="position:relative;flex:1;max-width:220px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Filter ${type}…" style="width:100%;height:34px;border:1px solid var(--border);border-radius:7px;padding:0 12px 0 34px;font-size:13px;background:var(--bg-card);outline:none" oninput="filterTable('${type}',this.value)">
+      <input type="text" id="fs-search-${type}" placeholder="Filter ${type}…" style="width:100%;height:34px;border:1px solid var(--border);border-radius:7px;padding:0 12px 0 34px;font-size:13px;background:var(--bg-card);outline:none" oninput="filterTable('${type}',this.value)">
     </div>
-    ${showStatus?`<select class="filter-select" id="fs-status-${type}" onchange="filterByField('${type}','status',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
-      <option value="">Status</option>${statuses.map(s=>`<option value="${s}">${s}</option>`).join('')}
+    ${showStatus?`<select class="filter-select" id="fs-status-${type}" onchange="filterByField('${type}','status',this.value)">
+      <option value="">— Status —</option><option value="">All Statuses</option>${statuses.map(s=>`<option value="${s}">${s}</option>`).join('')}
     </select>`:''}
-    <select class="filter-select" id="fs-branch-${type}" onchange="filterByField('${type}','branch',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
-      <option value="">Branch</option>${branches.map(b=>`<option value="${b}">${b}</option>`).join('')}
+    <select class="filter-select" id="fs-branch-${type}" onchange="filterByField('${type}','branch',this.value)">
+      <option value="">— Branch —</option><option value="">All Branches</option>${branches.map(b=>`<option value="${b}">${b}</option>`).join('')}
     </select>
-    <select class="filter-select" id="fs-subbranch-${type}" onchange="filterByField('${type}','subbranch',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
-      <option value="">Sub-Branch</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
+    <select class="filter-select" id="fs-subbranch-${type}" onchange="filterByField('${type}','subbranch',this.value)">
+      <option value="">— Sub-Branch —</option><option value="">All Sub-Branches</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
     </select>
-    <select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
-      <option value="">Assignee</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
+    <select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value)">
+      <option value="">— Assignee —</option><option value="">All Assignees</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
     </select>
-    <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
-      <option value="">Sort by</option>
+    <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value)">
+      <option value="">— Sort by —</option>
       <option value="date_updated_desc">Last Updated ↓</option>
       <option value="date_updated_asc">Last Updated ↑</option>
       <option value="date_created_desc">Date Created ↓</option>
       <option value="date_created_asc">Date Created ↑</option>
     </select>
-    <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="switchView('export')">Export CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearFilters('${type}')" title="Clear all filters" style="color:var(--text-muted);padding:5px 8px;flex-shrink:0">✕ Clear</button>
+    <button class="btn btn-secondary btn-sm" style="margin-left:auto;flex-shrink:0" onclick="switchView('export')">Export CSV</button>
   `;
 }
 
@@ -1299,6 +1300,20 @@ function filterByField(type,field,value){
     return true;
   });
   S.pages[type]=1;renderTable(type);
+  if(S.viewMode[type]==='kanban')renderKanban(type);
+}
+
+function clearFilters(type){
+  const ids=[`fs-status-${type}`,`fs-branch-${type}`,`fs-subbranch-${type}`,`fs-assignee-${type}`,`fs-sort-${type}`,`fs-search-${type}`];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(el.tagName==='SELECT')el.selectedIndex=0;
+    else el.value='';
+  });
+  S.filtered[type]=S.entries[type].filter(t=>!t.parent);
+  S.pages[type]=1;
+  renderTable(type);
   if(S.viewMode[type]==='kanban')renderKanban(type);
 }
 
@@ -2423,7 +2438,14 @@ async function openUpdateProfile(){
       </div>
       <div class="form-row">
         <div class="form-group"><label>Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||cf.email||'')}"></div>
-        <div class="form-group"><label>Phone</label><input type="tel" id="up-phone" value="${esc(cf.phone||'')}"></div>
+        <div class="form-group"><label>Phone</label>
+          <div style="display:flex;gap:6px">
+            <select id="up-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
+              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${(cf.phone||cf['primary contact phone']||'').startsWith(cc)?' selected':''}>${cc}</option>`).join('')}
+            </select>
+            <input type="tel" id="up-phone-num" style="flex:1" value="${(cf.phone||cf['primary contact phone']||'').replace(/^\+\d+\s*/,'').trim()}" placeholder="e.g. 470 222 6558">
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
@@ -2486,7 +2508,14 @@ async function openUpdateProfile(){
         <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="up-phone" value="${esc(cf['primary contact phone']||cf.phone||'')}"></div>
+        <div class="form-group"><label>Phone</label>
+          <div style="display:flex;gap:6px">
+            <select id="up-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
+              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${(cf['primary contact phone']||cf.phone||'').startsWith(cc)?' selected':''}>${cc}</option>`).join('')}
+            </select>
+            <input type="tel" id="up-phone-num" style="flex:1" value="${(cf['primary contact phone']||cf.phone||'').replace(/^\+\d+\s*/,'').trim()}" placeholder="e.g. 470 222 6558">
+          </div>
+        </div>
         <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
       </div>`;
   }
@@ -2593,7 +2622,14 @@ function openNewEntryModal(defaultType=''){
     </div>
     <div id="nf-shared-email-row" class="form-row">
       <div class="form-group"><label>Email</label><input type="email" id="nf-email"></div>
-      <div class="form-group"><label>Phone</label><input type="tel" id="nf-phone"></div>
+      <div class="form-group"><label>Phone</label>
+          <div style="display:flex;gap:6px">
+            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
+              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
+            </select>
+            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
+          </div>
+        </div>
     </div>
     <div class="form-group"><label>Next Action Date</label><input type="date" id="nf-nad"></div>
     <div class="form-group"><label>Notes (Task Description)</label><textarea class="form-textarea" id="nf-notes" rows="3" placeholder="Internal notes about this entry…"></textarea></div>`;
@@ -2638,7 +2674,14 @@ function updateNFFields(){
       </div>
       <div class="form-row">
         <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
-        <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="nf-phone"></div>
+        <div class="form-group"><label>Primary Contact Phone</label>
+          <div style="display:flex;gap:6px">
+            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
+              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
+            </select>
+            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
+          </div>
+        </div>
       </div>`;
   } else if(type==='Account'){
     d.innerHTML=`
@@ -2649,7 +2692,14 @@ function updateNFFields(){
       </div>
       <div class="form-row">
         <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
-        <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="nf-phone"></div>
+        <div class="form-group"><label>Primary Contact Phone</label>
+          <div style="display:flex;gap:6px">
+            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
+              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
+            </select>
+            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
+          </div>
+        </div>
       </div>`;
   } else { d.innerHTML=''; return; }
 
@@ -2715,9 +2765,11 @@ async function submitEntry(){
       try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
       catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
-    // Email & Phone
+    // Email & Phone (with country code)
     await setField('email',document.getElementById('nf-email')?.value?.trim());
-    await setField('phone',document.getElementById('nf-phone')?.value?.trim());
+    const nfPhoneCC=document.getElementById('nf-phone-cc')?.value||'+1';
+    const nfPhoneNum=document.getElementById('nf-phone')?.value?.trim()||'';
+    if(nfPhoneNum)await setField('phone',nfPhoneCC+' '+nfPhoneNum);
     // First/Last name custom fields if they exist on the list
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
@@ -2780,9 +2832,10 @@ async function saveUpdateProfile(){
     const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts,master:S.creds.listTasks}[type]||'';
     const fields=await getListFields(listId);
 
-    // Universal type-aware field setter
-    const setField=async(partial,val)=>{
-      if(val===undefined||val===null||val==='')return;
+    // Universal type-aware field setter — allows clearing fields with empty string
+    const setField=async(partial,val,allowClear=false)=>{
+      if(val===undefined||val===null)return;
+      if(val===''&&!allowClear)return;  // Skip empty unless explicitly clearing
       const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
               ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))
               ||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
@@ -2791,6 +2844,7 @@ async function saveUpdateProfile(){
       let payload;
       switch(f.type){
         case'drop_down':{
+          if(val===''){payload={value:null};break;}  // Clear dropdown
           const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===String(val).toLowerCase());
           if(!opt){console.warn('Dropdown option not found:',partial,val);return;}
           payload={value:opt.orderindex!==undefined?opt.orderindex:opt.id};
@@ -2799,9 +2853,11 @@ async function saveUpdateProfile(){
           payload={value:Array.isArray(val)?val:[val]};
           break;}
         case'date':{
+          if(val===''){payload={value:null};break;}
           payload={value:typeof val==='number'?val:new Date(val).getTime()};
           break;}
         case'number':{
+          if(val===''){payload={value:null};break;}
           payload={value:Number(val)};
           break;}
         case'url':
@@ -2809,12 +2865,14 @@ async function saveUpdateProfile(){
         case'phone':
         case'text':
         default:{
-          payload={value:String(val)};
+          payload={value:String(val)};  // Empty string clears the field
           break;}
       }
       try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',payload);}
       catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
+    // Wrapper: always send value even if empty (to allow clearing)
+    const setFieldClear=async(partial,val)=>setField(partial,val??'',true);
 
     // Branch & Sub-Branch (Leads only — not Contacts per business rule)
     if(type==='leads'){
@@ -2830,31 +2888,35 @@ async function saveUpdateProfile(){
     }
     // Lead Source + Details
     await setField('lead source',document.getElementById('up-source')?.value);
-    await setField('lead source notes',document.getElementById('up-source-notes')?.value?.trim());
+    await setFieldClear('lead source notes',document.getElementById('up-source-notes')?.value?.trim());
     // Last Action
     await setField('last action',document.getElementById('up-lastaction')?.value);
     // Dates
     const nadVal=document.getElementById('up-nad')?.value;
     if(nadVal)await setField('next action date',new Date(nadVal).getTime());
+    else await setField('next action date',null,true);
     const closeDateVal=document.getElementById('up-closedate')?.value;
     if(closeDateVal)await setField('close date',new Date(closeDateVal).getTime());
-    // Text/URL fields
-    await setField('next action link',document.getElementById('up-nal')?.value?.trim());
-    await setField('recent opt-in',document.getElementById('up-optin')?.value?.trim());
-    await setField('known as',document.getElementById('up-knownAs')?.value?.trim());
-    await setField('title',document.getElementById('up-title')?.value?.trim());
-    await setField('email',document.getElementById('up-email')?.value?.trim());
-    await setField('phone',document.getElementById('up-phone')?.value?.trim());
+    // Text/URL fields — all clearable
+    await setFieldClear('next action link',document.getElementById('up-nal')?.value?.trim());
+    await setFieldClear('recent opt-in',document.getElementById('up-optin')?.value?.trim());
+    await setFieldClear('known as',document.getElementById('up-knownAs')?.value?.trim());
+    await setFieldClear('title',document.getElementById('up-title')?.value?.trim());
+    await setFieldClear('email',document.getElementById('up-email')?.value?.trim());
+    // Phone — combine country code + number
+    const phoneCC=document.getElementById('up-phone-cc')?.value||'+1';
+    const phoneNum=document.getElementById('up-phone-num')?.value?.trim()||'';
+    await setFieldClear('phone',phoneNum?(phoneCC+' '+phoneNum):'');
     // Pipeline fields
-    await setField('company/account name',document.getElementById('up-company')?.value?.trim());
-    await setField('opportunity',document.getElementById('up-opportunity')?.value?.trim());
+    await setFieldClear('company/account name',document.getElementById('up-company')?.value?.trim());
+    await setFieldClear('opportunity',document.getElementById('up-opportunity')?.value?.trim());
     await setField('plan',document.getElementById('up-plan')?.value);
     // Account fields
-    await setField('industry',document.getElementById('up-industry')?.value?.trim());
-    await setField('primary contact',document.getElementById('up-primary-contact')?.value?.trim());
+    await setFieldClear('industry',document.getElementById('up-industry')?.value?.trim());
+    await setFieldClear('primary contact',document.getElementById('up-primary-contact')?.value?.trim());
     await setField('account status',document.getElementById('up-acct-status')?.value);
     // Shared
-    await setField('notebook link',document.getElementById('up-notebook')?.value?.trim());
+    await setFieldClear('notebook link',document.getElementById('up-notebook')?.value?.trim());
 
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
