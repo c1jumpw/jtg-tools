@@ -1930,15 +1930,29 @@ function renderPfDetails(task,type,cf,body){
       ['Assignee(s)',asgn],
       ['Last Updated',fmtDate(task.date_updated)]
     ];
-  } else if(type==='leads'||type==='contacts'){
-    pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
+  } else if(type==='leads'){
+    pairs=[
+      ['Branch',cf.branch],['Sub-Branch',subBranch],
       ['Lead/Contact Type',cf['lead/contact type']],
       ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
-      ['Known As',cf['known as']],['Title',cf.title],['Location',cf.location],['Industry',cf.industry],
+      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
+      ['Location',cf.location],['Industry',cf.industry],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
       ['Last Action',cf['last action']],['CRM Action',cf['lead crm action']||cf['crm action']],
       ['Recent Opt-In Action',cf['recent opt-in action']],['Assignee(s)',asgn],
-      ['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]];
+      ['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]
+    ];
+  } else if(type==='contacts'){
+    pairs=[
+      ['Lead/Contact Type',cf['lead/contact type']],
+      ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
+      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
+      ['Industry',cf.industry],
+      ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
+      ['Last Action',cf['last action']],['CRM Action',cf['lead crm action']||cf['crm action']],
+      ['Recent Opt-In Action',cf['recent opt-in action']],['Assignee(s)',asgn],
+      ['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]
+    ];
   }else if(type==='pipeline'){
     pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
       ['Company/Account',cf['company/account name']],
@@ -2382,6 +2396,14 @@ async function openUpdateProfile(){
   const nadVal=cf['next action date']?new Date(parseInt(cf['next action date'])).toISOString().split('T')[0]:'';
   const closeDateVal=cf['close date']?new Date(parseInt(cf['close date'])).toISOString().split('T')[0]:'';
 
+  // Collect unique industry values from loaded entries for datalist suggestions
+  const allIndustries=[...new Set([
+    ...S.entries.leads,...S.entries.pipeline,...S.entries.contacts,...S.entries.accounts
+  ].filter(t=>!t.parent).map(t=>getCF(t).industry||'').filter(Boolean))].sort();
+  const industryDatalist=`<datalist id="dl-industry">${allIndustries.map(i=>`<option value="${esc(i)}">`).join('')}</datalist>`;
+  const allPlans=[...new Set(S.entries.pipeline.filter(t=>!t.parent).map(t=>getCF(t).plan||'').filter(Boolean))].sort();
+  const planDatalist=`<datalist id="dl-plan">${allPlans.map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`;
+
   // Master CRM Task update form
   if(type==='master'){
     document.getElementById('em-body').innerHTML=`
@@ -2405,118 +2427,134 @@ async function openUpdateProfile(){
     return;
   }
 
-  // Big 4 update form — common top section
-  const commonTop=`
+  const statusRow=`<div class="form-row">
+    <div class="form-group"><label>Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
+    <div class="form-group"><label>Status</label>
+      <select class="form-select" id="up-status">
+        <option value="">— Keep current (${esc(task.status?.status||'')}) —</option>
+        ${getStatusesForType(type).map(s=>`<option value="${s}"${(task.status?.status||'').toLowerCase()===s.toLowerCase()?' selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+
+  const branchRow=`<div class="form-row">
+    <div class="form-group"><label>Branch</label>
+      <select class="form-select" id="up-branch" onchange="updateSubBranchOptions()">
+        <option value="">—</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Sub-Branch</label>
+      <select class="form-select" id="up-subbranch">
+        <option value="">—</option>${subBranchOptions.map(s=>`<option${currentSubBranch===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+
+  const contactTypeRow=`<div class="form-group">
+    <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      ${typeOptions.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:13px;background:var(--bg-main)">
+        <input type="checkbox" class="up-ctype-cb" value="${t}" ${currentTypes.includes(t.toLowerCase())?'checked':''}> ${t}
+      </label>`).join('')}
+    </div>
+  </div>`;
+
+  const crmFields=`
     <div class="form-row">
-      <div class="form-group"><label>Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
-      <div class="form-group"><label>Status</label>
-        <select class="form-select" id="up-status">
-          <option value="">— Keep current (${esc(task.status?.status||'')}) —</option>
-          ${getStatusesForType(type).map(s=>`<option value="${s}"${(task.status?.status||'').toLowerCase()===s.toLowerCase()?' selected':''}>${s}</option>`).join('')}
-        </select>
+      <div class="form-group"><label>Last Action</label>
+        <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
       </div>
+      <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Branch</label>
-        <select class="form-select" id="up-branch" onchange="updateSubBranchOptions()">
-          <option value="">—</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group"><label>Sub-Branch</label>
-        <select class="form-select" id="up-subbranch">
-          <option value="">—</option>${subBranchOptions.map(s=>`<option${currentSubBranch===s?' selected':''}>${s}</option>`).join('')}
-        </select>
-      </div>
+      <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
+      <div class="form-group"><label>Recent Opt-In Action</label><input type="text" id="up-optin" value="${esc(cf['recent opt-in action']||'')}"></div>
     </div>`;
 
-  let typeSpecific='';
-  if(type==='leads'||type==='contacts'){
-    typeSpecific=`
-      <div class="form-row">
-        <div class="form-group"><label>Known As / Nickname</label><input type="text" id="up-knownAs" value="${esc(cf['known as']||'')}"></div>
-        <div class="form-group"><label>Title / Role</label><input type="text" id="up-title" value="${esc(cf.title||'')}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||cf.email||'')}"></div>
-        <div class="form-group"><label>Phone</label>
-          <input type="tel" id="up-phone-num" value="${esc(cf.phone||cf['primary contact phone']||'')}" placeholder="+1 470 222 6558" style="width:100%">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-          ${typeOptions.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:13px;background:var(--bg-main)">
-            <input type="checkbox" class="up-ctype-cb" value="${t}" ${currentTypes.includes(t.toLowerCase())?'checked':''}> ${t}
-          </label>`).join('')}
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Lead Source</label>
-          <select class="form-select" id="up-source"><option value="">—</option>${sources.map(s=>`<option${cf['lead source']===s?' selected':''}>${s}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Lead Source Details</label>
-          <input type="text" id="up-source-notes" value="${esc(cf['lead source notes']||cf['source details']||'')}">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Last Action</label>
-          <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
-        <div class="form-group"><label>Recent Opt-In Action</label><input type="text" id="up-optin" value="${esc(cf['recent opt-in action']||'')}"></div>
-      </div>`;
-  } else if(type==='pipeline'){
-    typeSpecific=`
-      <div class="form-row">
-        <div class="form-group"><label>Company / Account</label><input type="text" id="up-company" value="${esc(cf['company/account name']||'')}"></div>
-        <div class="form-group"><label>Opportunity / Value</label><input type="text" id="up-opportunity" value="${esc(cf.opportunity||'')}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Plan</label>
-          <select class="form-select" id="up-plan"><option value="">—</option>${['Basic','Premium','Custom'].map(p=>`<option${cf.plan===p?' selected':''}>${p}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Close Date</label><input type="date" id="up-closedate" value="${closeDateVal}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Last Action</label>
-          <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
-        </div>
-        <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
-        <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
-      </div>`;
-  } else if(type==='accounts'){
-    typeSpecific=`
-      <div class="form-row">
-        <div class="form-group"><label>Industry</label><input type="text" id="up-industry" value="${esc(cf.industry||'')}"></div>
-        <div class="form-group"><label>Account Status</label>
-          <select class="form-select" id="up-acct-status"><option value="">—</option>${['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'].map(s=>`<option${cf['account status']===s?' selected':''}>${s}</option>`).join('')}</select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Primary Contact</label><input type="text" id="up-primary-contact" value="${esc(cf['primary contact']||'')}"></div>
-        <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Phone</label>
-          <input type="tel" id="up-phone-num" value="${esc(cf['primary contact phone']||cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%">
-        </div>
-        <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
-      </div>`;
-  }
+  const sourceRow=`<div class="form-row">
+    <div class="form-group"><label>Lead Source</label>
+      <select class="form-select" id="up-source"><option value="">—</option>${sources.map(s=>`<option${cf['lead source']===s?' selected':''}>${s}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Lead Source Details</label>
+      <input type="text" id="up-source-notes" value="${esc(cf['lead source notes']||cf['source details']||'')}">
+    </div>
+  </div>`;
 
-  document.getElementById('em-body').innerHTML=commonTop+typeSpecific+`
+  const basicContactFields=`
+    <div class="form-row">
+      <div class="form-group"><label>Known As / Nickname</label><input type="text" id="up-knownAs" value="${esc(cf['known as']||'')}"></div>
+      <div class="form-group"><label>Title / Role</label><input type="text" id="up-title" value="${esc(cf.title||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||cf.email||'')}"></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="up-phone-num" value="${esc(cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
+    </div>`;
+
+  const notesRow=`
     <div class="form-row">
       <div class="form-group"><label>Notebook Link</label><input type="url" id="up-notebook" value="${esc(cf['notebook link']||'')}"></div>
     </div>
     <div class="form-group"><label>Notes (Task Description)</label>
       <textarea class="form-textarea" id="up-notes" rows="4">${esc(task.description||'')}</textarea>
     </div>`;
+
+  let body='';
+  if(type==='leads'){
+    body=statusRow+branchRow+contactTypeRow+basicContactFields+sourceRow+crmFields;
+  } else if(type==='contacts'){
+    // Contacts: no Branch/Sub-Branch (different ClickUp list, those fields may not exist)
+    body=statusRow+contactTypeRow+basicContactFields+sourceRow+`
+    <div class="form-row">
+      <div class="form-group"><label>Industry</label>
+        ${industryDatalist}
+        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industry…">
+      </div>
+    </div>`+crmFields;
+  } else if(type==='pipeline'){
+    body=statusRow+branchRow+`
+    <div class="form-row">
+      <div class="form-group"><label>Company / Account</label><input type="text" id="up-company" value="${esc(cf['company/account name']||'')}"></div>
+      <div class="form-group"><label>Opportunity / Value</label><input type="text" id="up-opportunity" value="${esc(cf.opportunity||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Plan</label>
+        ${planDatalist}
+        <input type="text" id="up-plan" value="${esc(cf.plan||'')}" list="dl-plan" placeholder="Type or select plan…">
+      </div>
+      <div class="form-group"><label>Close Date</label><input type="date" id="up-closedate" value="${closeDateVal}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Last Action</label>
+        <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
+      </div>
+      <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
+      <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
+    </div>`;
+  } else if(type==='accounts'){
+    body=statusRow+branchRow+`
+    <div class="form-row">
+      <div class="form-group"><label>Industry</label>
+        ${industryDatalist}
+        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industry…">
+      </div>
+      <div class="form-group"><label>Account Status</label>
+        <select class="form-select" id="up-acct-status"><option value="">—</option>${['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'].map(s=>`<option${cf['account status']===s?' selected':''}>${s}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Primary Contact</label><input type="text" id="up-primary-contact" value="${esc(cf['primary contact']||'')}"></div>
+      <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Phone</label><input type="tel" id="up-phone-num" value="${esc(cf['primary contact phone']||cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
+      <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
+    </div>`;
+  }
+
+  document.getElementById('em-body').innerHTML=body+notesRow;
   document.getElementById('entry-modal').style.display='flex';
 }
 
@@ -2667,7 +2705,10 @@ function updateNFFields(){
     d.innerHTML=`
       <div class="form-group"><label>Account Name <span class="req">*</span></label><input type="text" id="nf-acctname-s"></div>
       <div class="form-row">
-        <div class="form-group"><label>Industry</label><input type="text" id="nf-industry" placeholder="e.g. Real Estate, Tech"></div>
+        <div class="form-group"><label>Industry</label>
+          <datalist id="dl-industry-nf">${[...new Set(S.entries.accounts.concat(S.entries.pipeline).filter(t=>!t.parent).map(t=>getCF(t).industry||'').filter(Boolean))].sort().map(i=>`<option value="${esc(i)}">`).join('')}</datalist>
+          <input type="text" id="nf-industry" list="dl-industry-nf" placeholder="Type or select industry…">
+        </div>
         <div class="form-group"><label>Primary Contact</label><input type="text" id="nf-primary-contact" placeholder="Contact name"></div>
       </div>
       <div class="form-row">
@@ -2884,7 +2925,8 @@ async function saveUpdateProfile(){
     // Pipeline fields
     await setFieldClear('company/account name',document.getElementById('up-company')?.value?.trim());
     await setFieldClear('opportunity',document.getElementById('up-opportunity')?.value?.trim());
-    await setField('plan',document.getElementById('up-plan')?.value);
+    // Plan — text/datalist field (accepts any value)
+    await setFieldClear('plan',document.getElementById('up-plan')?.value?.trim());
     // Account fields
     await setFieldClear('industry',document.getElementById('up-industry')?.value?.trim());
     await setFieldClear('primary contact',document.getElementById('up-primary-contact')?.value?.trim());
