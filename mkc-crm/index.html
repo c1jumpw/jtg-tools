@@ -63,10 +63,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .vt-btn{padding:5px 14px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;color:var(--text-secondary);transition:all .15s;display:flex;align-items:center;gap:5px;border:none;background:transparent}
 .vt-btn svg{width:13px;height:13px}
 .vt-btn.active{background:var(--bg-card);color:var(--text-primary);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.list-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.list-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
 select.filter-select{height:34px;border:1px solid var(--border);border-radius:7px;padding:0 10px;font-size:13px;background:var(--bg-card);color:var(--text-secondary);outline:none;cursor:pointer}
 select.filter-select:focus{border-color:var(--accent)}
-.table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead{background:var(--bg-main);border-bottom:1px solid var(--border)}
 th{padding:9px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);cursor:pointer;user-select:none;white-space:nowrap}
@@ -298,7 +298,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     </div>
     <div class="form-group">
       <label>Workspace Passcode</label>
-      <input type="password" id="login-pass" placeholder="Enter your passcode…" onkeydown="if(event.key==='Enter')attemptLogin()">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" id="login-pass" placeholder="Enter your passcode…" onkeydown="if(event.key==='Enter')attemptLogin()">
     </div>
     <div id="login-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:9px 13px;font-size:12px;color:#dc2626;margin-bottom:12px;line-height:1.5"></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;height:42px;font-size:14px" onclick="attemptLogin()" id="login-btn">Sign In</button>
@@ -587,7 +587,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
   <div class="pf-body" id="pf-body"></div>
   <div class="pf-footer">
-    <button class="btn btn-primary" onclick="openUpdateProfile()">Update Record</button>
+    <button class="btn btn-primary" onclick="openUpdateProfile()">Edit Record</button>
     <button class="btn btn-secondary" onclick="openActivityModal()">Log New Activity</button>
     <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook ↗</button>
     <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp ↗</button>
@@ -617,6 +617,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           <div class="hash-chip" onclick="selHash(this,'#follow-up')">#follow-up</div>
         </div>
       </div>
+      <div class="form-group"><label>Activity Date</label><input type="date" id="act-date"></div>
       <div class="form-group"><label>Note</label><textarea class="form-textarea" id="act-note" rows="4" placeholder="Describe what happened…"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('activity-modal')">Cancel</button><button class="btn btn-primary" onclick="submitActivity()">Post Activity</button></div>
@@ -1221,8 +1222,14 @@ function buildToolbar(type){
   const allSubBranches=Object.values(SUB_BRANCHES).flat();
   const statuses=getStatuses(type);
   const showStatus=type==='leads'||type==='pipeline';
+  // Build assignee list from current entries
+  const assignees=[...new Set(
+    (S.entries[type]||[]).filter(t=>!t.parent)
+      .flatMap(t=>t.assignees?.map(a=>a.username||a.email)||[])
+      .filter(Boolean)
+  )].sort();
   el.innerHTML=`
-    <div style="position:relative;flex:1;max-width:240px">
+    <div style="position:relative;flex:1;max-width:220px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" placeholder="Filter ${type}…" style="width:100%;height:34px;border:1px solid var(--border);border-radius:7px;padding:0 12px 0 34px;font-size:13px;background:var(--bg-card);outline:none" oninput="filterTable('${type}',this.value)">
     </div>
@@ -1234,6 +1241,9 @@ function buildToolbar(type){
     </select>
     <select class="filter-select" id="fs-subbranch-${type}" onchange="filterByField('${type}','subbranch',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
       <option value="">Sub-Branch</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
+    </select>
+    <select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
+      <option value="">Assignee</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
     </select>
     <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value);this.style.color=this.value?'var(--text-primary)':'var(--text-secondary)'">
       <option value="">Sort by</option>
@@ -1284,6 +1294,7 @@ function filterByField(type,field,value){
       const sb=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'';
       return sb.toLowerCase().includes(value.toLowerCase());
     }
+    if(field==='assignee')return(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase().includes(value.toLowerCase());
     if(field==='type')return(cf['lead/contact type']||'').toLowerCase().includes(value.toLowerCase());
     return true;
   });
@@ -2343,7 +2354,7 @@ async function openUpdateProfile(){
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   S.isEditMode=true;
-  document.getElementById('em-title').textContent='Update Record';
+  document.getElementById('em-title').textContent='Edit Record';
   document.getElementById('em-submit').textContent='Save & Sync';
   const branches=Object.keys(SUB_BRANCHES);
   const currentBranch=cf.branch||'';
@@ -2506,6 +2517,10 @@ function openActivityModal(){
   S.selectedHash='';
   document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('act-note').value='';
+  // Default activity date to today
+  const today=new Date().toISOString().split('T')[0];
+  const dateEl=document.getElementById('act-date');
+  if(dateEl)dateEl.value=today;
   document.getElementById('activity-modal').style.display='flex';
 }
 function selHash(el,tag){
@@ -2517,8 +2532,10 @@ async function submitActivity(){
   const note=document.getElementById('act-note').value.trim();
   if(!note)return showToast('Enter a note.','error');
   const tag=S.selectedHash||'#note';
+  const actDate=document.getElementById('act-date')?.value||'';
+  const dateStr=actDate?` [${actDate}]`:'';
   try{
-    await cuFetch(`/task/${S.currentEntry.task.id}/comment`,'POST',{comment_text:`${tag} ${note} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+    await cuFetch(`/task/${S.currentEntry.task.id}/comment`,'POST',{comment_text:`${tag}${dateStr} ${note} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(S.currentEntry.task,S.currentEntry.type);
     closeModal('activity-modal');
     showToast('Activity logged.','success');
@@ -2546,7 +2563,7 @@ function openNewEntryModal(defaultType=''){
       </select>
     </div>
     <div id="nf-dyn"></div>
-    <div class="form-row">
+    ${(defaultType==='Lead'||defaultType==='')?`<div class="form-row" id="nf-branch-row">
       <div class="form-group"><label>Branch</label>
         <select class="form-select" id="nf-branch" onchange="updateNFSubBranch()">
           <option value="">—</option>${branches.map(b=>`<option>${b}</option>`).join('')}
@@ -2557,7 +2574,7 @@ function openNewEntryModal(defaultType=''){
           <option value="">—</option>${Object.values(SUB_BRANCHES).flat().map(s=>`<option>${s}</option>`).join('')}
         </select>
       </div>
-    </div>
+    </div>`:''}
     <div class="form-group">
       <label>Lead/Contact Type <span style="font-size:10px;color:var(--text-muted)">(multi-select)</span></label>
       <div id="nf-type-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
@@ -2638,10 +2655,13 @@ function updateNFFields(){
 
   // Show/hide Lead/Contact specific fields
   const isLeadContact=type==='Lead'||type==='Contact';
+  const isLeadOnly=type==='Lead';
   const typeRow=document.getElementById('nf-type-row');
   const sourceRow=document.getElementById('nf-source-row');
+  const branchRow=document.getElementById('nf-branch-row');
   if(typeRow)typeRow.style.display=isLeadContact?'':'none';
   if(sourceRow)sourceRow.style.display=isLeadContact?'':'none';
+  if(branchRow)branchRow.style.display=isLeadOnly?'grid':'none';
   // For Deal/Account, show email/phone already in dynamic section
   const sharedEmailRow=document.getElementById('nf-shared-email-row');
   if(sharedEmailRow)sharedEmailRow.style.display=isLeadContact?'grid':'none';
@@ -2662,34 +2682,79 @@ async function submitEntry(){
     const notes=document.getElementById('nf-notes')?.value?.trim()||'';
     const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name:name.trim(),description:notes});
     const fields=await getListFields(listId);
-    const setF=async(partial,val)=>{
-      if(!val&&val!==0)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f)return;
-      try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('CF:',partial,e.message);}
+    // Universal field setter — handles all ClickUp field types correctly
+    const setField=async(partial,val)=>{
+      if(val===undefined||val===null||val==='')return;
+      const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
+              ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+      if(!f){console.warn('Field not found:',partial);return;}
+      let payload;
+      switch(f.type){
+        case'drop_down':{
+          const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===String(val).toLowerCase());
+          if(!opt){console.warn('Dropdown option not found:',partial,val);return;}
+          payload={value:opt.orderindex!==undefined?opt.orderindex:opt.id};
+          break;}
+        case'labels':{
+          payload={value:Array.isArray(val)?val:[val]};
+          break;}
+        case'date':{
+          payload={value:typeof val==='number'?val:new Date(val).getTime()};
+          break;}
+        case'number':{
+          payload={value:Number(val)};
+          break;}
+        case'url':
+        case'email':
+        case'phone':
+        case'text':
+        default:{
+          payload={value:String(val)};
+          break;}
+      }
+      try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
+      catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
-    const setDropdown=async(partial,val)=>{
-      if(!val)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f)return;
-      const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
-      if(opt)try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('dd:',e.message);}
-    };
-    await setF('email',document.getElementById('nf-email')?.value?.trim());
-    await setF('phone',document.getElementById('nf-phone')?.value?.trim());
-    await setDropdown('branch',document.getElementById('nf-branch')?.value);
-    const sbVal=document.getElementById('nf-subbranch')?.value;
-    if(sbVal){await setDropdown('sub-branch (jtg)',sbVal);await setDropdown('sub-branch (mco)',sbVal);await setDropdown('sub-branch',sbVal);}
+    // Email & Phone
+    await setField('email',document.getElementById('nf-email')?.value?.trim());
+    await setField('phone',document.getElementById('nf-phone')?.value?.trim());
+    // First/Last name custom fields if they exist on the list
+    if(type==='Lead'||type==='Contact'){
+      const fn=document.getElementById('nf-fname')?.value?.trim();
+      const ln=document.getElementById('nf-lname')?.value?.trim();
+      if(fn)await setField('first name',fn);
+      if(ln)await setField('last name',ln);
+    }
+    // Branch & Sub-Branch (only for Leads — not Contacts per business rule)
+    if(type==='Lead'){
+      await setField('branch',document.getElementById('nf-branch')?.value);
+      const sbVal=document.getElementById('nf-subbranch')?.value;
+      if(sbVal){await setField('sub-branch (jtg)',sbVal);await setField('sub-branch (mco)',sbVal);await setField('sub-branch',sbVal);}
+    }
+    // Lead/Contact Type (Labels field)
     const checkedTypes=Array.from(document.querySelectorAll('.nf-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
     const typeUuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
     if(typeUuids.length){
       const tf=fields.find(f=>f.name?.toLowerCase().includes('lead/contact type')||f.name?.toLowerCase().includes('contact type'));
-      if(tf)try{await cuFetch(`/task/${newTask.id}/field/${tf.id}`,'POST',{value:typeUuids});}catch(e){console.warn('type:',e.message);}
+      if(tf)try{await cuFetch(`/task/${newTask.id}/field/${tf.id}`,'POST',{value:typeUuids});}catch(e){console.warn('type labels:',e.message);}
     }
-    await setDropdown('lead source',document.getElementById('nf-source')?.value);
-    await setF('lead source notes',document.getElementById('nf-source-notes')?.value?.trim());
+    // Lead Source (dropdown) + Source Details (text)
+    await setField('lead source',document.getElementById('nf-source')?.value);
+    await setField('lead source notes',document.getElementById('nf-source-notes')?.value?.trim());
+    // Next Action Date
     const nadVal=document.getElementById('nf-nad')?.value;
-    if(nadVal)await setF('next action date',new Date(nadVal).getTime());
+    if(nadVal)await setField('next action date',new Date(nadVal).getTime());
+    // Deal-specific fields
+    if(type==='Deal'){
+      await setField('company/account name',document.getElementById('nf-acctname')?.value?.trim());
+      await setField('opportunity',document.getElementById('nf-opportunity')?.value?.trim());
+      await setField('plan',document.getElementById('nf-plan')?.value);
+    }
+    // Account-specific fields
+    if(type==='Account'){
+      await setField('industry',document.getElementById('nf-industry')?.value?.trim());
+      await setField('primary contact',document.getElementById('nf-primary-contact')?.value?.trim());
+    }
     await syncToSheets(newTask,{Lead:'leads',Contact:'contacts',Deal:'pipeline',Account:'accounts'}[type]);
     closeModal('entry-modal');
     showToast(`${type} "${name.trim()}" created! ID: ${newTask.id.toUpperCase()}`,'success');
@@ -2712,87 +2777,84 @@ async function saveUpdateProfile(){
     if(newNotes!==undefined)updateBody.description=newNotes;
     await cuFetch(`/task/${task.id}`,'PUT',updateBody);
 
-    const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[type]||'';
+    const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts,master:S.creds.listTasks}[type]||'';
     const fields=await getListFields(listId);
 
-    const setDF=async(partial,val)=>{
-      if(!val&&val!==0)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f)return;
-      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('CF:',partial,e.message);}
-    };
-    const setDropdown=async(partial,val)=>{
-      if(!val)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f)return;
-      const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
-      if(opt)try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('dd:',e.message);}
-    };
-    const setLabels=async(partial,uuidArr)=>{
-      if(!uuidArr||!uuidArr.length)return;
-      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f)return;
-      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:uuidArr});}catch(e){console.warn('labels:',e.message);}
+    // Universal type-aware field setter
+    const setField=async(partial,val)=>{
+      if(val===undefined||val===null||val==='')return;
+      const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
+              ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))
+              ||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
+              ||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+      if(!f){console.warn('Field not found:',partial);return;}
+      let payload;
+      switch(f.type){
+        case'drop_down':{
+          const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===String(val).toLowerCase());
+          if(!opt){console.warn('Dropdown option not found:',partial,val);return;}
+          payload={value:opt.orderindex!==undefined?opt.orderindex:opt.id};
+          break;}
+        case'labels':{
+          payload={value:Array.isArray(val)?val:[val]};
+          break;}
+        case'date':{
+          payload={value:typeof val==='number'?val:new Date(val).getTime()};
+          break;}
+        case'number':{
+          payload={value:Number(val)};
+          break;}
+        case'url':
+        case'email':
+        case'phone':
+        case'text':
+        default:{
+          payload={value:String(val)};
+          break;}
+      }
+      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',payload);}
+      catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
 
-    // Branch (dropdown)
-    await setDropdown('branch',document.getElementById('up-branch')?.value);
-    // Sub-Branch (dropdown — one field that covers all)
-    const sbVal=document.getElementById('up-subbranch')?.value;
-    if(sbVal){
-      // Try both possible field names
-      await setDropdown('sub-branch (jtg)',sbVal);
-      await setDropdown('sub-branch (mco)',sbVal);
-      await setDropdown('sub-branch',sbVal);
+    // Branch & Sub-Branch (Leads only — not Contacts per business rule)
+    if(type==='leads'){
+      await setField('branch',document.getElementById('up-branch')?.value);
+      const sbVal=document.getElementById('up-subbranch')?.value;
+      if(sbVal){await setField('sub-branch (jtg)',sbVal);await setField('sub-branch (mco)',sbVal);await setField('sub-branch',sbVal);}
     }
     // Lead/Contact Type — Labels field, send array of UUIDs
     if(type==='leads'||type==='contacts'){
       const checkedTypes=Array.from(document.querySelectorAll('.up-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
       const uuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
-      if(uuids.length)await setLabels('lead/contact type',uuids);
+      if(uuids.length)await setField('lead/contact type',uuids);
     }
-    // Lead Source (dropdown) + Lead Source Details (text)
-    await setDropdown('lead source',document.getElementById('up-source')?.value);
-    const snVal=document.getElementById('up-source-notes')?.value?.trim();
-    if(snVal)await setDF('lead source notes',snVal);
-    // Last Action (dropdown)
-    await setDropdown('last action',document.getElementById('up-lastaction')?.value);
-    // Next Action Date
+    // Lead Source + Details
+    await setField('lead source',document.getElementById('up-source')?.value);
+    await setField('lead source notes',document.getElementById('up-source-notes')?.value?.trim());
+    // Last Action
+    await setField('last action',document.getElementById('up-lastaction')?.value);
+    // Dates
     const nadVal=document.getElementById('up-nad')?.value;
-    if(nadVal)await setDF('next action date',new Date(nadVal).getTime());
-    // Next Action Link
-    const nalVal=document.getElementById('up-nal')?.value?.trim();
-    if(nalVal)await setDF('next action link',nalVal);
-    // Recent Opt-In
-    const optVal=document.getElementById('up-optin')?.value?.trim();
-    if(optVal)await setDF('recent opt-in',optVal);
-    // Known As / Title
-    const knownAs=document.getElementById('up-knownAs')?.value?.trim();
-    if(knownAs)await setDF('known as',knownAs);
-    const title=document.getElementById('up-title')?.value?.trim();
-    if(title)await setDF('title',title);
-    // Email / Phone
-    const emailVal=document.getElementById('up-email')?.value?.trim();
-    if(emailVal)await setDF('email',emailVal);
-    const phoneVal=document.getElementById('up-phone')?.value?.trim();
-    if(phoneVal)await setDF('phone',phoneVal);
-    // Pipeline-specific
-    const companyVal=document.getElementById('up-company')?.value?.trim();
-    if(companyVal)await setDF('company/account name',companyVal);
-    const oppVal=document.getElementById('up-opportunity')?.value?.trim();
-    if(oppVal)await setDF('opportunity',oppVal);
-    await setDropdown('plan',document.getElementById('up-plan')?.value);
+    if(nadVal)await setField('next action date',new Date(nadVal).getTime());
     const closeDateVal=document.getElementById('up-closedate')?.value;
-    if(closeDateVal)await setDF('close date',new Date(closeDateVal).getTime());
-    // Account-specific
-    const industryVal=document.getElementById('up-industry')?.value?.trim();
-    if(industryVal)await setDF('industry',industryVal);
-    const pcVal=document.getElementById('up-primary-contact')?.value?.trim();
-    if(pcVal)await setDF('primary contact',pcVal);
-    await setDropdown('account status',document.getElementById('up-acct-status')?.value);
-    // Notebook link (all types)
-    const nbVal=document.getElementById('up-notebook')?.value?.trim();
-    if(nbVal)await setDF('notebook link',nbVal);
+    if(closeDateVal)await setField('close date',new Date(closeDateVal).getTime());
+    // Text/URL fields
+    await setField('next action link',document.getElementById('up-nal')?.value?.trim());
+    await setField('recent opt-in',document.getElementById('up-optin')?.value?.trim());
+    await setField('known as',document.getElementById('up-knownAs')?.value?.trim());
+    await setField('title',document.getElementById('up-title')?.value?.trim());
+    await setField('email',document.getElementById('up-email')?.value?.trim());
+    await setField('phone',document.getElementById('up-phone')?.value?.trim());
+    // Pipeline fields
+    await setField('company/account name',document.getElementById('up-company')?.value?.trim());
+    await setField('opportunity',document.getElementById('up-opportunity')?.value?.trim());
+    await setField('plan',document.getElementById('up-plan')?.value);
+    // Account fields
+    await setField('industry',document.getElementById('up-industry')?.value?.trim());
+    await setField('primary contact',document.getElementById('up-primary-contact')?.value?.trim());
+    await setField('account status',document.getElementById('up-acct-status')?.value);
+    // Shared
+    await setField('notebook link',document.getElementById('up-notebook')?.value?.trim());
 
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
