@@ -2439,12 +2439,7 @@ async function openUpdateProfile(){
       <div class="form-row">
         <div class="form-group"><label>Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||cf.email||'')}"></div>
         <div class="form-group"><label>Phone</label>
-          <div style="display:flex;gap:6px">
-            <select id="up-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
-              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${(cf.phone||cf['primary contact phone']||'').startsWith(cc)?' selected':''}>${cc}</option>`).join('')}
-            </select>
-            <input type="tel" id="up-phone-num" style="flex:1" value="${(cf.phone||cf['primary contact phone']||'').replace(/^\+\d+\s*/,'').trim()}" placeholder="e.g. 470 222 6558">
-          </div>
+          <input type="tel" id="up-phone-num" value="${esc(cf.phone||cf['primary contact phone']||'')}" placeholder="+1 470 222 6558" style="width:100%">
         </div>
       </div>
       <div class="form-group">
@@ -2509,12 +2504,7 @@ async function openUpdateProfile(){
       </div>
       <div class="form-row">
         <div class="form-group"><label>Phone</label>
-          <div style="display:flex;gap:6px">
-            <select id="up-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
-              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${(cf['primary contact phone']||cf.phone||'').startsWith(cc)?' selected':''}>${cc}</option>`).join('')}
-            </select>
-            <input type="tel" id="up-phone-num" style="flex:1" value="${(cf['primary contact phone']||cf.phone||'').replace(/^\+\d+\s*/,'').trim()}" placeholder="e.g. 470 222 6558">
-          </div>
+          <input type="tel" id="up-phone-num" value="${esc(cf['primary contact phone']||cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%">
         </div>
         <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
       </div>`;
@@ -2623,12 +2613,7 @@ function openNewEntryModal(defaultType=''){
     <div id="nf-shared-email-row" class="form-row">
       <div class="form-group"><label>Email</label><input type="email" id="nf-email"></div>
       <div class="form-group"><label>Phone</label>
-          <div style="display:flex;gap:6px">
-            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
-              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
-            </select>
-            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
-          </div>
+          <input type="tel" id="nf-phone" placeholder="+1 470 222 6558" style="width:100%">
         </div>
     </div>
     <div class="form-group"><label>Next Action Date</label><input type="date" id="nf-nad"></div>
@@ -2675,12 +2660,7 @@ function updateNFFields(){
       <div class="form-row">
         <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
         <div class="form-group"><label>Primary Contact Phone</label>
-          <div style="display:flex;gap:6px">
-            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
-              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
-            </select>
-            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
-          </div>
+          <input type="tel" id="nf-phone" placeholder="+1 470 222 6558" style="width:100%">
         </div>
       </div>`;
   } else if(type==='Account'){
@@ -2693,12 +2673,7 @@ function updateNFFields(){
       <div class="form-row">
         <div class="form-group"><label>Primary Contact Email</label><input type="email" id="nf-email"></div>
         <div class="form-group"><label>Primary Contact Phone</label>
-          <div style="display:flex;gap:6px">
-            <select id="nf-phone-cc" class="form-select" style="width:90px;flex-shrink:0">
-              ${['+1','+(1) CA','+44','+61','+64','+27','+353','+91','+52','+55','+34','+33','+49','+39','+81','+86','+82','+65','+971','+234','+254','+233'].map(cc=>`<option value="${cc}"${cc==='+1'?' selected':''}>${cc}</option>`).join('')}
-            </select>
-            <input type="tel" id="nf-phone" style="flex:1" placeholder="e.g. 470 222 6558">
-          </div>
+          <input type="tel" id="nf-phone" placeholder="+1 470 222 6558" style="width:100%">
         </div>
       </div>`;
   } else { d.innerHTML=''; return; }
@@ -2765,11 +2740,10 @@ async function submitEntry(){
       try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
       catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
-    // Email & Phone (with country code)
+    // Email & Phone — auto-prepend +1 if no country code present
     await setField('email',document.getElementById('nf-email')?.value?.trim());
-    const nfPhoneCC=document.getElementById('nf-phone-cc')?.value||'+1';
-    const nfPhoneNum=document.getElementById('nf-phone')?.value?.trim()||'';
-    if(nfPhoneNum)await setField('phone',nfPhoneCC+' '+nfPhoneNum);
+    const rawNfPhone=(document.getElementById('nf-phone')?.value||'').trim();
+    if(rawNfPhone)await setField('phone',rawNfPhone.startsWith('+')?rawNfPhone:'+1 '+rawNfPhone);
     // First/Last name custom fields if they exist on the list
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
@@ -2903,10 +2877,10 @@ async function saveUpdateProfile(){
     await setFieldClear('known as',document.getElementById('up-knownAs')?.value?.trim());
     await setFieldClear('title',document.getElementById('up-title')?.value?.trim());
     await setFieldClear('email',document.getElementById('up-email')?.value?.trim());
-    // Phone — combine country code + number
-    const phoneCC=document.getElementById('up-phone-cc')?.value||'+1';
-    const phoneNum=document.getElementById('up-phone-num')?.value?.trim()||'';
-    await setFieldClear('phone',phoneNum?(phoneCC+' '+phoneNum):'');
+    // Phone — single input, auto-prepend +1 if no country code
+    const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
+    const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
+    await setFieldClear('phone',cleanPhone);
     // Pipeline fields
     await setFieldClear('company/account name',document.getElementById('up-company')?.value?.trim());
     await setFieldClear('opportunity',document.getElementById('up-opportunity')?.value?.trim());
