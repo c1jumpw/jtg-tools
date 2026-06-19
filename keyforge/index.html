@@ -1,0 +1,3174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeyForge — Developer Integration Hub</title>
+<style>
+/* ═══════════════════════════════════════════════
+   KEYFORGE — TOKEN SYSTEM
+   Forge palette: deep black, anvil steel, amber fire
+═══════════════════════════════════════════════ */
+:root {
+  --forge-black:   #0a0a0f;
+  --forge-deep:    #0f0f1a;
+  --forge-steel:   #1a1a2e;
+  --forge-panel:   #14141f;
+  --forge-card:    #181828;
+  --forge-hover:   #1e1e32;
+  --forge-border:  #2a2a40;
+  --forge-bright:  #3a3a55;
+
+  --amber:         #f5a623;
+  --amber-dim:     #7a4f0a;
+  --amber-glow:    #f5a62322;
+  --amber-soft:    #ffc85a;
+
+  --text-primary:  #e8eaf0;
+  --text-secondary:#8892a4;
+  --text-dim:      #4a5260;
+  --text-label:    #a0aab8;
+
+  --green:  #3ecf8e;
+  --red:    #f56565;
+  --blue:   #63b3ed;
+  --purple: #9f7aea;
+
+  --mono: 'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;
+  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-lg: 12px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html,body {
+  height: 100%;
+  font-family: var(--sans);
+  background: var(--forge-black);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* ── FORGE BEAM (signature element) ── */
+.forge-beam {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--amber) 30%,
+    var(--amber-soft) 50%,
+    var(--amber) 70%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: beam-sweep 3s ease-in-out infinite;
+  z-index: 1000;
+}
+@keyframes beam-sweep {
+  0%   { background-position: -100% 0; opacity: .7; }
+  50%  { background-position: 100%  0; opacity: 1;  }
+  100% { background-position: 300%  0; opacity: .7; }
+}
+
+/* ── LAYOUT SHELL ── */
+.shell {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+}
+
+/* ── HEADER ── */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--forge-deep);
+  border-bottom: 1px solid var(--forge-border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  z-index: 50;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.logo-icon {
+  width: 26px; height: 26px;
+  background: linear-gradient(135deg, var(--amber) 0%, #e08000 100%);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 0 12px var(--amber-glow);
+}
+.logo-sub {
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.topbar-divider { width: 1px; height: 24px; background: var(--forge-border); }
+.topbar-search {
+  flex: 1;
+  max-width: 320px;
+  position: relative;
+}
+.topbar-search input {
+  width: 100%;
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  padding: 6px 12px 6px 34px;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color .15s;
+}
+.topbar-search input:focus { border-color: var(--amber); }
+.topbar-search input::placeholder { color: var(--text-dim); }
+.topbar-search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 13px;
+  pointer-events: none;
+}
+.topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.topbar-count {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+}
+.topbar-count span { color: var(--amber); font-weight: 700; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--forge-panel);
+  border-right: 1px solid var(--forge-border);
+  overflow-y: auto;
+  padding: 12px 0;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--forge-border); }
+
+.sidebar-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-dim);
+  padding: 10px 16px 4px;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-left: 2px solid transparent;
+  transition: all .12s;
+  user-select: none;
+}
+.sidebar-item:hover { background: var(--forge-hover); color: var(--text-primary); }
+.sidebar-item.active {
+  background: var(--amber-glow);
+  border-left-color: var(--amber);
+  color: var(--text-primary);
+}
+.sidebar-item-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.sidebar-item-name { flex: 1; }
+.sidebar-item-badge {
+  font-size: 9px;
+  font-family: var(--mono);
+  background: var(--forge-steel);
+  color: var(--text-dim);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.sidebar-item-badge.has-data {
+  background: var(--amber-dim);
+  color: var(--amber);
+}
+
+/* ── MAIN GRID ── */
+.main {
+  overflow-y: auto;
+  background: var(--forge-black);
+  position: relative;
+}
+.main::-webkit-scrollbar { width: 5px; }
+.main::-webkit-scrollbar-thumb { background: var(--forge-border); border-radius: 3px; }
+
+/* ── WELCOME HERO ── */
+.welcome {
+  padding: 40px 32px 20px;
+}
+.welcome h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.welcome h1 em {
+  font-style: normal;
+  background: linear-gradient(90deg, var(--amber), var(--amber-soft));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.welcome p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 560px;
+  margin-bottom: 20px;
+}
+.welcome-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.welcome-stat {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+.welcome-stat strong { color: var(--amber); font-weight: 600; }
+
+/* ── CONTENT AREA ── */
+.content-area {
+  padding: 0 32px 40px;
+}
+
+/* ── CATEGORY HEADER ── */
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0 16px;
+  border-bottom: 1px solid var(--forge-border);
+  margin-bottom: 20px;
+}
+.category-icon-lg {
+  width: 36px; height: 36px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.category-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.category-desc  { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ── INTEGRATION CARD GRID ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.int-card {
+  background: var(--forge-card);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+  cursor: pointer;
+}
+.int-card:hover {
+  border-color: var(--forge-bright);
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+.int-card.has-data {
+  border-color: var(--amber-dim);
+}
+.int-card.has-data:hover {
+  border-color: var(--amber);
+  box-shadow: 0 4px 20px var(--amber-glow);
+}
+
+.int-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--forge-border);
+}
+.int-card-logo {
+  width: 34px; height: 34px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.int-card-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.int-card-category {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.int-card-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
+.status-pip {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--forge-bright);
+}
+.status-pip.filled { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-pip.partial { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+.int-card-fields {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.int-field-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.int-field-preview-label {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  width: 110px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.int-field-preview-val {
+  flex: 1;
+  font-family: var(--mono);
+  color: var(--text-secondary);
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  border-radius: 3px;
+  padding: 3px 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.int-field-preview-val.empty { color: var(--text-dim); font-style: italic; }
+.int-field-preview-val.filled { color: var(--amber-soft); }
+
+.int-card-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--forge-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.int-card-footer-left {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+.btn-open {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .12s;
+}
+.btn-open:hover {
+  background: var(--forge-hover);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* ══════════════════════════════════════
+   DETAIL DRAWER
+══════════════════════════════════════ */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+.drawer-overlay.open { display: block; }
+
+.drawer {
+  position: fixed;
+  top: 0; right: -680px;
+  width: min(680px, 100vw);
+  height: 100vh;
+  background: var(--forge-panel);
+  border-left: 1px solid var(--forge-border);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  transition: right .28s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+.drawer.open { right: 0; }
+
+.drawer-top {
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--forge-border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.drawer-logo {
+  width: 38px; height: 38px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.drawer-title { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+.drawer-subtitle { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.drawer-close {
+  margin-left: auto;
+  width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--forge-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: all .12s;
+}
+.drawer-close:hover { background: var(--forge-hover); color: var(--text-primary); border-color: var(--forge-bright); }
+
+.drawer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--forge-border);
+  flex-shrink: 0;
+}
+.dtab {
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .12s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.dtab:hover { color: var(--text-secondary); }
+.dtab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 22px;
+}
+.drawer-body::-webkit-scrollbar { width: 4px; }
+.drawer-body::-webkit-scrollbar-thumb { background: var(--forge-border); }
+
+.drawer-panel { display: none; }
+.drawer-panel.active { display: block; }
+
+/* ── FIELD GROUPS ── */
+.field-group {
+  margin-bottom: 24px;
+}
+.field-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--forge-border);
+}
+
+.form-field {
+  margin-bottom: 14px;
+}
+.form-field-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.form-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.form-field-hint {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+.form-field-required {
+  font-size: 9px;
+  font-family: var(--mono);
+  background: #3a1515;
+  color: var(--red);
+  padding: 1px 5px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.form-field-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.form-field-wrap input,
+.form-field-wrap textarea {
+  flex: 1;
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  padding: 8px 11px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.form-field-wrap input:focus,
+.form-field-wrap textarea:focus { border-color: var(--amber); }
+.form-field-wrap input::placeholder,
+.form-field-wrap textarea::placeholder { color: var(--text-dim); }
+.form-field-wrap textarea { resize: vertical; min-height: 70px; }
+.form-field-wrap input.has-value { border-color: var(--amber-dim); color: var(--amber-soft); }
+
+.copy-btn {
+  flex-shrink: 0;
+  width: 34px;
+  background: var(--forge-card);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  transition: all .12s;
+}
+.copy-btn:hover { background: var(--forge-hover); color: var(--amber); border-color: var(--amber-dim); }
+
+/* ── STEPS ── */
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 10px 0 14px;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-left: 1px solid var(--forge-border);
+  margin-left: 10px;
+  padding-left: 16px;
+  position: relative;
+}
+.step:last-child { border-left-color: transparent; }
+.step-num {
+  position: absolute;
+  left: -8px; top: 12px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  font-size: 9px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--text-dim);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step-content { flex: 1; }
+.step-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.step-text code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--forge-steel);
+  color: var(--amber-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.step-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--blue);
+  text-decoration: none;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid #1a3a5a;
+  background: #0d1f2f;
+  transition: all .12s;
+}
+.step-link:hover { background: #1a3a5a; color: #90d0ff; }
+.step-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--amber);
+  background: var(--amber-glow);
+  border: 1px solid var(--amber-dim);
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+  font-family: var(--mono);
+}
+
+/* ── OUTPUT BOX ── */
+.output-section {
+  margin-top: 4px;
+}
+.output-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.output-box {
+  background: var(--forge-black);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.7;
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+}
+.output-box::-webkit-scrollbar { width: 3px; }
+.output-box::-webkit-scrollbar-thumb { background: var(--forge-border); }
+.output-key   { color: var(--amber-soft); }
+.output-val   { color: var(--green); }
+.output-label-text { color: var(--blue); }
+.output-section-hdr { color: var(--purple); font-weight: 700; }
+
+.output-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .13s;
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-amber {
+  background: var(--amber);
+  color: var(--forge-black);
+  font-weight: 700;
+}
+.btn-amber:not(:disabled):hover { background: var(--amber-soft); }
+.btn-steel {
+  background: var(--forge-steel);
+  color: var(--text-secondary);
+  border: 1px solid var(--forge-border);
+}
+.btn-steel:not(:disabled):hover { background: var(--forge-hover); color: var(--text-primary); border-color: var(--forge-bright); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--forge-border);
+  padding: 5px 10px;
+  font-size: 11px;
+}
+.btn-ghost:hover { color: var(--text-primary); border-color: var(--forge-bright); background: var(--forge-hover); }
+
+/* ── DRAWER FOOTER ── */
+.drawer-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--forge-border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.drawer-footer-saved {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--green);
+  display: none;
+  align-items: center;
+  gap: 5px;
+}
+.drawer-footer-saved.show { display: flex; }
+
+/* ── GLOBAL OUTPUT PANEL ── */
+.global-output {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 300;
+  backdrop-filter: blur(3px);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.global-output.open { display: flex; }
+.global-output-box {
+  background: var(--forge-panel);
+  border: 1px solid var(--forge-border);
+  border-top: 2px solid var(--amber);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.global-output-header {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--forge-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.global-output-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+.global-output-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+.global-output-body::-webkit-scrollbar { width: 4px; }
+.global-output-body::-webkit-scrollbar-thumb { background: var(--forge-border); }
+.global-output-footer {
+  padding: 14px 22px;
+  border-top: 1px solid var(--forge-border);
+  display: flex;
+  gap: 8px;
+}
+
+/* ── TOAST ── */
+.toasts {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999;
+  pointer-events: none;
+}
+.toast {
+  background: var(--forge-card);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  font-size: 12px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toast-in .2s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  pointer-events: auto;
+}
+.toast.ok  { border-color: var(--green); }
+.toast.err { border-color: var(--red); }
+.toast.info{ border-color: var(--amber-dim); }
+@keyframes toast-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .shell { grid-template-columns: 1fr; grid-template-rows: 52px auto 1fr; }
+  .sidebar { display: none; }
+  .drawer { width: 100vw; }
+  .welcome { padding: 20px 16px 12px; }
+  .content-area { padding: 0 16px 32px; }
+}
+
+/* ── SCROLLBAR GLOBAL ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--forge-border); border-radius: 3px; }
+
+/* ── ALL-INTEGRATIONS VIEW ── */
+.all-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  padding-top: 20px;
+}
+
+.info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+.badge-new  { background: #0f2a1a; color: var(--green); border-color: #1a4a2a; }
+.badge-beta { background: #1a1a0f; color: var(--amber); border-color: var(--amber-dim); }
+</style>
+</head>
+<body>
+
+<div class="forge-beam"></div>
+
+<div class="shell">
+
+  <!-- ══ TOPBAR ══ -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">⚒</div>
+      <div>
+        <div>KeyForge</div>
+        <div class="logo-sub">Developer Integration Hub</div>
+      </div>
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-search">
+      <span class="topbar-search-icon">⌕</span>
+      <input type="text" id="globalSearch" placeholder="Search integrations…" oninput="handleSearch(this.value)" />
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <div class="topbar-count" id="filledCount"><span>0</span> filled</div>
+      <button class="btn btn-amber" onclick="openGlobalOutput()">⎘ Generate AI Context</button>
+    </div>
+  </header>
+
+  <!-- ══ SIDEBAR ══ -->
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main" id="main">
+    <div class="welcome">
+      <h1>Forge your <em>integration keys</em></h1>
+      <p>Pick an integration, follow the steps to locate your credentials, paste them in — then hit <strong>Generate AI Context</strong> to get a ready-to-paste block you can drop straight into Claude to build with real keys embedded.</p>
+      <div class="welcome-stats">
+        <div class="welcome-stat"><strong id="stat-integrations">0</strong> integrations</div>
+        <div class="welcome-stat"><strong id="stat-fields">0</strong> credential fields</div>
+        <div class="welcome-stat"><strong id="stat-categories">0</strong> categories</div>
+      </div>
+    </div>
+    <div class="content-area" id="contentArea"></div>
+  </main>
+
+</div>
+
+<!-- ══ DETAIL DRAWER ══ -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-top">
+    <div class="drawer-logo" id="drawerLogo"></div>
+    <div>
+      <div class="drawer-title" id="drawerTitle"></div>
+      <div class="drawer-subtitle" id="drawerSubtitle"></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <div class="dtab active" onclick="switchDTab(event,'dpanel-fields')">Credentials</div>
+    <div class="dtab" onclick="switchDTab(event,'dpanel-steps')">How to Get</div>
+    <div class="dtab" onclick="switchDTab(event,'dpanel-output')">Output</div>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-panel active" id="dpanel-fields"></div>
+    <div class="drawer-panel" id="dpanel-steps"></div>
+    <div class="drawer-panel" id="dpanel-output"></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-amber" onclick="saveCurrentDrawer()">Save</button>
+    <button class="btn btn-steel" onclick="copyDrawerOutput()">⎘ Copy Output</button>
+    <button class="btn btn-ghost" onclick="clearCurrentDrawer()">Clear</button>
+    <div class="drawer-footer-saved" id="drawerSaved">✓ Saved to session</div>
+  </div>
+</div>
+
+<!-- ══ GLOBAL OUTPUT MODAL ══ -->
+<div class="global-output" id="globalOutput">
+  <div class="global-output-box">
+    <div class="global-output-header">
+      <div class="global-output-title">⎘ AI Integration Context — paste into Claude</div>
+      <button class="drawer-close" onclick="closeGlobalOutput()">✕</button>
+    </div>
+    <div class="global-output-body">
+      <div class="output-box" id="globalOutputBox" style="max-height:60vh;"></div>
+    </div>
+    <div class="global-output-footer">
+      <button class="btn btn-amber" onclick="copyGlobalOutput()">⎘ Copy All</button>
+      <button class="btn btn-steel" onclick="downloadGlobalOutput()">⬇ Download .txt</button>
+      <button class="btn btn-ghost" onclick="closeGlobalOutput()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOASTS ══ -->
+<div class="toasts" id="toasts"></div>
+
+<!-- ══════════════════════════════════════════
+     DATA — INTEGRATIONS REGISTRY
+     To add a new integration: add an object to
+     the INTEGRATIONS array below. Fields:
+       id, name, icon, color, category, description,
+       docsUrl, fields[]
+     Each field:
+       key, label, placeholder, type (text|password|textarea),
+       hint, required, steps[], link, linkLabel, note
+══════════════════════════════════════════ -->
+<script>
+const INTEGRATIONS = [
+
+/* ─────────────────────────────────────────
+   PROJECT MANAGEMENT
+───────────────────────────────────────── */
+{
+  id: 'clickup',
+  name: 'ClickUp',
+  icon: '✅',
+  color: '#7b68ee',
+  category: 'Project Management',
+  description: 'Task management, workspace automation, and custom fields API',
+  docsUrl: 'https://developer.clickup.com',
+  fields: [
+    {
+      key: 'personal_token',
+      label: 'Personal API Token',
+      placeholder: 'pk_12345678_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+      type: 'password',
+      hint: 'starts with pk_',
+      required: true,
+      steps: [
+        'Log in to <strong>app.clickup.com</strong>',
+        'Click your <strong>avatar</strong> in the bottom-left corner',
+        'Go to <strong>Settings → Apps</strong>',
+        'Under <em>API Token</em>, click <strong>Generate</strong> (or copy existing)',
+        'The token begins with <code>pk_</code>'
+      ],
+      link: 'https://app.clickup.com/settings/apps',
+      linkLabel: 'Open ClickUp API Settings →',
+      note: 'Keep this secret — it has full access to your workspace'
+    },
+    {
+      key: 'workspace_id',
+      label: 'Workspace ID (Team ID)',
+      placeholder: '90020012345',
+      type: 'text',
+      hint: 'numeric ID in URL',
+      required: true,
+      steps: [
+        'Open <strong>app.clickup.com</strong> in your browser',
+        'Look at the URL — it will be: <code>app.clickup.com/{WORKSPACE_ID}/home</code>',
+        'The number between the domain and /home is your Workspace ID',
+        'Example: app.clickup.com/<strong>90020012345</strong>/home'
+      ],
+      link: 'https://app.clickup.com/',
+      linkLabel: 'Open ClickUp (check URL) →'
+    },
+    {
+      key: 'list_id',
+      label: 'Default List ID',
+      placeholder: '901234567890',
+      type: 'text',
+      hint: 'optional — specific list to target',
+      steps: [
+        'Open any List in ClickUp',
+        'Click the <strong>three-dot menu (…)</strong> next to the list name',
+        'Select <strong>Copy link</strong>',
+        'The URL contains the list ID: <code>app.clickup.com/t/list/{LIST_ID}</code>',
+        'Or use the ClickUp Inspector tool to browse all list IDs'
+      ]
+    },
+    {
+      key: 'webhook_secret',
+      label: 'Webhook Secret (optional)',
+      placeholder: 'whsec_...',
+      type: 'password',
+      hint: 'for verifying incoming webhooks',
+      steps: [
+        'Go to <strong>Settings → Integrations → Webhooks</strong>',
+        'Click <strong>Create Webhook</strong>',
+        'Set your endpoint URL and select events',
+        'Copy the generated secret'
+      ],
+      link: 'https://app.clickup.com/settings/integrations',
+      linkLabel: 'Open Webhooks Settings →'
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   EMAIL
+───────────────────────────────────────── */
+{
+  id: 'sendgrid',
+  name: 'SendGrid',
+  icon: '📧',
+  color: '#1a82e2',
+  category: 'Email',
+  description: 'Transactional email API for sending, tracking, and templates',
+  docsUrl: 'https://docs.sendgrid.com',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'SendGrid API Key',
+      placeholder: 'SG.XXXXXXXXXXXXXXXXXXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+      type: 'password',
+      hint: 'starts with SG.',
+      required: true,
+      steps: [
+        'Log in at <strong>app.sendgrid.com</strong>',
+        'Navigate to <strong>Settings → API Keys</strong>',
+        'Click <strong>Create API Key</strong>',
+        'Choose <em>Full Access</em> or configure restricted permissions',
+        'Name the key (e.g. "My App Production"), click <strong>Create &amp; View</strong>',
+        'Copy the key immediately — it is shown only once'
+      ],
+      link: 'https://app.sendgrid.com/settings/api_keys',
+      linkLabel: 'Open SendGrid API Keys →',
+      note: 'Copy immediately — SendGrid only shows the full key once after creation'
+    },
+    {
+      key: 'from_email',
+      label: 'Verified Sender Email',
+      placeholder: 'noreply@yourdomain.com',
+      type: 'text',
+      hint: 'must be verified in SendGrid',
+      steps: [
+        'Go to <strong>Settings → Sender Authentication</strong>',
+        'Verify a single sender or authenticate your full domain',
+        'Use the verified email address as your FROM address in code'
+      ],
+      link: 'https://app.sendgrid.com/settings/sender_auth',
+      linkLabel: 'Open Sender Authentication →'
+    },
+    {
+      key: 'template_id',
+      label: 'Dynamic Template ID (optional)',
+      placeholder: 'd-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      hint: 'starts with d-',
+      steps: [
+        'Go to <strong>Email API → Dynamic Templates</strong>',
+        'Create or open a template',
+        'The Template ID is shown at the top: <code>d-xxxxx...</code>',
+        'Click the template version to get the active version ID'
+      ],
+      link: 'https://mc.sendgrid.com/dynamic-templates',
+      linkLabel: 'Open Dynamic Templates →'
+    }
+  ]
+},
+
+{
+  id: 'mailgun',
+  name: 'Mailgun',
+  icon: '🔫',
+  color: '#f06b26',
+  category: 'Email',
+  description: 'Email API for developers — sending, receiving, and tracking',
+  docsUrl: 'https://documentation.mailgun.com',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'Mailgun API Key',
+      placeholder: 'key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>app.mailgun.com</strong>',
+        'Click your username → <strong>API Keys</strong>',
+        'Copy your <em>Private API Key</em>',
+        'Or create a new API key with restricted permissions'
+      ],
+      link: 'https://app.mailgun.com/app/account/security/api_keys',
+      linkLabel: 'Open Mailgun API Keys →'
+    },
+    {
+      key: 'domain',
+      label: 'Mailgun Domain',
+      placeholder: 'mail.yourdomain.com',
+      type: 'text',
+      required: true,
+      steps: [
+        'Go to <strong>Sending → Domains</strong>',
+        'Copy the domain name you want to send from',
+        'Make sure DNS records are verified (green checkmarks)'
+      ],
+      link: 'https://app.mailgun.com/app/sending/domains',
+      linkLabel: 'Open Mailgun Domains →'
+    },
+    {
+      key: 'region',
+      label: 'API Region',
+      placeholder: 'US (api.mailgun.net) or EU (api.eu.mailgun.net)',
+      type: 'text',
+      hint: 'US or EU — determines base URL',
+      steps: [
+        'Check which region your domain is registered in',
+        'US domains use: <code>https://api.mailgun.net/v3/</code>',
+        'EU domains use: <code>https://api.eu.mailgun.net/v3/</code>'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   SMS / VOICE / MESSAGING
+───────────────────────────────────────── */
+{
+  id: 'twilio',
+  name: 'Twilio',
+  icon: '📱',
+  color: '#f22f46',
+  category: 'SMS & Voice',
+  description: 'SMS, voice calls, WhatsApp, and programmable messaging',
+  docsUrl: 'https://www.twilio.com/docs',
+  fields: [
+    {
+      key: 'account_sid',
+      label: 'Account SID',
+      placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      hint: 'starts with AC',
+      required: true,
+      steps: [
+        'Log in at <strong>console.twilio.com</strong>',
+        'On the dashboard home, find the <strong>Account Info</strong> panel',
+        'Copy your <em>Account SID</em> (starts with <code>AC</code>)'
+      ],
+      link: 'https://console.twilio.com/',
+      linkLabel: 'Open Twilio Console →'
+    },
+    {
+      key: 'auth_token',
+      label: 'Auth Token',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Same <strong>Account Info</strong> panel on the Twilio dashboard',
+        'Click the <strong>eye icon</strong> next to Auth Token to reveal it',
+        'Copy the 32-character token'
+      ],
+      note: 'Treat this like a password — rotate if compromised'
+    },
+    {
+      key: 'phone_number',
+      label: 'Twilio Phone Number (From)',
+      placeholder: '+15551234567',
+      type: 'text',
+      hint: 'E.164 format with country code',
+      steps: [
+        'Go to <strong>Phone Numbers → Manage → Active Numbers</strong>',
+        'Copy the number in E.164 format: <code>+1XXXXXXXXXX</code>'
+      ],
+      link: 'https://console.twilio.com/us1/develop/phone-numbers/manage/active',
+      linkLabel: 'Open Active Phone Numbers →'
+    },
+    {
+      key: 'messaging_service_sid',
+      label: 'Messaging Service SID (optional)',
+      placeholder: 'MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      hint: 'starts with MG — use instead of a single number',
+      steps: [
+        'Go to <strong>Messaging → Services</strong>',
+        'Create or open a Messaging Service',
+        'Copy the SID (starts with <code>MG</code>)'
+      ],
+      link: 'https://console.twilio.com/us1/service/messaging-service',
+      linkLabel: 'Open Messaging Services →'
+    },
+    {
+      key: 'webhook_url',
+      label: 'Incoming SMS Webhook URL',
+      placeholder: 'https://yourapp.com/webhooks/twilio/sms',
+      type: 'text',
+      steps: [
+        'Go to your active phone number settings',
+        'Under <strong>Messaging</strong>, set the Webhook URL for incoming messages',
+        'Paste your app\'s endpoint — Twilio will POST to it on every inbound SMS'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   GOOGLE CLOUD / SHEETS
+───────────────────────────────────────── */
+{
+  id: 'google_sheets',
+  name: 'Google Sheets',
+  icon: '📊',
+  color: '#34a853',
+  category: 'Google',
+  description: 'Read and write spreadsheet data via the Sheets API',
+  docsUrl: 'https://developers.google.com/sheets/api',
+  fields: [
+    {
+      key: 'spreadsheet_id',
+      label: 'Spreadsheet ID',
+      placeholder: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+      type: 'text',
+      required: true,
+      steps: [
+        'Open your Google Sheet in the browser',
+        'Look at the URL: <code>docs.google.com/spreadsheets/d/<strong>{SPREADSHEET_ID}</strong>/edit</code>',
+        'Copy the long string between <code>/d/</code> and <code>/edit</code>'
+      ]
+    },
+    {
+      key: 'sheet_name',
+      label: 'Sheet Tab Name',
+      placeholder: 'Sheet1',
+      type: 'text',
+      hint: 'exact name of the tab',
+      steps: [
+        'Look at the tab names at the bottom of your spreadsheet',
+        'Use the exact name including spaces and capitalization',
+        'Example: <code>Sheet1</code>, <code>Responses</code>, <code>Q4 Data</code>'
+      ]
+    },
+    {
+      key: 'service_account_email',
+      label: 'Service Account Email',
+      placeholder: 'myapp@my-project.iam.gserviceaccount.com',
+      type: 'text',
+      hint: 'for server-side access',
+      steps: [
+        'Go to <strong>console.cloud.google.com</strong>',
+        'Open <strong>IAM & Admin → Service Accounts</strong>',
+        'Click <strong>Create Service Account</strong>, name it, grant <em>Editor</em> role',
+        'Copy the generated email address',
+        '<strong>Share your Google Sheet</strong> with this email as an Editor'
+      ],
+      link: 'https://console.cloud.google.com/iam-admin/serviceaccounts',
+      linkLabel: 'Open Service Accounts →'
+    },
+    {
+      key: 'service_account_json',
+      label: 'Service Account JSON Key',
+      placeholder: '{ "type": "service_account", "project_id": "...", "private_key": "...", ... }',
+      type: 'textarea',
+      hint: 'full JSON — keep secret',
+      steps: [
+        'In the Service Account you created, click <strong>Keys</strong> tab',
+        'Click <strong>Add Key → Create new key → JSON</strong>',
+        'A JSON file downloads automatically',
+        'Paste the entire JSON content here',
+        'Store this file securely — treat it like a password'
+      ],
+      note: 'Never commit this JSON to a public git repository'
+    },
+    {
+      key: 'api_key',
+      label: 'API Key (for public sheets only)',
+      placeholder: 'AIzaSy...',
+      type: 'password',
+      hint: 'simpler alternative for read-only public sheets',
+      steps: [
+        'Go to <strong>console.cloud.google.com → APIs & Services → Credentials</strong>',
+        'Click <strong>Create Credentials → API Key</strong>',
+        'Restrict the key to <em>Google Sheets API</em>',
+        'This only works if the sheet is shared publicly (Anyone with link)'
+      ],
+      link: 'https://console.cloud.google.com/apis/credentials',
+      linkLabel: 'Open Google Cloud Credentials →'
+    }
+  ]
+},
+
+{
+  id: 'google_cloud',
+  name: 'Google Cloud',
+  icon: '☁️',
+  color: '#4285f4',
+  category: 'Google',
+  description: 'GCP project credentials for Cloud Run, Firebase, Storage, and more',
+  docsUrl: 'https://cloud.google.com/docs',
+  fields: [
+    {
+      key: 'project_id',
+      label: 'Project ID',
+      placeholder: 'my-project-123456',
+      type: 'text',
+      required: true,
+      steps: [
+        'Open <strong>console.cloud.google.com</strong>',
+        'Click the project selector dropdown at the top',
+        'Your Project ID is listed next to the project name',
+        'Or run: <code>gcloud config get-value project</code> in Cloud Shell'
+      ],
+      link: 'https://console.cloud.google.com/',
+      linkLabel: 'Open Google Cloud Console →'
+    },
+    {
+      key: 'project_number',
+      label: 'Project Number',
+      placeholder: '123456789012',
+      type: 'text',
+      steps: [
+        'Go to <strong>Cloud Console → IAM & Admin → Settings</strong>',
+        'The Project Number is listed at the top of the page'
+      ]
+    },
+    {
+      key: 'region',
+      label: 'Default Region',
+      placeholder: 'us-central1',
+      type: 'text',
+      steps: [
+        'Choose the GCP region closest to your users',
+        'Common choices: <code>us-central1</code>, <code>us-east1</code>, <code>europe-west1</code>, <code>asia-northeast1</code>',
+        'Check service availability by region at cloud.google.com/about/locations'
+      ]
+    },
+    {
+      key: 'service_account_json',
+      label: 'Service Account JSON',
+      placeholder: '{ "type": "service_account", ... }',
+      type: 'textarea',
+      hint: 'full credentials JSON',
+      steps: [
+        'Go to <strong>IAM & Admin → Service Accounts</strong>',
+        'Select a service account (or create one)',
+        'Go to <strong>Keys → Add Key → Create new key → JSON</strong>',
+        'Paste the entire downloaded JSON here'
+      ],
+      link: 'https://console.cloud.google.com/iam-admin/serviceaccounts',
+      linkLabel: 'Open Service Accounts →',
+      note: 'Never expose this in client-side code or public repos'
+    },
+    {
+      key: 'storage_bucket',
+      label: 'Cloud Storage Bucket Name',
+      placeholder: 'my-app-assets',
+      type: 'text',
+      steps: [
+        'Go to <strong>Cloud Storage → Buckets</strong>',
+        'Copy the bucket name (not the full gs:// path)',
+        'If creating new: bucket names must be globally unique'
+      ],
+      link: 'https://console.cloud.google.com/storage/browser',
+      linkLabel: 'Open Cloud Storage →'
+    }
+  ]
+},
+
+{
+  id: 'firebase',
+  name: 'Firebase',
+  icon: '🔥',
+  color: '#ff9800',
+  category: 'Google',
+  description: 'Firebase Realtime DB, Firestore, Auth, Storage, and Functions',
+  docsUrl: 'https://firebase.google.com/docs',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'Web API Key',
+      placeholder: 'AIzaSy...',
+      type: 'password',
+      required: true,
+      steps: [
+        'Open <strong>console.firebase.google.com</strong>',
+        'Select your project → click the <strong>gear icon</strong> (Project Settings)',
+        'Scroll to <strong>Your apps</strong> → Web app config',
+        'Copy <code>apiKey</code> value'
+      ],
+      link: 'https://console.firebase.google.com/',
+      linkLabel: 'Open Firebase Console →'
+    },
+    {
+      key: 'project_id',
+      label: 'Project ID',
+      placeholder: 'my-app-12345',
+      type: 'text',
+      required: true,
+      steps: [
+        'In <strong>Project Settings → General</strong>',
+        'Copy the <em>Project ID</em> under the project name'
+      ]
+    },
+    {
+      key: 'auth_domain',
+      label: 'Auth Domain',
+      placeholder: 'my-app-12345.firebaseapp.com',
+      type: 'text',
+      steps: ['From the same Firebase web config object, copy <code>authDomain</code>']
+    },
+    {
+      key: 'storage_bucket',
+      label: 'Storage Bucket',
+      placeholder: 'my-app-12345.appspot.com',
+      type: 'text',
+      steps: ['Copy <code>storageBucket</code> from the Firebase web config']
+    },
+    {
+      key: 'messaging_sender_id',
+      label: 'Messaging Sender ID',
+      placeholder: '123456789012',
+      type: 'text',
+      steps: ['Copy <code>messagingSenderId</code> from the Firebase web config']
+    },
+    {
+      key: 'app_id',
+      label: 'App ID',
+      placeholder: '1:123456789012:web:abc123def456',
+      type: 'text',
+      steps: ['Copy <code>appId</code> from the Firebase web config']
+    },
+    {
+      key: 'service_account_json',
+      label: 'Admin SDK Service Account (server only)',
+      placeholder: '{ "type": "service_account", ... }',
+      type: 'textarea',
+      hint: 'for server-side Admin SDK use',
+      steps: [
+        'In Project Settings → <strong>Service accounts</strong> tab',
+        'Click <strong>Generate new private key</strong>',
+        'Paste the downloaded JSON here — used for Admin SDK operations'
+      ],
+      note: 'Only use in server environments — never in client/browser code'
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   VERSION CONTROL
+───────────────────────────────────────── */
+{
+  id: 'github',
+  name: 'GitHub',
+  icon: '🐙',
+  color: '#f0f6fc',
+  category: 'Code & DevOps',
+  description: 'Repos, Actions, Issues, PRs, and GitHub Apps via the REST API',
+  docsUrl: 'https://docs.github.com/en/rest',
+  fields: [
+    {
+      key: 'personal_access_token',
+      label: 'Personal Access Token (Classic)',
+      placeholder: 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      hint: 'starts with ghp_',
+      required: true,
+      steps: [
+        'Go to <strong>github.com → Settings</strong> (your profile menu)',
+        'Scroll down to <strong>Developer settings → Personal access tokens → Tokens (classic)</strong>',
+        'Click <strong>Generate new token → Generate new token (classic)</strong>',
+        'Set expiration, check required scopes: <code>repo</code>, <code>workflow</code>, <code>read:org</code>',
+        'Click <strong>Generate token</strong> and copy immediately'
+      ],
+      link: 'https://github.com/settings/tokens/new',
+      linkLabel: 'Create GitHub Token →',
+      note: 'Copy now — GitHub only shows the token once'
+    },
+    {
+      key: 'fine_grained_token',
+      label: 'Fine-Grained Token (recommended)',
+      placeholder: 'github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      hint: 'starts with github_pat_',
+      steps: [
+        'Go to <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens</strong>',
+        'Click <strong>Generate new token</strong>',
+        'Select the repository scope and granular permissions',
+        'These expire and are more secure than classic tokens'
+      ],
+      link: 'https://github.com/settings/personal-access-tokens/new',
+      linkLabel: 'Create Fine-Grained Token →'
+    },
+    {
+      key: 'owner',
+      label: 'Repo Owner (username or org)',
+      placeholder: 'myusername or myorg',
+      type: 'text',
+      required: true,
+      steps: [
+        'This is your GitHub username or organization name',
+        'Visible in any repo URL: <code>github.com/<strong>owner</strong>/repo</code>'
+      ]
+    },
+    {
+      key: 'repo',
+      label: 'Repository Name',
+      placeholder: 'my-app',
+      type: 'text',
+      steps: [
+        'The repository name (not the full URL)',
+        'From: <code>github.com/owner/<strong>repo-name</strong></code>'
+      ]
+    },
+    {
+      key: 'webhook_secret',
+      label: 'Webhook Secret',
+      placeholder: 'a_random_secret_string',
+      type: 'password',
+      steps: [
+        'Go to your <strong>repo → Settings → Webhooks → Add webhook</strong>',
+        'Set your payload URL and choose events',
+        'Enter any string as the <em>Secret</em> (use a random generator)',
+        'Copy the same secret into your app to verify webhook signatures'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'vercel',
+  name: 'Vercel',
+  icon: '▲',
+  color: '#ffffff',
+  category: 'Code & DevOps',
+  description: 'Deploy, environment variables, and project management via Vercel API',
+  docsUrl: 'https://vercel.com/docs/rest-api',
+  fields: [
+    {
+      key: 'api_token',
+      label: 'Vercel API Token',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>vercel.com</strong>',
+        'Go to <strong>Account Settings → Tokens</strong>',
+        'Click <strong>Create</strong>, name it and set scope/expiry',
+        'Copy the token immediately'
+      ],
+      link: 'https://vercel.com/account/tokens',
+      linkLabel: 'Open Vercel Tokens →'
+    },
+    {
+      key: 'project_id',
+      label: 'Project ID',
+      placeholder: 'prj_xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      steps: [
+        'Go to your Vercel project → <strong>Settings → General</strong>',
+        'Scroll to the bottom — copy the <em>Project ID</em>'
+      ]
+    },
+    {
+      key: 'team_id',
+      label: 'Team ID (optional)',
+      placeholder: 'team_xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      hint: 'only needed for team/org projects',
+      steps: [
+        'Go to <strong>Team Settings → General</strong>',
+        'Copy the <em>Team ID</em>'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   DATABASES / BACKEND
+───────────────────────────────────────── */
+{
+  id: 'supabase',
+  name: 'Supabase',
+  icon: '⚡',
+  color: '#3ecf8e',
+  category: 'Database & Auth',
+  description: 'Postgres database, Auth, Storage, and Edge Functions',
+  docsUrl: 'https://supabase.com/docs',
+  fields: [
+    {
+      key: 'project_url',
+      label: 'Project URL',
+      placeholder: 'https://xxxxxxxxxxxxxxxxxxx.supabase.co',
+      type: 'text',
+      required: true,
+      steps: [
+        'Log in at <strong>supabase.com/dashboard</strong>',
+        'Open your project → go to <strong>Settings → API</strong>',
+        'Copy the <em>Project URL</em>'
+      ],
+      link: 'https://supabase.com/dashboard',
+      linkLabel: 'Open Supabase Dashboard →'
+    },
+    {
+      key: 'anon_key',
+      label: 'Anon / Public Key',
+      placeholder: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      type: 'text',
+      hint: 'safe for client-side use',
+      required: true,
+      steps: [
+        'Same <strong>Settings → API</strong> page',
+        'Under <em>Project API keys</em>, copy the <strong>anon / public</strong> key',
+        'This is safe to use in browser code with Row Level Security enabled'
+      ]
+    },
+    {
+      key: 'service_role_key',
+      label: 'Service Role Key (server only)',
+      placeholder: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+      type: 'password',
+      hint: 'bypasses RLS — server only',
+      steps: [
+        'Same <strong>Settings → API</strong> page',
+        'Copy the <strong>service_role</strong> key',
+        'Never expose in client code — bypasses all Row Level Security'
+      ],
+      note: 'Server-side only. Exposes all data if leaked to the client'
+    },
+    {
+      key: 'db_connection_string',
+      label: 'Database Connection String',
+      placeholder: 'postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres',
+      type: 'password',
+      hint: 'for direct Postgres access',
+      steps: [
+        'Go to <strong>Settings → Database → Connection string → URI</strong>',
+        'Replace <code>[YOUR-PASSWORD]</code> with your project password',
+        'Use this for server-side ORM connections (Prisma, Drizzle, etc.)'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'planetscale',
+  name: 'PlanetScale',
+  icon: '🌍',
+  color: '#f5f5f5',
+  category: 'Database & Auth',
+  description: 'Serverless MySQL platform with branching',
+  docsUrl: 'https://planetscale.com/docs',
+  fields: [
+    {
+      key: 'connection_string',
+      label: 'Database URL',
+      placeholder: 'mysql://xxxxxxxxxxx:pscale_pw_xxx@aws.connect.psdb.cloud/mydb?ssl={"rejectUnauthorized":true}',
+      type: 'password',
+      required: true,
+      steps: [
+        'Open your database in the <strong>PlanetScale dashboard</strong>',
+        'Click <strong>Connect</strong> → select your framework',
+        'Copy the <em>DATABASE_URL</em> connection string'
+      ],
+      link: 'https://app.planetscale.com/',
+      linkLabel: 'Open PlanetScale Dashboard →'
+    }
+  ]
+},
+
+{
+  id: 'neon',
+  name: 'Neon (Postgres)',
+  icon: '🟢',
+  color: '#00e599',
+  category: 'Database & Auth',
+  description: 'Serverless Postgres with branching',
+  docsUrl: 'https://neon.tech/docs',
+  fields: [
+    {
+      key: 'connection_string',
+      label: 'Connection String',
+      placeholder: 'postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require',
+      type: 'password',
+      required: true,
+      steps: [
+        'Go to <strong>console.neon.tech</strong>',
+        'Select your project → click <strong>Connection Details</strong>',
+        'Select your branch and role, copy the full connection string'
+      ],
+      link: 'https://console.neon.tech/',
+      linkLabel: 'Open Neon Console →'
+    }
+  ]
+},
+
+{
+  id: 'redis',
+  name: 'Redis / Upstash',
+  icon: '🔴',
+  color: '#dc382d',
+  category: 'Database & Auth',
+  description: 'Redis for caching, queues, rate limiting via Upstash',
+  docsUrl: 'https://docs.upstash.com',
+  fields: [
+    {
+      key: 'redis_url',
+      label: 'Redis URL',
+      placeholder: 'redis://default:xxxxxxxx@us1-xxx.upstash.io:6379',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>console.upstash.com</strong>',
+        'Create or open a Redis database',
+        'Copy the <em>UPSTASH_REDIS_REST_URL</em> or standard Redis URL'
+      ],
+      link: 'https://console.upstash.com/',
+      linkLabel: 'Open Upstash Console →'
+    },
+    {
+      key: 'rest_token',
+      label: 'REST API Token (Upstash)',
+      placeholder: 'AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=',
+      type: 'password',
+      steps: [
+        'Same Upstash database page',
+        'Copy the <em>UPSTASH_REDIS_REST_TOKEN</em>'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   PAYMENTS
+───────────────────────────────────────── */
+{
+  id: 'stripe',
+  name: 'Stripe',
+  icon: '💳',
+  color: '#635bff',
+  category: 'Payments',
+  description: 'Payment processing, subscriptions, invoices, and webhooks',
+  docsUrl: 'https://stripe.com/docs/api',
+  fields: [
+    {
+      key: 'secret_key',
+      label: 'Secret Key',
+      placeholder: 'sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx or sk_test_...',
+      type: 'password',
+      hint: 'sk_test_ for dev, sk_live_ for production',
+      required: true,
+      steps: [
+        'Log in at <strong>dashboard.stripe.com</strong>',
+        'Go to <strong>Developers → API Keys</strong>',
+        'Under <em>Standard Keys</em>, copy the <strong>Secret key</strong>',
+        'Use <code>sk_test_</code> during development, <code>sk_live_</code> in production'
+      ],
+      link: 'https://dashboard.stripe.com/apikeys',
+      linkLabel: 'Open Stripe API Keys →',
+      note: 'Never expose secret key in frontend/client code'
+    },
+    {
+      key: 'publishable_key',
+      label: 'Publishable Key',
+      placeholder: 'pk_live_xxxxxxxxxxxxxxxxxxxxxxxx or pk_test_...',
+      type: 'text',
+      hint: 'safe for client-side code',
+      steps: [
+        'Same <strong>Developers → API Keys</strong> page',
+        'Copy the <strong>Publishable key</strong> (starts with <code>pk_</code>)',
+        'This is safe to embed in frontend JavaScript'
+      ]
+    },
+    {
+      key: 'webhook_secret',
+      label: 'Webhook Endpoint Secret',
+      placeholder: 'whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      hint: 'starts with whsec_',
+      steps: [
+        'Go to <strong>Developers → Webhooks</strong>',
+        'Click <strong>Add endpoint</strong>, set your URL, select events',
+        'After saving, click the endpoint to reveal the <em>Signing secret</em>',
+        'Starts with <code>whsec_</code>'
+      ],
+      link: 'https://dashboard.stripe.com/webhooks',
+      linkLabel: 'Open Stripe Webhooks →'
+    },
+    {
+      key: 'price_id',
+      label: 'Product Price ID (optional)',
+      placeholder: 'price_xxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      steps: [
+        'Go to <strong>Products</strong> → open a product',
+        'Copy the Price ID from the pricing section (starts with <code>price_</code>)'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   AI / ML
+───────────────────────────────────────── */
+{
+  id: 'openai',
+  name: 'OpenAI',
+  icon: '🤖',
+  color: '#10a37f',
+  category: 'AI & ML',
+  description: 'GPT models, embeddings, DALL-E, Whisper, and Assistant API',
+  docsUrl: 'https://platform.openai.com/docs',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'API Key',
+      placeholder: 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Go to <strong>platform.openai.com → API Keys</strong>',
+        'Click <strong>Create new secret key</strong>',
+        'Name it (e.g. "My App") and copy immediately'
+      ],
+      link: 'https://platform.openai.com/api-keys',
+      linkLabel: 'Open OpenAI API Keys →',
+      note: 'Shown only once — copy before closing the dialog'
+    },
+    {
+      key: 'org_id',
+      label: 'Organization ID (optional)',
+      placeholder: 'org-xxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      steps: [
+        'Go to <strong>platform.openai.com → Settings → Organization</strong>',
+        'Copy the <em>Organization ID</em>'
+      ]
+    },
+    {
+      key: 'assistant_id',
+      label: 'Assistant ID (optional)',
+      placeholder: 'asst_xxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      steps: [
+        'Go to <strong>platform.openai.com → Assistants</strong>',
+        'Open your assistant, copy the ID from the URL or details panel'
+      ],
+      link: 'https://platform.openai.com/assistants',
+      linkLabel: 'Open Assistants →'
+    }
+  ]
+},
+
+{
+  id: 'anthropic',
+  name: 'Anthropic (Claude)',
+  icon: '🧠',
+  color: '#cc785c',
+  category: 'AI & ML',
+  description: 'Claude API for text generation, analysis, and tool use',
+  docsUrl: 'https://docs.anthropic.com',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'Anthropic API Key',
+      placeholder: 'sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>console.anthropic.com</strong>',
+        'Go to <strong>API Keys</strong>',
+        'Click <strong>Create Key</strong>, name it, copy the value'
+      ],
+      link: 'https://console.anthropic.com/settings/keys',
+      linkLabel: 'Open Anthropic Console →'
+    },
+    {
+      key: 'model',
+      label: 'Default Model',
+      placeholder: 'claude-sonnet-4-6',
+      type: 'text',
+      hint: 'model string for API calls',
+      steps: [
+        'Current models (as of mid-2025):',
+        '<code>claude-opus-4-6</code> — most capable, higher cost',
+        '<code>claude-sonnet-4-6</code> — balanced performance/cost',
+        '<code>claude-haiku-4-5-20251001</code> — fast and economical'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'pinecone',
+  name: 'Pinecone',
+  icon: '🌲',
+  color: '#08a67c',
+  category: 'AI & ML',
+  description: 'Vector database for AI embeddings and semantic search',
+  docsUrl: 'https://docs.pinecone.io',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'API Key',
+      placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>app.pinecone.io</strong>',
+        'Go to <strong>API Keys</strong> in the left sidebar',
+        'Click <strong>Create API Key</strong>'
+      ],
+      link: 'https://app.pinecone.io/',
+      linkLabel: 'Open Pinecone Console →'
+    },
+    {
+      key: 'index_name',
+      label: 'Index Name',
+      placeholder: 'my-vectors',
+      type: 'text',
+      steps: ['Click <strong>Indexes</strong> in the Pinecone dashboard and copy the index name']
+    },
+    {
+      key: 'index_host',
+      label: 'Index Host URL',
+      placeholder: 'https://my-index-xxxx.svc.xxxx.pinecone.io',
+      type: 'text',
+      steps: ['Open your index, copy the <em>Host</em> URL shown in the details panel']
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   CRM & MARKETING
+───────────────────────────────────────── */
+{
+  id: 'hubspot',
+  name: 'HubSpot',
+  icon: '🟠',
+  color: '#ff7a59',
+  category: 'CRM & Marketing',
+  description: 'Contacts, deals, companies, emails, and workflows via HubSpot API',
+  docsUrl: 'https://developers.hubspot.com',
+  fields: [
+    {
+      key: 'private_app_token',
+      label: 'Private App Token (recommended)',
+      placeholder: 'pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Log in at <strong>app.hubspot.com</strong>',
+        'Go to <strong>Settings → Integrations → Private Apps</strong>',
+        'Click <strong>Create a private app</strong>',
+        'Set scopes your app needs (contacts, crm.objects.deals, etc.)',
+        'Click <strong>Create app</strong> and copy the <em>Access token</em>'
+      ],
+      link: 'https://app.hubspot.com/private-apps',
+      linkLabel: 'Open HubSpot Private Apps →'
+    },
+    {
+      key: 'portal_id',
+      label: 'Portal ID (Hub ID)',
+      placeholder: '12345678',
+      type: 'text',
+      steps: [
+        'In HubSpot, click your <strong>account name</strong> in the top-right',
+        'The Hub ID number is shown below your account name',
+        'Also visible in any HubSpot URL: <code>app.hubspot.com/contacts/<strong>12345678</strong>/</code>'
+      ]
+    },
+    {
+      key: 'webhook_url',
+      label: 'Incoming Webhook URL',
+      placeholder: 'https://yourapp.com/webhooks/hubspot',
+      type: 'text',
+      steps: [
+        'Go to <strong>Settings → Integrations → Webhooks</strong> in your private app',
+        'Set subscriptions (contact creation, deal update, etc.)',
+        'Add your app endpoint as the webhook URL'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'airtable',
+  name: 'Airtable',
+  icon: '🗂',
+  color: '#2d7ff9',
+  category: 'CRM & Marketing',
+  description: 'Database-spreadsheet hybrid with REST API',
+  docsUrl: 'https://airtable.com/developers/web/api/introduction',
+  fields: [
+    {
+      key: 'personal_access_token',
+      label: 'Personal Access Token',
+      placeholder: 'pat...',
+      type: 'password',
+      required: true,
+      steps: [
+        'Go to <strong>airtable.com/account</strong> → <strong>Developer Hub → Personal Access Tokens</strong>',
+        'Click <strong>Create new token</strong>',
+        'Set scopes: <code>data.records:read</code>, <code>data.records:write</code>, <code>schema.bases:read</code>',
+        'Add the base you want to access under "Access"',
+        'Copy the token'
+      ],
+      link: 'https://airtable.com/create/tokens',
+      linkLabel: 'Create Airtable Token →'
+    },
+    {
+      key: 'base_id',
+      label: 'Base ID',
+      placeholder: 'appXXXXXXXXXXXXXX',
+      type: 'text',
+      hint: 'starts with app',
+      steps: [
+        'Open your base in the browser',
+        'URL will be: <code>airtable.com/<strong>appXXXXXXXXXXXXXX</strong>/...</code>',
+        'Copy the <code>app...</code> segment'
+      ]
+    },
+    {
+      key: 'table_id',
+      label: 'Table ID or Name',
+      placeholder: 'tblXXXXXXXXXXXXXX or Table 1',
+      type: 'text',
+      steps: [
+        'Open the table, look at the URL for <code>tbl...</code> segment',
+        'Or use the table name exactly as it appears in the UI'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   AUTOMATION / WEBHOOKS
+───────────────────────────────────────── */
+{
+  id: 'make',
+  name: 'Make (Integromat)',
+  icon: '🔧',
+  color: '#6d00cc',
+  category: 'Automation',
+  description: 'Scenario webhooks and API access for Make automations',
+  docsUrl: 'https://www.make.com/en/help/scenarios/webhooks',
+  fields: [
+    {
+      key: 'webhook_url',
+      label: 'Scenario Webhook URL',
+      placeholder: 'https://hook.us1.make.com/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      required: true,
+      steps: [
+        'Open a scenario in <strong>make.com</strong>',
+        'Add a <strong>Webhooks → Custom Webhook</strong> trigger module',
+        'Click the webhook module, then <strong>Add</strong> to create a new webhook',
+        'Copy the generated webhook URL',
+        'Set <em>Data structure</em> to match your payload'
+      ],
+      link: 'https://www.make.com/en/help/scenarios/webhooks',
+      linkLabel: 'Make Webhooks Docs →'
+    },
+    {
+      key: 'api_key',
+      label: 'Make API Key',
+      placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'Go to <strong>make.com → Profile → API Access</strong>',
+        'Click <strong>Generate API key</strong>'
+      ]
+    },
+    {
+      key: 'team_id',
+      label: 'Team ID',
+      placeholder: '123456',
+      type: 'text',
+      steps: [
+        'Go to <strong>Team settings</strong>',
+        'Copy the numeric Team ID from the URL or settings page'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'zapier',
+  name: 'Zapier',
+  icon: '⚡',
+  color: '#ff4a00',
+  category: 'Automation',
+  description: 'Zap webhook URLs and Zapier API access',
+  docsUrl: 'https://platform.zapier.com/docs',
+  fields: [
+    {
+      key: 'webhook_url',
+      label: 'Catch Hook URL',
+      placeholder: 'https://hooks.zapier.com/hooks/catch/xxxxxxx/xxxxxxxx/',
+      type: 'text',
+      required: true,
+      steps: [
+        'Create a new Zap at <strong>zapier.com</strong>',
+        'Select <strong>Webhooks by Zapier</strong> as the trigger',
+        'Choose <strong>Catch Hook</strong>',
+        'Copy the generated webhook URL',
+        'Send a test payload to it so Zapier can map the fields'
+      ],
+      link: 'https://zapier.com/editor',
+      linkLabel: 'Open Zapier Editor →'
+    },
+    {
+      key: 'api_key',
+      label: 'Zapier API Key',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'Go to <strong>zapier.com/app/settings/integrations</strong>',
+        'Look for <strong>API Key</strong> in developer settings'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'n8n',
+  name: 'n8n',
+  icon: '🔁',
+  color: '#ea4b71',
+  category: 'Automation',
+  description: 'Self-hosted workflow automation webhooks and API',
+  docsUrl: 'https://docs.n8n.io',
+  fields: [
+    {
+      key: 'instance_url',
+      label: 'n8n Instance URL',
+      placeholder: 'https://your-n8n-instance.com or http://localhost:5678',
+      type: 'text',
+      required: true,
+      steps: [
+        'If self-hosted: your server URL + port (default <code>5678</code>)',
+        'If on n8n Cloud: your workspace URL at <code>xxx.app.n8n.cloud</code>'
+      ]
+    },
+    {
+      key: 'api_key',
+      label: 'API Key',
+      placeholder: 'n8n_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'In n8n, click your <strong>user icon → Settings → API</strong>',
+        'Click <strong>Create an API Key</strong>'
+      ]
+    },
+    {
+      key: 'webhook_url',
+      label: 'Webhook Trigger URL',
+      placeholder: 'https://your-n8n.com/webhook/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      type: 'text',
+      steps: [
+        'Open a workflow, add a <strong>Webhook</strong> node',
+        'Copy the Production URL from the node settings'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   COMMUNICATION
+───────────────────────────────────────── */
+{
+  id: 'slack',
+  name: 'Slack',
+  icon: '💬',
+  color: '#4a154b',
+  category: 'Communication',
+  description: 'Bot tokens, incoming webhooks, and Slack app credentials',
+  docsUrl: 'https://api.slack.com',
+  fields: [
+    {
+      key: 'bot_token',
+      label: 'Bot User OAuth Token',
+      placeholder: 'xoxb-xxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      hint: 'starts with xoxb-',
+      required: true,
+      steps: [
+        'Go to <strong>api.slack.com/apps</strong> and create (or open) your app',
+        'Go to <strong>OAuth & Permissions</strong>',
+        'Under <em>Bot Token Scopes</em>, add required scopes (e.g. <code>chat:write</code>, <code>channels:read</code>)',
+        'Click <strong>Install to Workspace</strong>',
+        'Copy the <em>Bot User OAuth Token</em> (starts with <code>xoxb-</code>)'
+      ],
+      link: 'https://api.slack.com/apps',
+      linkLabel: 'Open Slack App Dashboard →'
+    },
+    {
+      key: 'signing_secret',
+      label: 'Signing Secret',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'In your Slack app, go to <strong>Basic Information</strong>',
+        'Under <em>App Credentials</em>, copy the <strong>Signing Secret</strong>',
+        'Used to verify incoming webhooks from Slack'
+      ]
+    },
+    {
+      key: 'incoming_webhook_url',
+      label: 'Incoming Webhook URL',
+      placeholder: 'https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX',
+      type: 'text',
+      steps: [
+        'In your Slack app, go to <strong>Incoming Webhooks → Add New Webhook to Workspace</strong>',
+        'Select the target channel',
+        'Copy the generated webhook URL'
+      ]
+    },
+    {
+      key: 'channel_id',
+      label: 'Default Channel ID',
+      placeholder: 'C01ABCDEFGH',
+      type: 'text',
+      steps: [
+        'In Slack, right-click a channel → <strong>View channel details</strong>',
+        'Scroll to the bottom — Channel ID is shown there',
+        'Or hover the channel name, click <strong>Open in browser</strong>, see URL'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'discord',
+  name: 'Discord',
+  icon: '🎮',
+  color: '#5865f2',
+  category: 'Communication',
+  description: 'Bot tokens, webhooks, and server/channel IDs',
+  docsUrl: 'https://discord.com/developers/docs',
+  fields: [
+    {
+      key: 'bot_token',
+      label: 'Bot Token',
+      placeholder: 'MTxxxxxxxxxxxxxxxxxx.Gxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      required: true,
+      steps: [
+        'Go to <strong>discord.com/developers/applications</strong>',
+        'Click <strong>New Application</strong> or open an existing one',
+        'Go to the <strong>Bot</strong> tab',
+        'Click <strong>Reset Token</strong>, confirm, and copy the token',
+        'Under <em>Privileged Gateway Intents</em>, enable the intents your bot needs'
+      ],
+      link: 'https://discord.com/developers/applications',
+      linkLabel: 'Open Discord Developer Portal →',
+      note: 'Reset generates a new token — update all your deployment configs'
+    },
+    {
+      key: 'application_id',
+      label: 'Application ID',
+      placeholder: '1234567890123456789',
+      type: 'text',
+      steps: [
+        'In your application, go to <strong>General Information</strong>',
+        'Copy the <em>Application ID</em>'
+      ]
+    },
+    {
+      key: 'guild_id',
+      label: 'Server (Guild) ID',
+      placeholder: '1234567890123456789',
+      type: 'text',
+      steps: [
+        'In Discord, enable <strong>Developer Mode</strong>: Settings → Advanced → Developer Mode',
+        'Right-click your server → <strong>Copy Server ID</strong>'
+      ]
+    },
+    {
+      key: 'webhook_url',
+      label: 'Channel Webhook URL',
+      placeholder: 'https://discord.com/api/webhooks/XXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+      type: 'text',
+      steps: [
+        'Right-click a channel → <strong>Edit Channel → Integrations → Webhooks</strong>',
+        'Click <strong>New Webhook</strong>, name it, and copy the URL'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   STORAGE & CDN
+───────────────────────────────────────── */
+{
+  id: 'aws_s3',
+  name: 'AWS S3',
+  icon: '🪣',
+  color: '#ff9900',
+  category: 'Storage & CDN',
+  description: 'S3 buckets, IAM credentials, and CloudFront CDN',
+  docsUrl: 'https://docs.aws.amazon.com/s3/',
+  fields: [
+    {
+      key: 'access_key_id',
+      label: 'AWS Access Key ID',
+      placeholder: 'AKIAIOSFODNN7EXAMPLE',
+      type: 'text',
+      required: true,
+      steps: [
+        'Log in to <strong>AWS Console → IAM</strong>',
+        'Go to <strong>Users → [your user] → Security credentials</strong>',
+        'Under <em>Access keys</em>, click <strong>Create access key</strong>',
+        'Choose use case, acknowledge warning, create',
+        'Copy the <em>Access Key ID</em>'
+      ],
+      link: 'https://console.aws.amazon.com/iam/home#/users',
+      linkLabel: 'Open AWS IAM Users →',
+      note: 'Create a least-privilege IAM user — never use root account keys'
+    },
+    {
+      key: 'secret_access_key',
+      label: 'AWS Secret Access Key',
+      placeholder: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      type: 'password',
+      steps: ['Shown only once on the same creation screen — copy immediately']
+    },
+    {
+      key: 'region',
+      label: 'AWS Region',
+      placeholder: 'us-east-1',
+      type: 'text',
+      steps: [
+        'Check the region selector in the top-right of AWS Console',
+        'Common: <code>us-east-1</code>, <code>us-west-2</code>, <code>eu-west-1</code>, <code>ap-southeast-1</code>'
+      ]
+    },
+    {
+      key: 'bucket_name',
+      label: 'S3 Bucket Name',
+      placeholder: 'my-app-assets',
+      type: 'text',
+      steps: [
+        'Go to <strong>S3 → Buckets</strong>',
+        'Copy the bucket name (globally unique string)'
+      ],
+      link: 'https://s3.console.aws.amazon.com/s3/buckets',
+      linkLabel: 'Open S3 Buckets →'
+    },
+    {
+      key: 'cloudfront_url',
+      label: 'CloudFront Distribution URL (optional)',
+      placeholder: 'https://dxxxxxxxxxxxxx.cloudfront.net',
+      type: 'text',
+      steps: [
+        'Go to <strong>CloudFront → Distributions</strong>',
+        'Copy the <em>Domain name</em> for your distribution'
+      ]
+    }
+  ]
+},
+
+{
+  id: 'cloudinary',
+  name: 'Cloudinary',
+  icon: '🌤',
+  color: '#3448c5',
+  category: 'Storage & CDN',
+  description: 'Image and video upload, transformation, and CDN delivery',
+  docsUrl: 'https://cloudinary.com/documentation',
+  fields: [
+    {
+      key: 'cloud_name',
+      label: 'Cloud Name',
+      placeholder: 'myapp',
+      type: 'text',
+      required: true,
+      steps: [
+        'Log in at <strong>console.cloudinary.com</strong>',
+        'Your Cloud Name is displayed on the Dashboard home'
+      ],
+      link: 'https://console.cloudinary.com/',
+      linkLabel: 'Open Cloudinary Console →'
+    },
+    {
+      key: 'api_key',
+      label: 'API Key',
+      placeholder: '123456789012345',
+      type: 'text',
+      required: true,
+      steps: ['Same Dashboard or <strong>Settings → Access Keys</strong> tab']
+    },
+    {
+      key: 'api_secret',
+      label: 'API Secret',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'Same Dashboard — click the eye icon to reveal',
+        'Or <strong>Settings → Access Keys → Show</strong>'
+      ],
+      note: 'Never expose the API Secret in client-side code'
+    },
+    {
+      key: 'upload_preset',
+      label: 'Upload Preset (optional)',
+      placeholder: 'ml_default',
+      type: 'text',
+      steps: [
+        'Go to <strong>Settings → Upload → Upload presets</strong>',
+        'Create or copy a preset name — required for unsigned uploads from the browser'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   ANALYTICS
+───────────────────────────────────────── */
+{
+  id: 'posthog',
+  name: 'PostHog',
+  icon: '🦔',
+  color: '#f9bd2b',
+  category: 'Analytics',
+  description: 'Product analytics, feature flags, session recording',
+  docsUrl: 'https://posthog.com/docs',
+  fields: [
+    {
+      key: 'api_key',
+      label: 'Project API Key (public)',
+      placeholder: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'text',
+      required: true,
+      steps: [
+        'Go to <strong>app.posthog.com → Project Settings → Project API Key</strong>',
+        'Copy the key (starts with <code>phc_</code>)',
+        'Safe to use in client-side code'
+      ],
+      link: 'https://app.posthog.com/settings/project',
+      linkLabel: 'Open PostHog Settings →'
+    },
+    {
+      key: 'host',
+      label: 'Host URL',
+      placeholder: 'https://app.posthog.com (or your self-hosted URL)',
+      type: 'text',
+      steps: [
+        'US Cloud: <code>https://us.i.posthog.com</code>',
+        'EU Cloud: <code>https://eu.i.posthog.com</code>',
+        'Self-hosted: your own domain'
+      ]
+    },
+    {
+      key: 'personal_api_key',
+      label: 'Personal API Key (server)',
+      placeholder: 'phx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: [
+        'Go to <strong>Settings → User → Personal API Keys</strong>',
+        'Click <strong>Create personal API key</strong>',
+        'Use this for server-side calls and management API'
+      ]
+    }
+  ]
+},
+
+/* ─────────────────────────────────────────
+   GENERIC / CUSTOM
+───────────────────────────────────────── */
+{
+  id: 'custom_webhook',
+  name: 'Custom Webhook',
+  icon: '🪝',
+  color: '#718096',
+  category: 'Custom',
+  description: 'Generic slot for any webhook URL, shared secret, or custom header',
+  docsUrl: null,
+  fields: [
+    {
+      key: 'webhook_url',
+      label: 'Webhook URL',
+      placeholder: 'https://your-service.com/webhook',
+      type: 'text',
+      required: true,
+      steps: [
+        'Copy the webhook endpoint URL from the service you want to receive data from',
+        'Common sources: Typeform, Shopify, GitHub, payment providers, CRMs'
+      ]
+    },
+    {
+      key: 'secret',
+      label: 'Webhook Secret / Signature Key',
+      placeholder: 'whsec_... or any shared secret',
+      type: 'password',
+      steps: [
+        'Most webhook senders include a secret you use to verify the payload signature',
+        'Paste it here to embed in your verification code'
+      ]
+    },
+    {
+      key: 'custom_header',
+      label: 'Custom Auth Header',
+      placeholder: 'Authorization: Bearer xxxxx',
+      type: 'text',
+      steps: ['Some services use custom headers — paste the full header name and value here']
+    },
+    {
+      key: 'notes',
+      label: 'Notes / Context',
+      placeholder: 'Describe what this webhook does, which events trigger it, expected payload shape...',
+      type: 'textarea',
+      steps: []
+    }
+  ]
+},
+
+{
+  id: 'custom_api',
+  name: 'Custom API',
+  icon: '🔌',
+  color: '#9f7aea',
+  category: 'Custom',
+  description: 'Generic slot for any custom REST API credentials',
+  docsUrl: null,
+  fields: [
+    {
+      key: 'base_url',
+      label: 'API Base URL',
+      placeholder: 'https://api.yourservice.com/v1',
+      type: 'text',
+      required: true,
+      steps: ['The root URL all API calls are prefixed with']
+    },
+    {
+      key: 'api_key',
+      label: 'API Key / Token',
+      placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      type: 'password',
+      steps: ['The primary authentication credential for this API']
+    },
+    {
+      key: 'api_key_header',
+      label: 'Auth Header Name',
+      placeholder: 'Authorization or X-API-Key or X-Auth-Token',
+      type: 'text',
+      steps: ['The HTTP header name to send your API key in — check the API docs']
+    },
+    {
+      key: 'notes',
+      label: 'Notes / Payload Shape',
+      placeholder: 'Describe endpoints, required params, response format...',
+      type: 'textarea',
+      steps: []
+    }
+  ]
+}
+
+]; // end INTEGRATIONS
+
+// ══════════════════════════════════════════════════════
+// ENGINE — no need to edit below when adding integrations
+// ══════════════════════════════════════════════════════
+
+// STATE
+let activeIntegrationId = null;
+
+// ── BUILD CATEGORY MAP ──
+const CATEGORIES = {};
+for (const int of INTEGRATIONS) {
+  if (!CATEGORIES[int.category]) CATEGORIES[int.category] = [];
+  CATEGORIES[int.category].push(int);
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  buildSidebar();
+  buildAllView();
+  updateStats();
+  updateFilledCount();
+});
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar');
+  nav.innerHTML = '';
+
+  // All view
+  const allItem = el('div', 'sidebar-item active', `
+    <span class="sidebar-item-icon">🏠</span>
+    <span class="sidebar-item-name">All Integrations</span>
+    <span class="sidebar-item-badge" id="badge-all">${INTEGRATIONS.length}</span>
+  `);
+  allItem.onclick = () => { setActiveSidebar(allItem); buildAllView(); };
+  nav.appendChild(allItem);
+
+  // Categories
+  for (const [cat, ints] of Object.entries(CATEGORIES)) {
+    const lbl = el('div', 'sidebar-section-label', cat);
+    nav.appendChild(lbl);
+
+    for (const int of ints) {
+      const savedCount = getSavedFieldCount(int.id);
+      const filledCount = int.fields.filter(f => f.required).length;
+      const badge = el('span', `sidebar-item-badge${savedCount > 0 ? ' has-data' : ''}`, savedCount > 0 ? `${savedCount}/${int.fields.length}` : `${int.fields.length}`);
+      badge.id = `sidebar-badge-${int.id}`;
+
+      const item = el('div', 'sidebar-item', '');
+      item.innerHTML = `<span class="sidebar-item-icon">${int.icon}</span><span class="sidebar-item-name">${int.name}</span>`;
+      item.appendChild(badge);
+      item.onclick = () => { setActiveSidebar(item); showIntegrationCategory(int.category, int.id); };
+      nav.appendChild(item);
+    }
+  }
+}
+
+function setActiveSidebar(el) {
+  document.querySelectorAll('.sidebar-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function buildAllView() {
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+  for (const [cat, ints] of Object.entries(CATEGORIES)) {
+    const hdr = el('div', 'category-header');
+    hdr.innerHTML = `
+      <div class="category-icon-lg" style="background:${catColor(cat)}22;">${catIcon(cat)}</div>
+      <div>
+        <div class="category-title">${cat}</div>
+        <div class="category-desc">${ints.length} integration${ints.length !== 1 ? 's' : ''}</div>
+      </div>`;
+    area.appendChild(hdr);
+
+    const grid = el('div', 'cards-grid');
+    for (const int of ints) grid.appendChild(buildCard(int));
+    area.appendChild(grid);
+  }
+}
+
+function showIntegrationCategory(catName, scrollToId) {
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+  const ints = CATEGORIES[catName] || [];
+
+  const hdr = el('div', 'category-header');
+  hdr.innerHTML = `
+    <div class="category-icon-lg" style="background:${catColor(catName)}22;">${catIcon(catName)}</div>
+    <div>
+      <div class="category-title">${catName}</div>
+      <div class="category-desc">${ints.length} integration${ints.length !== 1 ? 's' : ''}</div>
+    </div>`;
+  area.appendChild(hdr);
+
+  const grid = el('div', 'cards-grid');
+  for (const int of ints) {
+    const card = buildCard(int);
+    card.id = `card-${int.id}`;
+    grid.appendChild(card);
+  }
+  area.appendChild(grid);
+
+  if (scrollToId) {
+    setTimeout(() => {
+      const target = document.getElementById(`card-${scrollToId}`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+    openDrawer(scrollToId);
+  }
+}
+
+function buildCard(int) {
+  const savedData = getIntegrationData(int.id);
+  const filledFields = int.fields.filter(f => savedData[f.key]);
+  const allRequired = int.fields.filter(f => f.required);
+  const reqFilled = allRequired.filter(f => savedData[f.key]);
+  const hasSome = filledFields.length > 0;
+  const hasAll = allRequired.length > 0 && reqFilled.length === allRequired.length;
+
+  const card = el('div', `int-card${hasSome ? ' has-data' : ''}`);
+
+  const statusText = hasSome
+    ? (hasAll ? 'ready' : `${filledFields.length}/${int.fields.length} filled`)
+    : 'empty';
+  const pipClass = hasSome ? (hasAll ? 'filled' : 'partial') : '';
+
+  card.innerHTML = `
+    <div class="int-card-header">
+      <div class="int-card-logo" style="background:${int.color}22;">${int.icon}</div>
+      <div>
+        <div class="int-card-name">${int.name}</div>
+        <div class="int-card-category">${int.category}</div>
+      </div>
+      <div class="int-card-status">
+        <div class="status-pip ${pipClass}"></div>
+        <span style="color:var(--text-dim)">${statusText}</span>
+      </div>
+    </div>
+    <div class="int-card-fields">
+      ${int.fields.slice(0, 3).map(f => {
+        const val = savedData[f.key];
+        const masked = val ? maskValue(val, f.type) : '';
+        return `<div class="int-field-preview">
+          <div class="int-field-preview-label">${f.label}</div>
+          <div class="int-field-preview-val ${val ? 'filled' : 'empty'}">${val ? masked : 'not set'}</div>
+        </div>`;
+      }).join('')}
+      ${int.fields.length > 3 ? `<div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);margin-top:2px;">+${int.fields.length - 3} more fields</div>` : ''}
+    </div>
+    <div class="int-card-footer">
+      <div class="int-card-footer-left">${int.description}</div>
+      <button class="btn-open">Configure →</button>
+    </div>`;
+
+  card.querySelector('.btn-open').onclick = (e) => { e.stopPropagation(); openDrawer(int.id); };
+  card.onclick = () => openDrawer(int.id);
+  return card;
+}
+
+// ── DRAWER ──
+function openDrawer(intId) {
+  const int = INTEGRATIONS.find(i => i.id === intId);
+  if (!int) return;
+  activeIntegrationId = intId;
+
+  document.getElementById('drawerLogo').innerHTML = `<span style="font-size:20px;background:${int.color}22;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:8px;">${int.icon}</span>`;
+  document.getElementById('drawerTitle').textContent = int.name;
+  document.getElementById('drawerSubtitle').textContent = int.description;
+
+  renderDrawerFields(int);
+  renderDrawerSteps(int);
+  renderDrawerOutput(int);
+
+  document.querySelector('.dtab').click();
+
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerSaved').classList.remove('show');
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+  activeIntegrationId = null;
+}
+
+function renderDrawerFields(int) {
+  const saved = getIntegrationData(int.id);
+  const panel = document.getElementById('dpanel-fields');
+  panel.innerHTML = `
+    <div class="field-group">
+      <div class="field-group-label">${int.name} Credentials</div>
+      ${int.fields.map(f => `
+        <div class="form-field">
+          <div class="form-field-header">
+            <span class="form-field-label">${f.label}</span>
+            ${f.required ? '<span class="form-field-required">required</span>' : ''}
+            ${f.hint ? `<span class="form-field-hint">— ${f.hint}</span>` : ''}
+          </div>
+          <div class="form-field-wrap">
+            ${f.type === 'textarea'
+              ? `<textarea id="field-${int.id}-${f.key}" placeholder="${f.placeholder || ''}" oninput="onFieldInput('${int.id}','${f.key}',this)">${saved[f.key] || ''}</textarea>`
+              : `<input type="${f.type === 'password' ? 'password' : 'text'}"
+                   id="field-${int.id}-${f.key}"
+                   value="${escAttr(saved[f.key] || '')}"
+                   placeholder="${escAttr(f.placeholder || '')}"
+                   oninput="onFieldInput('${int.id}','${f.key}',this)"
+                   class="${saved[f.key] ? 'has-value' : ''}" />`
+            }
+            <button class="copy-btn" onclick="copyFieldValue('${int.id}','${f.key}')" title="Copy value">⎘</button>
+          </div>
+        </div>`).join('')}
+    </div>
+    ${int.docsUrl ? `<div style="margin-top:8px;"><a href="${int.docsUrl}" target="_blank" class="step-link">📖 ${int.name} API Docs →</a></div>` : ''}
+  `;
+}
+
+function renderDrawerSteps(int) {
+  const panel = document.getElementById('dpanel-steps');
+  panel.innerHTML = int.fields.map(f => {
+    if (!f.steps || !f.steps.length) return '';
+    return `
+      <div class="field-group">
+        <div class="field-group-label">How to get: ${f.label}</div>
+        <div class="steps-list">
+          ${f.steps.map((s, i) => `
+            <div class="step">
+              <div class="step-num">${i + 1}</div>
+              <div class="step-content">
+                <div class="step-text">${s}</div>
+              </div>
+            </div>`).join('')}
+          ${f.link ? `<div class="step"><div class="step-num">→</div><div class="step-content"><a href="${f.link}" target="_blank" class="step-link">🔗 ${f.linkLabel || f.link}</a></div></div>` : ''}
+          ${f.note ? `<div class="step-note">⚠ ${f.note}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderDrawerOutput(int) {
+  const panel = document.getElementById('dpanel-output');
+  panel.innerHTML = `
+    <div class="output-section">
+      <div class="output-label">
+        AI Context Output
+        <button class="btn btn-ghost" onclick="refreshDrawerOutput()">↻ Refresh</button>
+      </div>
+      <div class="output-box" id="drawer-output-box">${buildOutputHtml(int.id)}</div>
+    </div>
+    <div class="output-actions">
+      <button class="btn btn-amber" onclick="copyDrawerOutput()">⎘ Copy</button>
+      <button class="btn btn-steel" onclick="downloadIntOutput('${int.id}')">⬇ Download</button>
+    </div>`;
+}
+
+function refreshDrawerOutput() {
+  if (!activeIntegrationId) return;
+  const box = document.getElementById('drawer-output-box');
+  if (box) box.innerHTML = buildOutputHtml(activeIntegrationId);
+}
+
+// ── FIELD INPUT HANDLER ──
+function onFieldInput(intId, key, inputEl) {
+  const val = inputEl.value;
+  if (val) inputEl.classList.add('has-value');
+  else inputEl.classList.remove('has-value');
+  // Auto-save to session as user types
+  const data = getIntegrationData(intId);
+  data[key] = val;
+  saveIntegrationData(intId, data);
+  updateFilledCount();
+  updateSidebarBadge(intId);
+}
+
+function saveCurrentDrawer() {
+  if (!activeIntegrationId) return;
+  const int = INTEGRATIONS.find(i => i.id === activeIntegrationId);
+  if (!int) return;
+  const data = {};
+  for (const f of int.fields) {
+    const el = document.getElementById(`field-${int.id}-${f.key}`);
+    if (el) data[f.key] = el.value;
+  }
+  saveIntegrationData(int.id, data);
+  buildAllView(); // refresh cards
+  updateFilledCount();
+  updateSidebarBadge(int.id);
+  document.getElementById('drawerSaved').classList.add('show');
+  setTimeout(() => document.getElementById('drawerSaved').classList.remove('show'), 2000);
+  showToast('Saved to session', 'ok');
+}
+
+function clearCurrentDrawer() {
+  if (!activeIntegrationId) return;
+  if (!confirm('Clear all saved values for this integration?')) return;
+  sessionStorage.removeItem('kf_' + activeIntegrationId);
+  const int = INTEGRATIONS.find(i => i.id === activeIntegrationId);
+  if (int) { renderDrawerFields(int); refreshDrawerOutput(); }
+  updateFilledCount();
+  updateSidebarBadge(activeIntegrationId);
+  buildAllView();
+  showToast('Cleared', 'info');
+}
+
+// ── OUTPUT BUILDERS ──
+function buildOutputHtml(intId) {
+  const int = INTEGRATIONS.find(i => i.id === intId);
+  if (!int) return '';
+  const data = getIntegrationData(intId);
+  let html = `<span class="output-section-hdr">## ${int.name} Integration Reference</span>\n`;
+  html += `<span class="output-key">Service:</span> <span class="output-val">${int.name}</span>\n`;
+  html += `<span class="output-key">Category:</span> <span class="output-val">${int.category}</span>\n`;
+  if (int.docsUrl) html += `<span class="output-key">Docs:</span> <span class="output-val">${int.docsUrl}</span>\n`;
+  html += '\n';
+  for (const f of int.fields) {
+    const val = data[f.key];
+    const display = val || '[NOT SET]';
+    html += `<span class="output-key">${f.label}:</span> <span class="output-val${val ? '' : '" style="color:var(--text-dim)'}">${escHtml(display)}</span>`;
+    if (f.hint) html += ` <span style="color:var(--text-dim);">← ${escHtml(f.hint)}</span>`;
+    html += '\n';
+  }
+  html += `\n<span style="color:var(--text-dim);"># Generated by KeyForge — ${new Date().toLocaleString()}</span>`;
+  return html;
+}
+
+function buildOutputText(intId) {
+  const int = INTEGRATIONS.find(i => i.id === intId);
+  if (!int) return '';
+  const data = getIntegrationData(intId);
+  const lines = [];
+  lines.push(`## ${int.name} Integration Reference`);
+  lines.push(`Service: ${int.name}`);
+  lines.push(`Category: ${int.category}`);
+  if (int.docsUrl) lines.push(`Docs: ${int.docsUrl}`);
+  lines.push('');
+  for (const f of int.fields) {
+    const val = data[f.key] || '[NOT SET]';
+    lines.push(`${f.label}: ${val}${f.hint ? `  ← ${f.hint}` : ''}`);
+  }
+  lines.push('');
+  lines.push(`# Generated by KeyForge — ${new Date().toLocaleString()}`);
+  return lines.join('\n');
+}
+
+function buildGlobalOutputText() {
+  const allFilled = INTEGRATIONS.filter(i => getSavedFieldCount(i.id) > 0);
+  if (!allFilled.length) return '# No integrations configured yet.\n# Open an integration card, fill in your credentials, and click Save.';
+
+  const lines = [];
+  lines.push('# ══════════════════════════════════════════');
+  lines.push('# KeyForge — AI Integration Context');
+  lines.push(`# Generated: ${new Date().toLocaleString()}`);
+  lines.push(`# Integrations: ${allFilled.length}`);
+  lines.push('# ══════════════════════════════════════════');
+  lines.push('');
+  lines.push('Use the credentials below to write code that integrates these services.');
+  lines.push('All keys are real — embed them directly in environment variables or config.');
+  lines.push('');
+
+  for (const int of allFilled) {
+    lines.push(`${'═'.repeat(50)}`);
+    lines.push(buildOutputText(int.id));
+    lines.push('');
+  }
+
+  lines.push('# ══════════════════════════════════════════');
+  lines.push('# END OF KEYFORGE CONTEXT');
+  return lines.join('\n');
+}
+
+// ── COPY / DOWNLOAD ──
+function copyDrawerOutput() {
+  if (!activeIntegrationId) return;
+  copyToClipboard(buildOutputText(activeIntegrationId));
+  showToast('Copied to clipboard', 'ok');
+}
+
+function copyFieldValue(intId, key) {
+  const el = document.getElementById(`field-${intId}-${key}`);
+  if (!el || !el.value) { showToast('Nothing to copy', 'info'); return; }
+  copyToClipboard(el.value);
+  showToast('Copied!', 'ok');
+}
+
+function downloadIntOutput(intId) {
+  const int = INTEGRATIONS.find(i => i.id === intId);
+  const text = buildOutputText(intId);
+  downloadText(text, `keyforge-${int?.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.txt`);
+  showToast('Downloaded', 'ok');
+}
+
+function openGlobalOutput() {
+  const text = buildGlobalOutputText();
+  document.getElementById('globalOutputBox').textContent = text;
+  document.getElementById('globalOutput').classList.add('open');
+}
+
+function closeGlobalOutput() {
+  document.getElementById('globalOutput').classList.remove('open');
+}
+
+function copyGlobalOutput() {
+  copyToClipboard(buildGlobalOutputText());
+  showToast('Full context copied!', 'ok');
+}
+
+function downloadGlobalOutput() {
+  downloadText(buildGlobalOutputText(), `keyforge-context-${Date.now()}.txt`);
+  showToast('Downloaded', 'ok');
+}
+
+// ── TABS ──
+function switchDTab(e, panelId) {
+  if (activeIntegrationId && panelId === 'dpanel-output') {
+    refreshDrawerOutput();
+  }
+  document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.drawer-panel').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// ── SEARCH ──
+function handleSearch(q) {
+  q = q.toLowerCase();
+  const area = document.getElementById('contentArea');
+  if (!q) { buildAllView(); return; }
+
+  const matched = INTEGRATIONS.filter(i =>
+    i.name.toLowerCase().includes(q) ||
+    i.category.toLowerCase().includes(q) ||
+    i.description.toLowerCase().includes(q) ||
+    i.fields.some(f => f.label.toLowerCase().includes(q) || (f.key||'').includes(q))
+  );
+
+  area.innerHTML = '';
+  if (!matched.length) {
+    area.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--text-dim);font-size:13px;">No integrations match your search.</div>';
+    return;
+  }
+
+  const hdr = el('div', 'category-header');
+  hdr.innerHTML = `<div style="flex:1"><div class="category-title">Search results for "${escHtml(q)}"</div><div class="category-desc">${matched.length} integration${matched.length!==1?'s':''}</div></div>`;
+  area.appendChild(hdr);
+
+  const grid = el('div', 'cards-grid');
+  for (const int of matched) grid.appendChild(buildCard(int));
+  area.appendChild(grid);
+}
+
+// ── STORAGE ──
+function getIntegrationData(intId) {
+  try { return JSON.parse(sessionStorage.getItem('kf_' + intId) || '{}'); } catch { return {}; }
+}
+function saveIntegrationData(intId, data) {
+  sessionStorage.setItem('kf_' + intId, JSON.stringify(data));
+}
+function getSavedFieldCount(intId) {
+  const data = getIntegrationData(intId);
+  return Object.values(data).filter(v => v && v.toString().trim()).length;
+}
+
+// ── UI UPDATES ──
+function updateFilledCount() {
+  const total = INTEGRATIONS.filter(i => getSavedFieldCount(i.id) > 0).length;
+  const el = document.querySelector('#filledCount span');
+  if (el) el.textContent = total;
+}
+
+function updateSidebarBadge(intId) {
+  const badge = document.getElementById(`sidebar-badge-${intId}`);
+  if (!badge) return;
+  const count = getSavedFieldCount(intId);
+  const int = INTEGRATIONS.find(i => i.id === intId);
+  badge.textContent = count > 0 ? `${count}/${int.fields.length}` : `${int.fields.length}`;
+  badge.className = `sidebar-item-badge${count > 0 ? ' has-data' : ''}`;
+}
+
+function updateStats() {
+  document.getElementById('stat-integrations').textContent = INTEGRATIONS.length;
+  document.getElementById('stat-fields').textContent = INTEGRATIONS.reduce((a, i) => a + i.fields.length, 0);
+  document.getElementById('stat-categories').textContent = Object.keys(CATEGORIES).length;
+}
+
+// ── UTILITIES ──
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html) e.innerHTML = html;
+  return e;
+}
+
+function maskValue(val, type) {
+  if (!val) return '';
+  if (type === 'password') return val.slice(0, 4) + '•'.repeat(Math.min(12, val.length - 4));
+  if (val.length > 32) return val.slice(0, 16) + '…' + val.slice(-8);
+  return val;
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+  });
+}
+
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = { ok: '✓', err: '✕', info: '◆' };
+  t.innerHTML = `<span>${icons[type]||'◆'}</span><span>${escHtml(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+function catIcon(cat) {
+  const m = {
+    'Project Management':'📋','Email':'📧','SMS & Voice':'📱',
+    'Google':'🔵','Code & DevOps':'⚙️','Database & Auth':'🗄',
+    'Payments':'💳','AI & ML':'🤖','CRM & Marketing':'🎯',
+    'Automation':'⚡','Communication':'💬','Storage & CDN':'🪣',
+    'Analytics':'📊','Custom':'🔌'
+  };
+  return m[cat] || '🔧';
+}
+
+function catColor(cat) {
+  const m = {
+    'Project Management':'#7b68ee','Email':'#1a82e2','SMS & Voice':'#f22f46',
+    'Google':'#4285f4','Code & DevOps':'#f0f6fc','Database & Auth':'#3ecf8e',
+    'Payments':'#635bff','AI & ML':'#10a37f','CRM & Marketing':'#ff7a59',
+    'Automation':'#6d00cc','Communication':'#5865f2','Storage & CDN':'#ff9900',
+    'Analytics':'#f9bd2b','Custom':'#9f7aea'
+  };
+  return m[cat] || '#718096';
+}
+
+// Close drawer on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDrawer(); closeGlobalOutput(); } });
+</script>
+</body>
+</html>
