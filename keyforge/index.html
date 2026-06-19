@@ -878,6 +878,234 @@ html,body {
 }
 .badge-new  { background: #0f2a1a; color: var(--green); border-color: #1a4a2a; }
 .badge-beta { background: #1a1a0f; color: var(--amber); border-color: var(--amber-dim); }
+
+/* ── GUIDE PAGE ── */
+.guide-page {
+  max-width: 820px;
+  padding-bottom: 60px;
+}
+.guide-hero {
+  background: linear-gradient(135deg, var(--forge-steel) 0%, #0f0f22 100%);
+  border: 1px solid var(--forge-border);
+  border-top: 3px solid var(--amber);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 32px;
+}
+.guide-hero-eyebrow {
+  font-size: 10px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+.guide-hero h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  letter-spacing: -.02em;
+}
+.guide-hero p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 580px;
+}
+.guide-section {
+  margin-bottom: 36px;
+}
+.guide-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--forge-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.guide-section-title span {
+  font-size: 15px;
+}
+.guide-prose {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+.guide-prose strong { color: var(--text-primary); font-weight: 600; }
+.guide-prose code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--forge-steel);
+  color: var(--amber-soft);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Code block with line numbers */
+.guide-code-wrap {
+  background: var(--forge-black);
+  border: 1px solid var(--forge-border);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 14px 0;
+}
+.guide-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--forge-panel);
+  border-bottom: 1px solid var(--forge-border);
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.guide-code-copy {
+  background: none;
+  border: 1px solid var(--forge-border);
+  color: var(--text-dim);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: all .12s;
+}
+.guide-code-copy:hover { border-color: var(--amber); color: var(--amber); }
+.guide-code-body {
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  white-space: pre;
+}
+.guide-code-body::-webkit-scrollbar { height: 4px; }
+.guide-code-body::-webkit-scrollbar-thumb { background: var(--forge-border); }
+
+/* Syntax highlight classes */
+.gc-key     { color: var(--amber-soft); }
+.gc-str     { color: var(--green); }
+.gc-comment { color: var(--text-dim); font-style: italic; }
+.gc-prop    { color: var(--blue); }
+.gc-bool    { color: var(--purple); }
+.gc-punc    { color: var(--text-secondary); }
+
+/* Field type reference table */
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 14px 0;
+}
+.guide-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--forge-border);
+  background: var(--forge-panel);
+  white-space: nowrap;
+}
+.guide-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--forge-border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+.guide-table tr:last-child td { border-bottom: none; }
+.guide-table tr:hover td { background: var(--forge-hover); }
+.guide-table code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--forge-steel);
+  color: var(--amber-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.guide-table-wrap {
+  background: var(--forge-card);
+  border: 1px solid var(--forge-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Checklist */
+.guide-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.guide-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.guide-check-item .chk {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--forge-steel);
+  border: 1px solid var(--forge-border);
+  color: var(--green);
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.guide-check-item strong { color: var(--text-primary); }
+
+/* Quick ref chips */
+.guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.guide-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--forge-border);
+  background: var(--forge-steel);
+  color: var(--text-secondary);
+}
+.guide-chip.amber { border-color: var(--amber-dim); color: var(--amber-soft); background: var(--amber-glow); }
+.guide-chip.green { border-color: #1a4a2a; color: var(--green); background: #0f2a1a; }
+.guide-chip.blue  { border-color: #1a3a5a; color: var(--blue); background: #0d1f2f; }
+
+/* Callout box */
+.guide-callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin: 14px 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.guide-callout.tip  { background: #0f2a1a; border: 1px solid #1a4a2a; color: #7defa8; }
+.guide-callout.warn { background: var(--amber-glow); border: 1px solid var(--amber-dim); color: var(--amber-soft); }
+.guide-callout.info { background: #0d1f2f; border: 1px solid #1a3a5a; color: var(--blue); }
+.guide-callout-icon { font-size: 16px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -2670,6 +2898,20 @@ function buildSidebar() {
       nav.appendChild(item);
     }
   }
+
+  // Bottom — guide link
+  const divider = el('div', '', '');
+  divider.style.cssText = 'height:1px;background:var(--forge-border);margin:10px 0;';
+  nav.appendChild(divider);
+
+  const guideItem = el('div', 'sidebar-item', `
+    <span class="sidebar-item-icon">📖</span>
+    <span class="sidebar-item-name">Add an Integration</span>
+    <span class="sidebar-item-badge badge-new">Guide</span>
+  `);
+  guideItem.id = 'sidebar-guide-item';
+  guideItem.onclick = () => { setActiveSidebar(guideItem); showGuidePage(); };
+  nav.appendChild(guideItem);
 }
 
 function setActiveSidebar(el) {
@@ -2678,6 +2920,10 @@ function setActiveSidebar(el) {
 }
 
 function buildAllView() {
+  // Restore welcome banner if it was hidden by guide page
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.style.display = '';
+
   const area = document.getElementById('contentArea');
   area.innerHTML = '';
   for (const [cat, ints] of Object.entries(CATEGORIES)) {
@@ -2696,7 +2942,349 @@ function buildAllView() {
   }
 }
 
+function showGuidePage() {
+  const area = document.getElementById('contentArea');
+
+  // Scroll welcome out of view cleanly
+  document.querySelector('.welcome').style.display = 'none';
+
+  const SNIPPET_MINIMAL = `{
+  <span class="gc-prop">id</span><span class="gc-punc">:</span> <span class="gc-str">'myservice'</span><span class="gc-punc">,</span>          <span class="gc-comment">// unique slug, no spaces</span>
+  <span class="gc-prop">name</span><span class="gc-punc">:</span> <span class="gc-str">'My Service'</span><span class="gc-punc">,</span>       <span class="gc-comment">// display name</span>
+  <span class="gc-prop">icon</span><span class="gc-punc">:</span> <span class="gc-str">'🔧'</span><span class="gc-punc">,</span>              <span class="gc-comment">// any emoji</span>
+  <span class="gc-prop">color</span><span class="gc-punc">:</span> <span class="gc-str">'#FF5500'</span><span class="gc-punc">,</span>         <span class="gc-comment">// brand hex used for tinting</span>
+  <span class="gc-prop">category</span><span class="gc-punc">:</span> <span class="gc-str">'Automation'</span><span class="gc-punc">,</span>  <span class="gc-comment">// existing category OR new one</span>
+  <span class="gc-prop">description</span><span class="gc-punc">:</span> <span class="gc-str">'One-line description shown on the card'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">docsUrl</span><span class="gc-punc">:</span> <span class="gc-str">'https://docs.myservice.com'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">fields</span><span class="gc-punc">:</span> <span class="gc-punc">[</span>
+    <span class="gc-punc">{</span>
+      <span class="gc-prop">key</span><span class="gc-punc">:</span>         <span class="gc-str">'api_key'</span><span class="gc-punc">,</span>     <span class="gc-comment">// internal key for sessionStorage</span>
+      <span class="gc-prop">label</span><span class="gc-punc">:</span>       <span class="gc-str">'API Key'</span><span class="gc-punc">,</span>     <span class="gc-comment">// shown in UI</span>
+      <span class="gc-prop">placeholder</span><span class="gc-punc">:</span> <span class="gc-str">'sk-...'</span><span class="gc-punc">,</span>       <span class="gc-comment">// hint inside the input</span>
+      <span class="gc-prop">type</span><span class="gc-punc">:</span>        <span class="gc-str">'password'</span><span class="gc-punc">,</span>    <span class="gc-comment">// 'text' | 'password' | 'textarea'</span>
+      <span class="gc-prop">hint</span><span class="gc-punc">:</span>        <span class="gc-str">'starts with sk-'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">required</span><span class="gc-punc">:</span>    <span class="gc-bool">true</span><span class="gc-punc">,</span>
+      <span class="gc-prop">steps</span><span class="gc-punc">:</span> <span class="gc-punc">[</span>
+        <span class="gc-str">'Go to &lt;strong&gt;myservice.com/settings&lt;/strong&gt;'</span><span class="gc-punc">,</span>
+        <span class="gc-str">'Click &lt;strong&gt;API Keys → Create&lt;/strong&gt;'</span><span class="gc-punc">,</span>
+        <span class="gc-str">'Copy the key — it starts with &lt;code&gt;sk-&lt;/code&gt;'</span><span class="gc-punc">,</span>
+      <span class="gc-punc">]</span><span class="gc-punc">,</span>
+      <span class="gc-prop">link</span><span class="gc-punc">:</span>      <span class="gc-str">'https://myservice.com/settings/api'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">linkLabel</span><span class="gc-punc">:</span> <span class="gc-str">'Open API Settings →'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">note</span><span class="gc-punc">:</span>      <span class="gc-str">'Optional amber warning shown below the steps'</span><span class="gc-punc">,</span>
+    <span class="gc-punc">}</span>
+  <span class="gc-punc">]</span>
+<span class="gc-punc">}</span>`;
+
+  const SNIPPET_REAL = `<span class="gc-comment">// ── PASTE THIS INSIDE THE INTEGRATIONS ARRAY ──────────────────</span>
+<span class="gc-comment">// Find the line that says:  const INTEGRATIONS = [</span>
+<span class="gc-comment">// Scroll to the very end of the array (just before the closing ])</span>
+<span class="gc-comment">// Add a comma after the last entry, then paste your object.</span>
+<span class="gc-comment">// ──────────────────────────────────────────────────────────────</span>
+
+<span class="gc-punc">{</span>
+  <span class="gc-prop">id</span><span class="gc-punc">:</span> <span class="gc-str">'linear'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">name</span><span class="gc-punc">:</span> <span class="gc-str">'Linear'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">icon</span><span class="gc-punc">:</span> <span class="gc-str">'🔷'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">color</span><span class="gc-punc">:</span> <span class="gc-str">'#5e6ad2'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">category</span><span class="gc-punc">:</span> <span class="gc-str">'Project Management'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">description</span><span class="gc-punc">:</span> <span class="gc-str">'Issue tracking and project management for engineering teams'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">docsUrl</span><span class="gc-punc">:</span> <span class="gc-str">'https://developers.linear.app/docs'</span><span class="gc-punc">,</span>
+  <span class="gc-prop">fields</span><span class="gc-punc">:</span> <span class="gc-punc">[</span>
+    <span class="gc-punc">{</span>
+      <span class="gc-prop">key</span><span class="gc-punc">:</span>         <span class="gc-str">'api_key'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">label</span><span class="gc-punc">:</span>       <span class="gc-str">'Personal API Key'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">placeholder</span><span class="gc-punc">:</span> <span class="gc-str">'lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">type</span><span class="gc-punc">:</span>        <span class="gc-str">'password'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">hint</span><span class="gc-punc">:</span>        <span class="gc-str">'starts with lin_api_'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">required</span><span class="gc-punc">:</span>    <span class="gc-bool">true</span><span class="gc-punc">,</span>
+      <span class="gc-prop">steps</span><span class="gc-punc">:</span> <span class="gc-punc">[</span>
+        <span class="gc-str">'Log in at &lt;strong&gt;linear.app&lt;/strong&gt;'</span><span class="gc-punc">,</span>
+        <span class="gc-str">'Go to &lt;strong&gt;Settings → API → Personal API Keys&lt;/strong&gt;'</span><span class="gc-punc">,</span>
+        <span class="gc-str">'Click &lt;strong&gt;Create Key&lt;/strong&gt;, name it, copy the value'</span><span class="gc-punc">,</span>
+      <span class="gc-punc">]</span><span class="gc-punc">,</span>
+      <span class="gc-prop">link</span><span class="gc-punc">:</span>      <span class="gc-str">'https://linear.app/settings/api'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">linkLabel</span><span class="gc-punc">:</span> <span class="gc-str">'Open Linear API Settings →'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">note</span><span class="gc-punc">:</span>      <span class="gc-str">'Shown only once after creation — copy immediately'</span><span class="gc-punc">,</span>
+    <span class="gc-punc">}</span><span class="gc-punc">,</span>
+    <span class="gc-punc">{</span>
+      <span class="gc-prop">key</span><span class="gc-punc">:</span>         <span class="gc-str">'team_id'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">label</span><span class="gc-punc">:</span>       <span class="gc-str">'Team ID'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">placeholder</span><span class="gc-punc">:</span> <span class="gc-str">'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">type</span><span class="gc-punc">:</span>        <span class="gc-str">'text'</span><span class="gc-punc">,</span>
+      <span class="gc-prop">steps</span><span class="gc-punc">:</span> <span class="gc-punc">[</span>
+        <span class="gc-str">'Go to &lt;strong&gt;Settings → Workspace → Teams&lt;/strong&gt;'</span><span class="gc-punc">,</span>
+        <span class="gc-str">'Click on your team — copy the UUID from the URL'</span><span class="gc-punc">,</span>
+      <span class="gc-punc">]</span><span class="gc-punc">,</span>
+    <span class="gc-punc">}</span>
+  <span class="gc-punc">]</span>
+<span class="gc-punc">}</span>`;
+
+  const SNIPPET_STEP_HTML = `<span class="gc-comment">// Plain text step:</span>
+<span class="gc-str">'Go to Settings and click API Keys'</span>
+
+<span class="gc-comment">// Step with bold text (use HTML tags — they render in the UI):</span>
+<span class="gc-str">'Go to &lt;strong&gt;Settings → API Keys&lt;/strong&gt;'</span>
+
+<span class="gc-comment">// Step with inline code:</span>
+<span class="gc-str">'The token starts with &lt;code&gt;pk_&lt;/code&gt;'</span>
+
+<span class="gc-comment">// Step with italic:</span>
+<span class="gc-str">'Look under the &lt;em&gt;Account Info&lt;/em&gt; panel'</span>`;
+
+  area.innerHTML = `
+  <div class="guide-page">
+
+    <div class="guide-hero">
+      <div class="guide-hero-eyebrow">Developer Guide</div>
+      <h2>Adding a new integration to KeyForge</h2>
+      <p>Every integration in KeyForge is a single JavaScript object in the <code>INTEGRATIONS</code> array inside <code>index.html</code>. No other code changes needed — the sidebar, cards, credential form, steps panel, and AI context export all wire up automatically from the object you write.</p>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>1️⃣</span> Open the file</div>
+      <div class="guide-prose">
+        Open <code>keyforge/index.html</code> in your code editor. Search for the line:
+      </div>
+      <div class="guide-code-wrap">
+        <div class="guide-code-header">
+          <span>find this line</span>
+          <button class="guide-code-copy" onclick="copyGuideSnippet(this, 'const INTEGRATIONS = [')">Copy</button>
+        </div>
+        <div class="guide-code-body"><span class="gc-key">const</span> <span class="gc-prop">INTEGRATIONS</span> <span class="gc-punc">=</span> <span class="gc-punc">[</span></div>
+      </div>
+      <div class="guide-prose">
+        Scroll to the <strong>very end</strong> of that array — just before the closing <code>];</code> comment that says <em>end INTEGRATIONS</em>. That's where you'll paste your new object.
+      </div>
+      <div class="guide-callout warn">
+        <div class="guide-callout-icon">⚠</div>
+        <div>Make sure there's a <strong>comma</strong> after the closing <code>}</code> of the previous integration before you paste yours. Missing commas are the most common error.</div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>2️⃣</span> The full object shape</div>
+      <div class="guide-prose">Every integration object has these top-level properties, followed by a <code>fields</code> array:</div>
+      <div class="guide-code-wrap">
+        <div class="guide-code-header">
+          <span>integration object — full shape</span>
+          <button class="guide-code-copy" onclick="copyGuideSnippetRaw(this)">Copy template</button>
+        </div>
+        <div class="guide-code-body" id="snippet-full">${SNIPPET_MINIMAL}</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 — field reference table -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>3️⃣</span> Top-level property reference</div>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead>
+            <tr><th>Property</th><th>Type</th><th>Required</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>id</code></td><td>string</td><td>✓</td><td>Unique slug. No spaces. Used as the sessionStorage key prefix. E.g. <code>'stripe'</code>, <code>'my_tool'</code></td></tr>
+            <tr><td><code>name</code></td><td>string</td><td>✓</td><td>Display name shown on the card and in the sidebar. E.g. <code>'Stripe'</code></td></tr>
+            <tr><td><code>icon</code></td><td>string</td><td>✓</td><td>Any single emoji. Shown on the card logo and sidebar item.</td></tr>
+            <tr><td><code>color</code></td><td>hex string</td><td>✓</td><td>Brand color used to tint the card logo background. E.g. <code>'#635bff'</code></td></tr>
+            <tr><td><code>category</code></td><td>string</td><td>✓</td><td>Groups integrations in the sidebar and main view. Use an existing category name to join that group, or type a new one to auto-create it.</td></tr>
+            <tr><td><code>description</code></td><td>string</td><td>✓</td><td>One-line description shown on the card footer and in search results.</td></tr>
+            <tr><td><code>docsUrl</code></td><td>string or null</td><td>—</td><td>Link to the service's official API docs. Shown as a button in the credentials panel. Set to <code>null</code> to omit.</td></tr>
+            <tr><td><code>fields</code></td><td>array</td><td>✓</td><td>Array of credential field objects — see below.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 4 — field object reference -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>4️⃣</span> Each field inside <code>fields: [ ]</code></div>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead>
+            <tr><th>Property</th><th>Type</th><th>Required</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>key</code></td><td>string</td><td>✓</td><td>Internal identifier stored in sessionStorage. Snake_case, unique within the integration. E.g. <code>'api_key'</code>, <code>'webhook_url'</code></td></tr>
+            <tr><td><code>label</code></td><td>string</td><td>✓</td><td>Human-readable label shown above the input and in the AI output. E.g. <code>'API Secret Key'</code></td></tr>
+            <tr><td><code>placeholder</code></td><td>string</td><td>—</td><td>Ghost text inside the input. Use a realistic example value so users know what format to expect.</td></tr>
+            <tr><td><code>type</code></td><td>string</td><td>✓</td><td><code>'text'</code> — plain visible input<br><code>'password'</code> — masked input (dots), value is masked in card preview<br><code>'textarea'</code> — multi-line input (good for JSON blobs)</td></tr>
+            <tr><td><code>hint</code></td><td>string</td><td>—</td><td>Short note shown inline after the label. E.g. <code>'starts with pk_'</code></td></tr>
+            <tr><td><code>required</code></td><td>boolean</td><td>—</td><td>Shows a red REQUIRED badge and is used to calculate completion status on the card.</td></tr>
+            <tr><td><code>steps</code></td><td>string[]</td><td>—</td><td>Array of instruction strings rendered as a numbered step list in the "How to Get" tab. Supports inline HTML: <code>&lt;strong&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;em&gt;</code>.</td></tr>
+            <tr><td><code>link</code></td><td>string</td><td>—</td><td>URL of the exact settings page where the user finds this credential. Opens in a new tab.</td></tr>
+            <tr><td><code>linkLabel</code></td><td>string</td><td>—</td><td>Button label for the link. E.g. <code>'Open Stripe API Keys →'</code></td></tr>
+            <tr><td><code>note</code></td><td>string</td><td>—</td><td>An amber warning box shown below the steps. Use for security reminders or "copy immediately" notices.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div class="guide-section-title" style="font-size:11px;">Step text formatting — HTML tags you can use inside steps strings</div>
+        <div class="guide-code-wrap">
+          <div class="guide-code-header"><span>step html formatting</span><button class="guide-code-copy" onclick="copyGuideSnippet(this, 'Go to &lt;strong&gt;Settings → API Keys&lt;/strong&gt;')">Copy example</button></div>
+          <div class="guide-code-body">${SNIPPET_STEP_HTML}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 — existing categories -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>5️⃣</span> Existing categories — use one or invent your own</div>
+      <div class="guide-prose">Set <code>category</code> to exactly one of these strings to join an existing group. Or use any new string to auto-create a new sidebar section:</div>
+      <div class="guide-chips">
+        ${Object.keys(CATEGORIES).map(c => `<span class="guide-chip amber">${c}</span>`).join('')}
+        <span class="guide-chip green">+ Any new string creates a new category</span>
+      </div>
+    </div>
+
+    <!-- STEP 6 — real example -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>6️⃣</span> Complete real-world example — Linear</div>
+      <div class="guide-prose">Here's what a complete, production-ready integration object looks like. Copy this, replace the values, and paste it into the array:</div>
+      <div class="guide-code-wrap">
+        <div class="guide-code-header">
+          <span>complete example — Linear issue tracker</span>
+          <button class="guide-code-copy" onclick="copyGuideSnippetRaw(this, 'real')">Copy example</button>
+        </div>
+        <div class="guide-code-body" id="snippet-real">${SNIPPET_REAL}</div>
+      </div>
+    </div>
+
+    <!-- STEP 7 — checklist -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>7️⃣</span> Before you save — checklist</div>
+      <div class="guide-checklist">
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>Unique id</strong> — no two integrations share the same <code>id</code> string</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>Comma before your object</strong> — the previous entry's closing <code>}</code> must have a trailing comma</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>No trailing comma on the last field</strong> — the last item in <code>steps: []</code> can have a trailing comma in modern JS, but the last <code>field</code> object should be clean</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>HTML entities in strings</strong> — if your step text uses <code>&lt;</code> or <code>&gt;</code> they must be written as <code>&amp;lt;</code> and <code>&amp;gt;</code> inside JS strings</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>type is one of</strong> <code>'text'</code>, <code>'password'</code>, or <code>'textarea'</code> — any other value breaks the input</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>Realistic placeholder</strong> — show the real format (e.g. <code>sk_live_...</code>) so users know what they're looking for</div></div>
+        <div class="guide-check-item"><div class="chk">✓</div><div><strong>link points to the exact settings page</strong> — not the homepage. Deep links save users time</div></div>
+      </div>
+    </div>
+
+    <!-- STEP 8 — testing -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>8️⃣</span> Test it locally before pushing</div>
+      <div class="guide-prose">After saving the file, open it directly in a browser (or via <code>localhost</code> / Live Server). You should see:</div>
+      <div class="guide-checklist">
+        <div class="guide-check-item"><div class="chk">→</div><div>Your integration appears in the sidebar under the right category</div></div>
+        <div class="guide-check-item"><div class="chk">→</div><div>A card renders in the main grid with your icon, name, and fields preview</div></div>
+        <div class="guide-check-item"><div class="chk">→</div><div>Clicking the card opens the drawer with all fields and the "How to Get" steps</div></div>
+        <div class="guide-check-item"><div class="chk">→</div><div>Filling a field and clicking Save persists it (refreshing the page clears sessionStorage — that's expected)</div></div>
+        <div class="guide-check-item"><div class="chk">→</div><div>"Copy as AI Context" includes your integration's values</div></div>
+      </div>
+      <div class="guide-callout tip">
+        <div class="guide-callout-icon">💡</div>
+        <div>If the page loads blank or the sidebar is empty, open DevTools → Console to see the JS error. A missing comma or unclosed string in the INTEGRATIONS array will break the whole page.</div>
+      </div>
+    </div>
+
+    <!-- STEP 9 — asking Claude -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>9️⃣</span> Let Claude write the integration for you</div>
+      <div class="guide-prose">
+        You can paste the object shape from Step 2 into Claude and ask it to fill in a complete integration. The prompt below works well:
+      </div>
+      <div class="guide-code-wrap">
+        <div class="guide-code-header">
+          <span>prompt to paste into Claude</span>
+          <button class="guide-code-copy" onclick="copyGuideSnippet(this, claudePrompt)">Copy prompt</button>
+        </div>
+        <div class="guide-code-body" style="white-space:pre-wrap;font-size:12px;color:var(--text-secondary);" id="claudePromptBox"></div>
+      </div>
+      <div class="guide-callout info">
+        <div class="guide-callout-icon">ℹ</div>
+        <div>Claude will generate the full integration object with accurate steps, real placeholder formats, and correct deep-link URLs to the service's settings pages. Paste the result directly into the <code>INTEGRATIONS</code> array.</div>
+      </div>
+    </div>
+
+    <!-- STEP 10 — tips -->
+    <div class="guide-section">
+      <div class="guide-section-title"><span>🔟</span> Tips &amp; best practices</div>
+      <div class="guide-checklist">
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Order your fields logically</strong> — required fields first, optional ones last. The card preview shows the first 3.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Use type <code>'password'</code> for anything secret</strong> — API keys, tokens, secrets, JSON blobs. It masks input and redacts the card preview.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Use <code>type: 'textarea'</code> for JSON</strong> — service account JSON, OAuth configs, multi-line values.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Add a <code>note</code> for "copy now" situations</strong> — many services (GitHub, SendGrid, OpenAI) only show the secret once. Flag it.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Be specific in steps</strong> — "Go to Settings" is weak. "Click your avatar → Settings → Developer → API Keys" is useful.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Add both tokens when a service has dev + prod</strong> — e.g. Stripe's <code>sk_test_</code> and <code>sk_live_</code> are separate fields.</div></div>
+        <div class="guide-check-item"><div class="chk">★</div><div><strong>Webhook URLs deserve their own field</strong> — even if the service has an API key, add a separate <code>webhook_url</code> field. It's often the thing you need most in Claude prompts.</div></div>
+      </div>
+    </div>
+
+  </div>`;
+
+  // Inject the Claude prompt text dynamically
+  const claudePrompt = `I'm building a KeyForge integration object for [SERVICE NAME].
+
+Please generate a complete JavaScript object following this exact shape:
+
+{
+  id: 'service_id',         // lowercase slug
+  name: 'Service Name',
+  icon: '🔧',              // appropriate emoji
+  color: '#HEXCODE',       // brand color
+  category: 'Category',   // pick the most fitting: Project Management, Email, SMS & Voice, Google, Code & DevOps, Database & Auth, Payments, AI & ML, CRM & Marketing, Automation, Communication, Storage & CDN, Analytics, Custom
+  description: 'One sentence description',
+  docsUrl: 'https://...',
+  fields: [
+    {
+      key: 'field_key',
+      label: 'Display Label',
+      placeholder: 'realistic example value',
+      type: 'text' | 'password' | 'textarea',
+      hint: 'short format hint',
+      required: true/false,
+      steps: [
+        'Step with <strong>bold</strong> and <code>code</code> HTML allowed',
+        ...
+      ],
+      link: 'https://exact-settings-page-url',
+      linkLabel: 'Open X Settings →',
+      note: 'Warning if secret is shown only once or has security implications',
+    }
+  ]
+}
+
+Include: all commonly needed credentials, accurate step-by-step instructions with exact navigation paths, realistic placeholder values, and direct deep-link URLs to the right settings pages in the platform. Mark the most important field as required: true.`;
+
+  document.getElementById('claudePromptBox').textContent = claudePrompt;
+  window._claudePrompt = claudePrompt;
+
+  // Restore welcome if user navigates away
+  document.querySelector('.welcome').style.display = 'none';
+}
+
+// Helper for guide code copy buttons
+function copyGuideSnippet(btn, text) {
+  const val = typeof text === 'string' ? text : (window._claudePrompt || '');
+  copyToClipboard(val);
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
+function copyGuideSnippetRaw(btn, which) {
+  // Strip HTML tags from the syntax-highlighted code blocks
+  const id = which === 'real' ? 'snippet-real' : 'snippet-full';
+  const el = document.getElementById(id);
+  const text = el ? el.textContent : '';
+  copyToClipboard(text);
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1500);
+}
+
 function showIntegrationCategory(catName, scrollToId) {
+  // Restore welcome banner if hidden
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.style.display = '';
+
   const area = document.getElementById('contentArea');
   area.innerHTML = '';
   const ints = CATEGORIES[catName] || [];
