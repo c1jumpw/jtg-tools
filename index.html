@@ -10,45 +10,39 @@
 body{font-family:system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh}
 a{color:inherit;text-decoration:none}
 .app{max-width:1100px;margin:0 auto;padding:2rem 1.5rem}
-
-/* Top bar */
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:1px solid #21262d}
 .brand{display:flex;align-items:center;gap:12px}
 .brand-logo{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .brand h1{font-size:17px;font-weight:600;color:#e6edf3}
 .brand span{font-size:12px;color:#768390;font-family:monospace}
-.topbar-actions{display:flex;gap:8px}
-
-/* Buttons */
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{padding:7px 14px;border-radius:6px;border:1px solid #30363d;background:#21262d;color:#e6edf3;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;font-family:inherit}
 .btn:hover{background:#30363d;border-color:#8b949e}
 .btn.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .btn.primary:hover{background:#388bfd}
-.btn.danger{background:#da3633;border-color:#da3633;color:#fff}
-.btn.danger:hover{background:#f85149}
+.btn.success{background:#238636;border-color:#238636;color:#fff}
+.btn.success:hover{background:#2ea043}
+.btn.warning{background:#9e6a03;border-color:#9e6a03;color:#fff}
+.btn.warning:hover{background:#b07b07}
 .btn:disabled{opacity:0.5;cursor:not-allowed}
-
-/* Stats */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.75rem}
 .stat{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:14px 16px}
 .stat-label{font-size:12px;color:#768390;margin-bottom:4px}
 .stat-val{font-size:24px;font-weight:600}
-
-/* Tabs */
 .tabs{display:flex;gap:0;margin-bottom:1.25rem;border-bottom:1px solid #21262d}
 .tab{padding:8px 16px;font-size:13px;color:#768390;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s}
 .tab:hover{color:#e6edf3}
 .tab.active{color:#e6edf3;border-bottom-color:#388bfd;font-weight:500}
-
-/* Tool cards */
 .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
 .tool-card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:1.125rem;transition:border-color 0.15s;position:relative}
-.tool-card:hover{border-color:#388bfd33}
+.tool-card:hover{border-color:#388bfd55}
 .tool-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
 .tool-icon{width:38px;height:38px;border-radius:8px;background:#21262d;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .tool-actions{display:flex;gap:5px}
 .icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid #30363d;background:transparent;color:#768390;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.15s}
 .icon-btn:hover{background:#21262d;color:#e6edf3;border-color:#8b949e}
+.icon-btn.edit-btn:hover{color:#58a6ff;border-color:#388bfd}
+.icon-btn.del-btn:hover{color:#f85149;border-color:#da3633}
 .tool-name{font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:5px}
 .tool-desc{font-size:12px;color:#768390;line-height:1.55;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tool-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
@@ -58,15 +52,11 @@ a{color:inherit;text-decoration:none}
 .badge-planned{background:#3d2200;color:#d29922;border:1px solid #9e6a03}
 .repo-link{font-size:12px;color:#768390;display:flex;align-items:center;gap:4px;transition:color 0.15s;cursor:pointer}
 .repo-link:hover{color:#388bfd}
-
-/* Empty state */
 .empty{grid-column:1/-1;text-align:center;padding:3.5rem 1rem;color:#768390}
 .empty i{font-size:40px;margin-bottom:14px;display:block}
-
-/* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:200;padding:1rem}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:200;padding:1rem}
 .modal-overlay.open{display:flex}
-.modal{background:#161b22;border:1px solid #30363d;border-radius:12px;width:min(560px,100%);max-height:88vh;overflow-y:auto}
+.modal{background:#161b22;border:1px solid #30363d;border-radius:12px;width:min(580px,100%);max-height:90vh;overflow-y:auto}
 .modal-head{padding:1.25rem 1.5rem;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#161b22;z-index:1}
 .modal-head h2{font-size:16px;font-weight:600}
 .modal-body{padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:14px}
@@ -85,19 +75,19 @@ a{color:inherit;text-decoration:none}
 .toggle-row input{width:auto;cursor:pointer}
 .files-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .file-chip{font-size:11px;background:#21262d;border:1px solid #30363d;border-radius:4px;padding:3px 8px;color:#8b949e;font-family:monospace}
-.status-msg{font-size:13px;padding:10px 12px;border-radius:6px;background:#0d1117;border:1px solid #21262d}
-
-/* Settings */
+.status-msg{font-size:13px;padding:10px 12px;border-radius:6px;background:#0d1117;border:1px solid #21262d;line-height:1.6}
+.sync-bar{background:#161b22;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sync-info{font-size:12px;color:#768390;display:flex;align-items:center;gap:6px}
+.sync-info .dot{width:8px;height:8px;border-radius:50%;background:#3fb950;flex-shrink:0}
+.sync-info .dot.warn{background:#d29922}
 .settings-panel{display:none;padding:2rem 0}
 .settings-panel.open{display:block}
-.settings-card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:1.5rem;max-width:480px}
+.settings-card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:1.5rem;max-width:480px;margin-bottom:1rem}
 .settings-card h3{font-size:14px;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
-
-/* Toast */
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1f6feb;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;display:flex;align-items:center;gap:8px;white-space:nowrap}
 .toast.show{opacity:1}
-.toast.error{background:#da3633}
-
+.toast.error-toast{background:#da3633}
+.toast.success-toast{background:#238636}
 @media(max-width:600px){
   .stats{grid-template-columns:repeat(2,1fr)}
   .field-row{grid-template-columns:1fr}
@@ -112,22 +102,32 @@ a{color:inherit;text-decoration:none}
       <div class="brand-logo">🛠</div>
       <div>
         <h1>JTG Tools</h1>
-        <span>c1jumpw / jtg-tools</span>
+        <span id="brand-sub">c1jumpw / jtg-tools</span>
       </div>
     </div>
     <div class="topbar-actions">
       <button class="btn" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Settings</button>
-      <button class="btn primary" onclick="openModal()"><i class="fa-solid fa-plus"></i> New tool</button>
+      <button class="btn success" id="sync-btn" onclick="syncToGitHub()"><i class="fa-brands fa-github"></i> Sync to GitHub</button>
+      <button class="btn primary" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> New tool</button>
     </div>
   </div>
 
   <div id="main-view">
+    <div class="sync-bar" id="sync-bar">
+      <div class="sync-info">
+        <div class="dot warn" id="sync-dot"></div>
+        <span id="sync-label">Not synced yet — click "Sync to GitHub" to push registry to your live site</span>
+      </div>
+      <a href="https://c1jumpw.github.io/jtg-tools/" target="_blank" class="btn" style="font-size:12px;padding:5px 10px">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> View live site
+      </a>
+    </div>
     <div class="stats" id="stats-row"></div>
-    <div class="tabs" id="tabs-row">
-      <div class="tab active" data-filter="all" onclick="setFilter('all',this)">All</div>
-      <div class="tab" data-filter="live" onclick="setFilter('live',this)">Live</div>
-      <div class="tab" data-filter="wip" onclick="setFilter('wip',this)">In progress</div>
-      <div class="tab" data-filter="planned" onclick="setFilter('planned',this)">Planned</div>
+    <div class="tabs">
+      <div class="tab active" onclick="setFilter('all',this)">All</div>
+      <div class="tab" onclick="setFilter('live',this)">Live</div>
+      <div class="tab" onclick="setFilter('wip',this)">In progress</div>
+      <div class="tab" onclick="setFilter('planned',this)">Planned</div>
     </div>
     <div class="tools-grid" id="tools-grid"></div>
   </div>
@@ -153,13 +153,20 @@ a{color:inherit;text-decoration:none}
           <input type="text" id="st-repo" value="jtg-tools" />
         </div>
         <button class="btn primary" onclick="saveSettings()" style="width:100%;justify-content:center"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
-        <p style="font-size:12px;color:#768390;line-height:1.6">Token needs <code style="background:#21262d;padding:1px 4px;border-radius:3px">repo</code> scope to create repositories and push files. Stored in localStorage for this browser.</p>
+        <p style="font-size:12px;color:#768390;line-height:1.6">Token needs <code style="background:#21262d;padding:1px 4px;border-radius:3px">repo</code> scope to create repos and push files. Stored in localStorage.</p>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3><i class="fa-solid fa-database"></i> Data</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn" onclick="exportData()" style="width:100%;justify-content:center"><i class="fa-solid fa-download"></i> Export tools as JSON</button>
+        <button class="btn" onclick="resetToDefaults()" style="width:100%;justify-content:center;border-color:#da3633;color:#f85149"><i class="fa-solid fa-rotate-left"></i> Reset to defaults</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Add / Edit Modal -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-head">
@@ -167,6 +174,7 @@ a{color:inherit;text-decoration:none}
       <button class="icon-btn" onclick="closeModal()" aria-label="Close" style="width:32px;height:32px;font-size:14px"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="f-id" value="" />
       <div class="field-row">
         <div class="field">
           <label>Tool name *</label>
@@ -199,8 +207,12 @@ a{color:inherit;text-decoration:none}
           <input type="text" id="f-icon" placeholder="🛠️" maxlength="4" style="font-size:18px" />
         </div>
       </div>
+      <div class="field">
+        <label>Live URL (optional)</label>
+        <input type="text" id="f-url" placeholder="https://c1jumpw.github.io/jtg-tools/tool-name/" />
+      </div>
 
-      <div class="gh-panel">
+      <div class="gh-panel" id="gh-panel-new">
         <div class="gh-panel-head">
           <i class="fa-brands fa-github" style="font-size:16px"></i>
           <span>GitHub integration</span>
@@ -212,10 +224,10 @@ a{color:inherit;text-decoration:none}
         <div id="repo-opts" style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
           <div class="field">
             <label>Repository name</label>
-            <input type="text" id="f-repo" placeholder="jtg-my-tool" />
+            <input type="text" id="f-repo" placeholder="my-tool-name" />
           </div>
           <div>
-            <div style="font-size:12px;color:#8b949e;margin-bottom:6px">Files to be created:</div>
+            <div style="font-size:12px;color:#8b949e;margin-bottom:6px">Files that will be created:</div>
             <div class="files-preview">
               <span class="file-chip">README.md</span>
               <span class="file-chip">index.html</span>
@@ -234,44 +246,64 @@ a{color:inherit;text-decoration:none}
   </div>
 </div>
 
-<div class="toast" id="toast"><i class="fa-solid fa-check"></i><span id="toast-msg"></span></div>
+<!-- Sync modal -->
+<div class="modal-overlay" id="sync-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h2><i class="fa-brands fa-github" style="margin-right:8px"></i>Sync to GitHub</h2>
+      <button class="icon-btn" onclick="closeSyncModal()" style="width:32px;height:32px;font-size:14px"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#8b949e;line-height:1.6">This will push an updated <code style="background:#21262d;padding:1px 5px;border-radius:3px">index.html</code> to <strong style="color:#e6edf3">c1jumpw/jtg-tools</strong> on the <code style="background:#21262d;padding:1px 5px;border-radius:3px">main</code> branch. GitHub Pages will automatically redeploy your live site.</p>
+      <div id="sync-status" class="status-msg" style="display:none;margin-top:4px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeSyncModal()">Cancel</button>
+      <button class="btn success" id="sync-confirm-btn" onclick="doSync()"><i class="fa-brands fa-github"></i> Push to GitHub</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-check" id="toast-icon"></i><span id="toast-msg"></span></div>
 
 <script>
-const EMOJI_POOL=['🛠️','📊','🤖','🔗','📁','⚡','🔍','📝','🎨','🧪','🔧','📦','🚀','🧩','🔐'];
-let tools=[], activeFilter='all';
-let ghToken = localStorage.getItem('jtg-gh-token') || '';
-let ghOrg = localStorage.getItem('jtg-gh-org') || 'c1jumpw';
-let ghParentRepo = localStorage.getItem('jtg-gh-repo') || 'jtg-tools';
+const EMOJI_POOL=['🛠️','📊','🤖','🔗','📁','⚡','🔍','📝','🎨','🧪','🔧','📦','🚀','🧩','🔐','🎉','👥','📧'];
+let tools=[], activeFilter='all', editingId=null;
+let ghToken=localStorage.getItem('jtg-gh-token')||'';
+let ghOrg=localStorage.getItem('jtg-gh-org')||'c1jumpw';
+let ghParentRepo=localStorage.getItem('jtg-gh-repo')||'jtg-tools';
+let lastSynced=localStorage.getItem('jtg-last-synced')||null;
 
 function loadTools(){
-  const raw = localStorage.getItem('jtg-tools');
-  if(raw){ try{tools=JSON.parse(raw);}catch(e){tools=seeds();} } else { tools=seeds(); save(); }
+  const raw=localStorage.getItem('jtg-tools');
+  if(raw){try{tools=JSON.parse(raw);}catch(e){tools=seeds();}}else{tools=seeds();save();}
+  updateSyncBar();
   render();
 }
 
 function seeds(){
   return [
-    {id:'s1',name:'AI Web App Creator',shortDesc:'Generate full web applications using AI prompts',desc:'Build and scaffold web apps from natural language descriptions. Leverages AI to produce HTML, CSS, and JS outputs.',status:'live',category:'AI',icon:'🤖',repo:'ai-web-app-creator',createdAt:Date.now()-864e5*30},
-    {id:'s2',name:'ClickUp Inspector',shortDesc:'Inspect and manage ClickUp tasks and workspaces',desc:'Browse, filter, and audit ClickUp tasks, lists, and spaces from a unified interface.',status:'live',category:'Productivity',icon:'🔍',repo:'click-up-inspector',createdAt:Date.now()-864e5*25},
-    {id:'s3',name:'Lead Mag App',shortDesc:'Lead magnet delivery and management application',desc:'Deliver and track lead magnets to prospects. Integrates with email and CRM workflows.',status:'live',category:'Marketing',icon:'📧',repo:'lead-mag-app',createdAt:Date.now()-864e5*20},
-    {id:'s4',name:'Lead Mag Generator',shortDesc:'AI-powered lead magnet content generator',desc:'Generate lead magnet assets — guides, checklists, templates — from a topic or prompt.',status:'live',category:'Marketing',icon:'⚡',repo:'lead-mag-generator',createdAt:Date.now()-864e5*18},
-    {id:'s5',name:'Lead Magnet Index',shortDesc:'Centralized index of all lead magnet assets',desc:'Catalog and organize all lead magnet files, links, and performance data in one place.',status:'live',category:'Marketing',icon:'📁',repo:'lead-magnet-index',createdAt:Date.now()-864e5*15},
-    {id:'s6',name:'Media Visual Style Guide',shortDesc:'Brand style guide for media and visual assets',desc:'Reference tool for colors, typography, logo usage, and visual standards across media.',status:'live',category:'Design',icon:'🎨',repo:'media-visual-style-guide',createdAt:Date.now()-864e5*12},
-    {id:'s7',name:'MKC CRM',shortDesc:'Lightweight CRM for MKC client management',desc:'Track contacts, deals, and communications for MKC. Simple and fast interface.',status:'live',category:'CRM',icon:'👥',repo:'mkc-crm',createdAt:Date.now()-864e5*8},
-    {id:'s8',name:'PD Party Flyer Prompt Gen',shortDesc:'Generate AI image prompts for party flyer designs',desc:'Input event details and get optimized prompts for AI image generators to create party flyers.',status:'live',category:'Design',icon:'🎉',repo:'pd-party-flyer-prompt-gen',createdAt:Date.now()-864e5*5},
+    {id:'s1',name:'AI Web App Creator',shortDesc:'Generate full web applications using AI prompts',desc:'Build and scaffold web apps from natural language descriptions. Leverages AI to produce HTML, CSS, and JS outputs.',status:'live',category:'AI',icon:'🤖',repo:'ai-web-app-creator',url:'',createdAt:Date.now()-864e5*30},
+    {id:'s2',name:'KeyForge',shortDesc:'Key generation and management utility',desc:'Generate, store, and manage API keys, tokens, and secrets securely.',status:'live',category:'Dev',icon:'🔐',repo:'keyforge',url:'',createdAt:Date.now()-864e5*28},
+    {id:'s3',name:'Lead Mag App',shortDesc:'Lead magnet delivery and management application',desc:'Deliver and track lead magnets to prospects. Integrates with email and CRM workflows.',status:'live',category:'Marketing',icon:'📧',repo:'lead-mag-app',url:'',createdAt:Date.now()-864e5*20},
+    {id:'s4',name:'Lead Mag Generator',shortDesc:'AI-powered lead magnet content generator',desc:'Generate lead magnet assets — guides, checklists, templates — from a topic or prompt.',status:'live',category:'Marketing',icon:'⚡',repo:'lead-mag-generator',url:'',createdAt:Date.now()-864e5*18},
+    {id:'s5',name:'Lead Magnet Index',shortDesc:'Centralized index of all lead magnet assets',desc:'Catalog and organize all lead magnet files, links, and performance data in one place.',status:'live',category:'Marketing',icon:'📁',repo:'lead-magnet-index',url:'',createdAt:Date.now()-864e5*15},
+    {id:'s6',name:'Media Visual Style Guide',shortDesc:'Brand style guide for media and visual assets',desc:'Reference for colors, typography, logo usage, and visual standards across all media output.',status:'live',category:'Design',icon:'🎨',repo:'media-visual-style-guide',url:'',createdAt:Date.now()-864e5*12},
+    {id:'s7',name:'MKC CRM',shortDesc:'Lightweight CRM for MKC client management',desc:'Track contacts, deals, and communications for MKC. Simple and fast interface built for speed.',status:'live',category:'CRM',icon:'👥',repo:'mkc-crm',url:'',createdAt:Date.now()-864e5*8},
+    {id:'s8',name:'PD Party Flyer Prompt Gen',shortDesc:'Generate AI image prompts for party flyer designs',desc:'Input event details and get optimized prompts for AI image generators to create party flyers.',status:'live',category:'Design',icon:'🎉',repo:'pd-party-flyer-prompt-gen',url:'',createdAt:Date.now()-864e5*5},
   ];
 }
 
-function save(){ localStorage.setItem('jtg-tools', JSON.stringify(tools)); }
+function save(){localStorage.setItem('jtg-tools',JSON.stringify(tools));}
 
-function setFilter(f, el){
+function setFilter(f,el){
   activeFilter=f;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   renderGrid();
 }
 
-function render(){ renderStats(); renderGrid(); }
+function render(){renderStats();renderGrid();}
 
 function renderStats(){
   const live=tools.filter(t=>t.status==='live').length;
@@ -286,127 +318,311 @@ function renderStats(){
 }
 
 function renderGrid(){
-  const list = activeFilter==='all' ? tools : tools.filter(t=>t.status===activeFilter);
-  const grid = document.getElementById('tools-grid');
-  if(!list.length){ grid.innerHTML=`<div class="empty"><i class="fa-solid fa-folder-open"></i><p>No tools here yet</p></div>`; return; }
+  const list=activeFilter==='all'?tools:tools.filter(t=>t.status===activeFilter);
+  const grid=document.getElementById('tools-grid');
+  if(!list.length){grid.innerHTML=`<div class="empty"><i class="fa-solid fa-folder-open"></i><p>No tools here yet</p></div>`;return;}
   grid.innerHTML=list.map(t=>`
     <div class="tool-card">
       <div class="tool-card-header">
         <div class="tool-icon">${t.icon||'🛠️'}</div>
         <div class="tool-actions">
-          ${t.repo?`<button class="icon-btn" onclick="openRepo('${t.repo}')" title="Open repo"><i class="fa-brands fa-github"></i></button>`:''}
-          <button class="icon-btn" onclick="deleteTool('${t.id}')" title="Remove tool"><i class="fa-solid fa-trash"></i></button>
+          <button class="icon-btn edit-btn" onclick="openEditModal('${t.id}')" title="Edit tool"><i class="fa-solid fa-pen"></i></button>
+          ${t.repo?`<button class="icon-btn" onclick="openRepo('${t.repo}')" title="Open GitHub repo"><i class="fa-brands fa-github"></i></button>`:''}
+          ${t.url?`<button class="icon-btn" onclick="openLink('${t.url}')" title="Open live tool"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`:''}
+          <button class="icon-btn del-btn" onclick="deleteTool('${t.id}')" title="Remove tool"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <div class="tool-name">${t.name}</div>
       <div class="tool-desc">${t.shortDesc}</div>
       <div class="tool-footer">
         <span class="badge badge-${t.status}">${t.status==='wip'?'in progress':t.status}</span>
-        ${t.repo
-          ? `<span class="repo-link" onclick="openRepo('${t.repo}')"><i class="fa-solid fa-arrow-up-right-from-square" style="font-size:11px"></i>${ghOrg}/${t.repo}</span>`
-          : `<span style="font-size:12px;color:#768390">${t.category||''}</span>`}
+        ${t.repo?`<span class="repo-link" onclick="openRepo('${t.repo}')"><i class="fa-brands fa-github" style="font-size:11px"></i>${ghOrg}/${t.repo}</span>`:`<span style="font-size:12px;color:#768390">${t.category||''}</span>`}
       </div>
     </div>
   `).join('');
 }
 
-function openRepo(repo){ window.open(`https://github.com/${ghOrg}/${repo}`,'_blank'); }
+function openRepo(repo){window.open(`https://github.com/${ghOrg}/${repo}`,'_blank');}
+function openLink(url){window.open(url,'_blank');}
 
-function openModal(){
-  document.getElementById('modal-overlay').classList.add('open');
-  document.getElementById('f-icon').value = EMOJI_POOL[Math.floor(Math.random()*EMOJI_POOL.length)];
+/* ── Add modal ── */
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Add new tool';
+  document.getElementById('submit-btn').innerHTML='<i class="fa-solid fa-plus"></i> Add tool';
+  document.getElementById('f-id').value='';
+  ['f-name','f-short','f-desc','f-cat','f-repo','f-url'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-status').value='planned';
+  document.getElementById('f-icon').value=EMOJI_POOL[Math.floor(Math.random()*EMOJI_POOL.length)];
+  document.getElementById('f-gh').checked=true;
+  document.getElementById('repo-opts').style.display='flex';
+  document.getElementById('gh-panel-new').style.display='block';
   document.getElementById('create-status').style.display='none';
+  document.getElementById('submit-btn').disabled=false;
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-name').focus(),100);
+}
+
+/* ── Edit modal ── */
+function openEditModal(id){
+  const t=tools.find(x=>x.id===id);
+  if(!t)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent='Edit tool';
+  document.getElementById('submit-btn').innerHTML='<i class="fa-solid fa-floppy-disk"></i> Save changes';
+  document.getElementById('f-id').value=id;
+  document.getElementById('f-name').value=t.name||'';
+  document.getElementById('f-short').value=t.shortDesc||'';
+  document.getElementById('f-desc').value=t.desc||'';
+  document.getElementById('f-cat').value=t.category||'';
+  document.getElementById('f-icon').value=t.icon||'🛠️';
+  document.getElementById('f-status').value=t.status||'planned';
+  document.getElementById('f-repo').value=t.repo||'';
+  document.getElementById('f-url').value=t.url||'';
+  document.getElementById('gh-panel-new').style.display='none'; // hide create-repo section in edit mode
+  document.getElementById('create-status').style.display='none';
+  document.getElementById('submit-btn').disabled=false;
+  document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-name').focus(),100);
 }
 
 function closeModal(){
   document.getElementById('modal-overlay').classList.remove('open');
-  ['f-name','f-short','f-desc','f-cat','f-repo'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-status').value='planned';
-  document.getElementById('f-gh').checked=true;
-  document.getElementById('repo-opts').style.display='flex';
-  document.getElementById('submit-btn').disabled=false;
-  document.getElementById('submit-btn').innerHTML='<i class="fa-solid fa-plus"></i> Add tool';
+  editingId=null;
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('f-name').addEventListener('input', e=>{
-    const slug='jtg-'+e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+document.getElementById('f-name').addEventListener('input',e=>{
+  if(!editingId){
+    const slug=e.target.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     document.getElementById('f-repo').value=slug;
-  });
-  document.getElementById('f-gh').addEventListener('change',e=>{
-    document.getElementById('repo-opts').style.display=e.target.checked?'flex':'none';
-  });
+  }
+});
+
+document.getElementById('f-gh').addEventListener('change',e=>{
+  document.getElementById('repo-opts').style.display=e.target.checked?'flex':'none';
 });
 
 async function submitTool(){
   const name=document.getElementById('f-name').value.trim();
   const shortDesc=document.getElementById('f-short').value.trim();
-  if(!name||!shortDesc){ toast('Name and short description are required','error'); return; }
+  if(!name||!shortDesc){toast('Name and short description are required','error');return;}
 
-  const createRepo=document.getElementById('f-gh').checked;
-  const repoName=document.getElementById('f-repo').value.trim();
   const btn=document.getElementById('submit-btn');
   const statusEl=document.getElementById('create-status');
 
+  if(editingId){
+    // Edit existing
+    const idx=tools.findIndex(t=>t.id===editingId);
+    if(idx===-1)return;
+    tools[idx]={
+      ...tools[idx],
+      name,shortDesc,
+      desc:document.getElementById('f-desc').value.trim(),
+      status:document.getElementById('f-status').value,
+      category:document.getElementById('f-cat').value.trim(),
+      icon:document.getElementById('f-icon').value||'🛠️',
+      repo:document.getElementById('f-repo').value.trim(),
+      url:document.getElementById('f-url').value.trim(),
+    };
+    save();render();
+    closeModal();
+    toast(`${name} updated!`,'success');
+    markDirty();
+    return;
+  }
+
+  // New tool
+  const createRepo=document.getElementById('f-gh').checked;
+  const repoName=document.getElementById('f-repo').value.trim();
   const tool={
     id:'t'+Date.now(),
-    name, shortDesc,
+    name,shortDesc,
     desc:document.getElementById('f-desc').value.trim(),
     status:document.getElementById('f-status').value,
     category:document.getElementById('f-cat').value.trim(),
     icon:document.getElementById('f-icon').value||'🛠️',
     repo:createRepo&&repoName?repoName:'',
+    url:document.getElementById('f-url').value.trim(),
     createdAt:Date.now()
   };
 
-  if(createRepo && repoName){
-    if(!ghToken){ statusEl.style.display='block'; statusEl.textContent='⚠️ No GitHub token configured — go to Settings to add one. Tool will be saved without a repo.'; tool.repo=''; }
-    else {
-      btn.disabled=true;
-      btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
-      statusEl.style.display='block';
-      statusEl.textContent='⏳ Creating GitHub repository...';
-      const ok=await createGHRepo(tool, repoName, statusEl);
-      if(!ok){ btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-plus"></i> Add tool'; return; }
-      await new Promise(r=>setTimeout(r,800));
+  if(createRepo&&repoName){
+    if(!ghToken){statusEl.style.display='block';statusEl.textContent='⚠️ No GitHub token — go to Settings first. Tool saved without repo.';tool.repo='';}
+    else{
+      btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+      statusEl.style.display='block';statusEl.textContent='⏳ Creating GitHub repository...';
+      const ok=await createGHRepo(tool,repoName,statusEl);
+      if(!ok){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-plus"></i> Add tool';return;}
+      await new Promise(r=>setTimeout(r,700));
     }
   }
 
   tools.unshift(tool);
-  save();
-  render();
+  save();render();
   closeModal();
-  toast(`${tool.name} added!`);
+  toast(`${tool.name} added!`,'success');
+  markDirty();
 }
 
-async function createGHRepo(tool, repoName, statusEl){
-  try {
-    const headers={'Authorization':`Bearer ${ghToken}`,'Content-Type':'application/json','Accept':'application/vnd.github+json'};
-    const body=JSON.stringify({name:repoName,description:tool.shortDesc,private:false,auto_init:false});
-    let res=await fetch(`https://api.github.com/orgs/${ghOrg}/repos`,{method:'POST',headers,body});
-    if(res.status===404) res=await fetch(`https://api.github.com/user/repos`,{method:'POST',headers,body});
-    if(!res.ok){ const e=await res.json(); statusEl.textContent=`❌ GitHub: ${e.message}`; return false; }
-
+/* ── GitHub repo creation ── */
+async function createGHRepo(tool,repoName,statusEl){
+  try{
+    const h={'Authorization':`Bearer ${ghToken}`,'Content-Type':'application/json','Accept':'application/vnd.github+json'};
+    const b=JSON.stringify({name:repoName,description:tool.shortDesc,private:false,auto_init:false});
+    let res=await fetch(`https://api.github.com/orgs/${ghOrg}/repos`,{method:'POST',headers:h,body:b});
+    if(res.status===404)res=await fetch(`https://api.github.com/user/repos`,{method:'POST',headers:h,body:b});
+    if(!res.ok){const e=await res.json();statusEl.textContent=`❌ GitHub: ${e.message}`;return false;}
     statusEl.textContent='⏳ Pushing README.md...';
-    await pushFile(repoName,'README.md',buildReadme(tool),headers);
+    await pushFile(repoName,'README.md',buildReadme(tool),h);
     statusEl.textContent='⏳ Pushing index.html...';
-    await pushFile(repoName,'index.html',buildIndex(tool),headers);
+    await pushFile(repoName,'index.html',buildToolIndex(tool),h);
     statusEl.textContent='⏳ Pushing deploy workflow...';
-    await pushFile(repoName,'.github/workflows/deploy.yml',buildWorkflow(tool),headers);
+    await pushFile(repoName,'.github/workflows/deploy.yml',buildWorkflow(),h);
     statusEl.textContent='✅ Repository created and files pushed!';
     return true;
-  } catch(e){ statusEl.textContent=`❌ ${e.message}`; return false; }
+  }catch(e){statusEl.textContent=`❌ ${e.message}`;return false;}
 }
 
-async function pushFile(repo, path, content, headers){
+async function pushFile(repo,path,content,headers,sha){
   const encoded=btoa(unescape(encodeURIComponent(content)));
-  await fetch(`https://api.github.com/repos/${ghOrg}/${repo}/contents/${path}`,{
-    method:'PUT',headers,
-    body:JSON.stringify({message:`init: add ${path}`,content:encoded})
+  const body={message:`update: ${path}`,content:encoded};
+  if(sha)body.sha=sha;
+  return fetch(`https://api.github.com/repos/${ghOrg}/${repo}/contents/${path}`,{
+    method:'PUT',headers,body:JSON.stringify(body)
   });
 }
 
+/* ── Sync to GitHub ── */
+function syncToGitHub(){
+  if(!ghToken){toast('Add your GitHub token in Settings first','error');return;}
+  document.getElementById('sync-status').style.display='none';
+  document.getElementById('sync-confirm-btn').disabled=false;
+  document.getElementById('sync-confirm-btn').innerHTML='<i class="fa-brands fa-github"></i> Push to GitHub';
+  document.getElementById('sync-overlay').classList.add('open');
+}
+function closeSyncModal(){document.getElementById('sync-overlay').classList.remove('open');}
+
+async function doSync(){
+  const btn=document.getElementById('sync-confirm-btn');
+  const statusEl=document.getElementById('sync-status');
+  btn.disabled=true;
+  btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Pushing...';
+  statusEl.style.display='block';
+  statusEl.textContent='⏳ Fetching current index.html SHA...';
+  try{
+    const h={'Authorization':`Bearer ${ghToken}`,'Content-Type':'application/json','Accept':'application/vnd.github+json'};
+    // Get current SHA so we can update (not create)
+    let sha=null;
+    const meta=await fetch(`https://api.github.com/repos/${ghOrg}/${ghParentRepo}/contents/index.html`,{headers:h});
+    if(meta.ok){const d=await meta.json();sha=d.sha;}
+    statusEl.textContent='⏳ Pushing updated index.html...';
+    const newHtml=buildRegistryIndex();
+    const res=await pushFile(ghParentRepo,'index.html',newHtml,h,sha);
+    if(!res.ok){const e=await res.json();statusEl.textContent=`❌ GitHub: ${e.message}`;btn.disabled=false;btn.innerHTML='<i class="fa-brands fa-github"></i> Push to GitHub';return;}
+    statusEl.textContent='✅ Pushed! GitHub Pages will redeploy in ~30 seconds.';
+    lastSynced=new Date().toLocaleString();
+    localStorage.setItem('jtg-last-synced',lastSynced);
+    updateSyncBar(true);
+    toast('Synced to GitHub!','success');
+    setTimeout(closeSyncModal,1800);
+  }catch(e){statusEl.textContent=`❌ ${e.message}`;btn.disabled=false;btn.innerHTML='<i class="fa-brands fa-github"></i> Push to GitHub';}
+}
+
+function markDirty(){
+  document.getElementById('sync-dot').className='dot warn';
+  document.getElementById('sync-label').textContent='Unsaved changes — click "Sync to GitHub" to update your live site';
+}
+
+function updateSyncBar(synced){
+  const dot=document.getElementById('sync-dot');
+  const label=document.getElementById('sync-label');
+  if(synced||lastSynced){
+    dot.className='dot';
+    label.textContent=`Last synced: ${lastSynced||'previously'}`;
+  }else{
+    dot.className='dot warn';
+    label.textContent='Not synced yet — click "Sync to GitHub" to push registry to your live site';
+  }
+}
+
+/* ── Build registry index.html for GitHub Pages ── */
+function buildRegistryIndex(){
+  const cards=tools.map(t=>`
+      <div class="card">
+        <div class="card-top">
+          <span class="icon">${t.icon||'🛠️'}</span>
+          <span class="badge badge-${t.status}">${t.status==='wip'?'in progress':t.status}</span>
+        </div>
+        <h3>${t.name}</h3>
+        <p>${t.shortDesc}</p>
+        <div class="card-links">
+          ${t.repo?`<a href="https://github.com/${ghOrg}/${t.repo}" target="_blank" class="link-gh"><svg height="16" viewBox="0 0 16 16" width="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>`:''}
+          ${t.url?`<a href="${t.url}" target="_blank" class="link-live">↗ Open tool</a>`:''}
+        </div>
+      </div>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>JTG Tools</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh}
+    header{border-bottom:1px solid #21262d;padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+    h1{font-size:18px;font-weight:700}
+    h1 span{font-size:13px;color:#768390;font-weight:400;margin-left:8px;font-family:monospace}
+    .stats-bar{display:flex;gap:16px;flex-wrap:wrap;padding:1.25rem 2rem;border-bottom:1px solid #21262d}
+    .stat-item{font-size:13px;color:#768390}<br>    .stat-item strong{color:#e6edf3;margin-left:4px}
+    main{max-width:1100px;margin:0 auto;padding:2rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:1.125rem;transition:border-color 0.15s}
+    .card:hover{border-color:#388bfd55}
+    .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .icon{font-size:24px}
+    .badge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:500}
+    .badge-live{background:#1a4a2e;color:#3fb950;border:1px solid #238636}
+    .badge-wip{background:#0d2d6e;color:#58a6ff;border:1px solid #1f6feb}
+    .badge-planned{background:#3d2200;color:#d29922;border:1px solid #9e6a03}
+    h3{font-size:14px;font-weight:600;margin-bottom:6px}
+    p{font-size:12px;color:#768390;line-height:1.55;margin-bottom:12px}
+    .card-links{display:flex;gap:8px;flex-wrap:wrap}
+    .link-gh,.link-live{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid #30363d;color:#8b949e;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:all 0.15s}
+    .link-gh:hover{border-color:#8b949e;color:#e6edf3}
+    .link-live{background:#1f6feb;border-color:#1f6feb;color:#fff}
+    .link-live:hover{background:#388bfd}
+    footer{text-align:center;padding:2rem;font-size:12px;color:#768390;border-top:1px solid #21262d;margin-top:2rem}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">🛠</div>
+      <h1>JTG Tools<span>${ghOrg}/${ghParentRepo}</span></h1>
+    </div>
+    <a href="https://github.com/${ghOrg}/${ghParentRepo}" style="font-size:13px;color:#768390;text-decoration:none;display:flex;align-items:center;gap:6px" target="_blank">
+      <svg height="16" viewBox="0 0 16 16" width="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+  </header>
+  <div class="stats-bar">
+    <div class="stat-item">Total<strong>${tools.length}</strong></div>
+    <div class="stat-item">Live<strong style="color:#3fb950">${tools.filter(t=>t.status==='live').length}</strong></div>
+    <div class="stat-item">In progress<strong style="color:#58a6ff">${tools.filter(t=>t.status==='wip').length}</strong></div>
+    <div class="stat-item">Planned<strong style="color:#d29922">${tools.filter(t=>t.status==='planned').length}</strong></div>
+  </div>
+  <main>
+    <div class="grid">${cards}</div>
+  </main>
+  <footer>Last updated ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} · Managed via JTG Tools Manager</footer>
+</body>
+</html>`;
+}
+
+/* ── Per-tool repo files ── */
 function buildReadme(t){
 return `# ${t.icon} ${t.name}
 
@@ -416,45 +632,43 @@ return `# ${t.icon} ${t.name}
 
 ${t.desc||t.shortDesc}
 
-## Details
-
 | Field | Value |
 |-------|-------|
 | Category | ${t.category||'General'} |
 | Status | ${t.status} |
 | Created | ${new Date().toISOString().split('T')[0]} |
 
-## Part of JTG Tools
-
-This tool is part of the [JTG Tools](https://github.com/${ghOrg}/${ghParentRepo}) collection.
+Part of [JTG Tools](https://github.com/${ghOrg}/${ghParentRepo})
 `;}
 
-function buildIndex(t){
+function buildToolIndex(t){
 return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>${t.name}</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 2rem 1.5rem; }
-    .container { max-width: 800px; margin: 0 auto; }
-    header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #21262d; }
-    header h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
-    .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 999px; font-weight: 500; }
-    .badge-${t.status} { background: ${t.status==='live'?'#1a4a2e':t.status==='wip'?'#0d2d6e':'#3d2200'}; color: ${t.status==='live'?'#3fb950':t.status==='wip'?'#58a6ff':'#d29922'}; }
-    p { color: #8b949e; line-height: 1.7; margin-top: 1rem; }
-    .main-area { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem; min-height: 300px; display: flex; align-items: center; justify-content: center; }
-    .placeholder { text-align: center; color: #768390; }
-    .placeholder span { font-size: 48px; display: block; margin-bottom: 1rem; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;padding:2rem 1.5rem}
+    .container{max-width:800px;margin:0 auto}
+    header{margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid #21262d}
+    h1{font-size:1.75rem;margin-bottom:0.5rem}
+    .badge{display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;font-weight:500;background:${t.status==='live'?'#1a4a2e':t.status==='wip'?'#0d2d6e':'#3d2200'};color:${t.status==='live'?'#3fb950':t.status==='wip'?'#58a6ff':'#d29922'}}
+    p{color:#8b949e;line-height:1.7;margin-top:1rem}
+    .main-area{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:1.5rem;margin-top:1.5rem;min-height:300px;display:flex;align-items:center;justify-content:center}
+    .placeholder{text-align:center;color:#768390}
+    .placeholder span{font-size:48px;display:block;margin-bottom:1rem}
+    .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#768390;text-decoration:none;margin-bottom:1.5rem;transition:color 0.15s}
+    .back:hover{color:#388bfd}
   </style>
 </head>
 <body>
   <div class="container">
+    <a class="back" href="https://${ghOrg}.github.io/${ghParentRepo}/">← Back to all tools</a>
     <header>
       <h1>${t.icon} ${t.name}</h1>
-      <span class="badge badge-${t.status}">${t.status==='wip'?'in progress':t.status}</span>
+      <span class="badge">${t.status==='wip'?'in progress':t.status}</span>
       <p>${t.shortDesc}</p>
     </header>
     <div class="main-area">
@@ -467,18 +681,15 @@ return `<!DOCTYPE html>
 </body>
 </html>`;}
 
-function buildWorkflow(t){
+function buildWorkflow(){
 return `name: Deploy to GitHub Pages
-
 on:
   push:
     branches: [ main ]
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 jobs:
   deploy:
     environment:
@@ -496,10 +707,11 @@ jobs:
 `;}
 
 function deleteTool(id){
-  if(!confirm('Remove this tool from the registry?')) return;
+  if(!confirm('Remove this tool from the registry?'))return;
   tools=tools.filter(t=>t.id!==id);
-  save(); render();
+  save();render();
   toast('Tool removed');
+  markDirty();
 }
 
 function openSettings(){
@@ -522,14 +734,29 @@ function saveSettings(){
   localStorage.setItem('jtg-gh-token',ghToken);
   localStorage.setItem('jtg-gh-org',ghOrg);
   localStorage.setItem('jtg-gh-repo',ghParentRepo);
-  toast('Settings saved');
+  document.getElementById('brand-sub').textContent=`${ghOrg} / ${ghParentRepo}`;
+  toast('Settings saved','success');
 }
 
-function toast(msg, type='ok'){
+function exportData(){
+  const blob=new Blob([JSON.stringify(tools,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='jtg-tools.json';
+  a.click();
+}
+
+function resetToDefaults(){
+  if(!confirm('Reset to default seed data? This will remove any tools you\'ve added.'))return;
+  tools=seeds();save();render();
+  toast('Reset to defaults');
+}
+
+function toast(msg,type='ok'){
   const el=document.getElementById('toast');
-  const msgEl=document.getElementById('toast-msg');
-  el.style.background=type==='error'?'#da3633':'#1f6feb';
-  msgEl.textContent=msg;
+  el.className='toast'+(type==='error'?' error-toast':type==='success'?' success-toast':'');
+  document.getElementById('toast-icon').className=type==='error'?'fa-solid fa-circle-xmark':'fa-solid fa-check';
+  document.getElementById('toast-msg').textContent=msg;
   el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),2800);
 }
