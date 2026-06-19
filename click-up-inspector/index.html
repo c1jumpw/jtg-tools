@@ -1366,7 +1366,7 @@ function renderFieldOptions(f) {
       `<div class="option-item">
         <div class="option-color" style="background:${o.color||'#555'}"></div>
         <span class="option-name">${escHtml(o.label||o.name||'')}</span>
-        <span class="option-meta">${o.id}</span>
+        <span class="option-meta">#${o.orderindex??'?'} · ${o.id}</span>
       </div>`).join('')}</div>`;
   }
   if (f.type === 'currency' && config.default) return `<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">Currency: ${escHtml(config.default)}</span>`;
@@ -1730,13 +1730,26 @@ function buildListReport(listId) {
       permission_level: d.list.permission_level
     },
     statuses: d.statuses.map(s => ({ name: s.status, type: s.type, color: s.color })),
-    customFields: d.fields.map(f => ({
-      id: f.id,
-      name: f.name,
-      type: f.type,
-      required: f.required,
-      type_config: f.type_config
-    })),
+    customFields: d.fields.map(f => {
+      const cfg = f.type_config || {};
+      let normalizedOptions = null;
+      if ((f.type === 'drop_down' || f.type === 'labels') && cfg.options) {
+        normalizedOptions = cfg.options.map(o => ({
+          id: o.id,
+          name: f.type === 'labels' ? (o.label||o.name||'') : (o.name||''),
+          color: o.color || null,
+          orderindex: o.orderindex ?? null
+        }));
+      }
+      return {
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        required: f.required || false,
+        type_config: cfg,
+        ...(normalizedOptions ? { options: normalizedOptions } : {})
+      };
+    }),
     views: d.views.map(v => ({ id: v.id, name: v.name, type: v.type, visibility: v.visibility })),
     members: d.members.map(m => ({ id: m.id, username: m.username, email: m.email, role: m.role })),
     sampleTasks: d.tasks.slice(0,5).map(t => ({
@@ -1775,7 +1788,7 @@ function copyPromptContext(listId) {
     }
     if (f.type === 'labels' && cfg.options) {
       for (const o of cfg.options) {
-        lines.push(`  - Label: "${o.label||o.name}" | ID: ${o.id} | Color: ${o.color||'none'}`);
+        lines.push(`  - Label: "${o.label||o.name}" | orderindex: ${o.orderindex??'?'} | ID: ${o.id} | Color: ${o.color||'none'}`);
       }
     }
   }
@@ -1827,8 +1840,10 @@ function copyWorkspacePromptContext() {
         lines.push(`  - ${f.name} [${f.type}] ID: ${f.id}${f.required?' (required)':''}`);
         const cfg = f.type_config||{};
         if (cfg.options) {
+          const isLabels = f.type === 'labels';
           for (const o of cfg.options.slice(0,20)) {
-            lines.push(`    • ${o.name||o.label||''} | ID: ${o.id} | order: ${o.orderindex}`);
+            const displayName = isLabels ? (o.label||o.name||'') : (o.name||o.label||'');
+            lines.push(`    • ${displayName} | ID: ${o.id} | order: ${o.orderindex??'?'}`);
           }
         }
       }
