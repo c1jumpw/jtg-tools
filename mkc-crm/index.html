@@ -754,19 +754,90 @@ const TYPE_COLORS={
   'client':['#dcfce7','#166534']
 };
 
-// Label UUIDs from ClickUp Labels Mastersheet (A=UUID, B=Label, C=Custom Field)
-// These are used for multi-select Labels fields (Lead/Contact Type)
-const LABEL_UUIDS={
-  'potential client':'e0825a89-720a-4212-884e-5a80fb347ed1',
-  'resource/partner':'aeda556e-cce5-4f86-9de7-57d792679483',
-  'supporter':'e37a3fe4-ddce-4108-85c0-32e81c9c8387'
+// ── EXACT FIELD IDs FROM CLICKUP INSPECTION ────────────────────────────
+// Source: mkc-field-inspector.html run 2026-06-19
+const CU_FIELDS={
+  // Shared across all lists
+  MKC_ID:           '283bb059-1ab3-42ac-a004-c428840adc28',
+  NOTEBOOK_LINK:    '5e37aae5-7f16-4669-b05a-0435ca51c5dd',
+  NEXT_ACTION_DATE: '8865a284-7e78-4328-9d3a-c01e2cbfd8c2',
+  NEXT_ACTION_LINK: '19e7213e-e633-4b23-beca-413a579ca203',
+  BRANCH:           '6623fa17-7220-4e17-8011-ee6a4a8fe2c7',  // type: labels
+  SUB_BRANCH_JTG:   '20b50b13-180c-4d35-9b6d-e54d055d1393',  // type: drop_down
+  SUB_BRANCH_MCO:   'b9b66ef7-08e1-405f-b3ca-6c2bcc93ed46',  // type: drop_down
+  LAST_ACTION:      '97828e31-718b-418e-bc9b-83ad1c47afb3',  // type: labels
+  INDUSTRY:         '74beabf9-8f07-4a9d-908e-4c382b2e6c98',  // type: drop_down
+  PRIMARY_EMAIL:    '7e3e1cac-80c3-4424-988c-e66c89b44fe5',  // type: email
+  PHONE:            'd41f3e8a-c719-4de5-b5d6-00ac496a5e60',  // type: phone
+  // Leads + Contacts
+  RECENT_OPTIN:     '038eb48b-ffec-49ca-8a16-f5beecd19bff',  // type: short_text
+  LEAD_CRM_ACTION:  '15bdd4e2-13dd-41a5-b833-d0aa456dacc2',  // type: drop_down
+  LEAD_CONTACT_TYPE:'1d69cb4f-928e-4dcb-bf6e-1519519140b4',  // type: labels
+  KNOWN_AS:         '2e7b9ad6-456e-4aa5-a1a6-166e4267ceb0',  // type: short_text
+  LEAD_SOURCE:      '44476ae7-636f-4d0f-973d-3dfe89b6ea80',  // type: labels
+  TITLE:            '47f8a29f-1850-4851-b1ca-86994c5c499a',  // type: text
+  LAST_NAME:        '55530338-993f-4187-b1fe-e66254971d14',  // type: short_text
+  LOCATION:         '6b94af83-3a8e-40e3-80ec-fe6fba248079',  // type: short_text
+  LEAD_SOURCE_NOTES:'b37db85c-d6a6-4541-b1bc-525b32c2ee7e',  // type: text
+  INSTAGRAM:        'c7ab6a88-ecd1-4ff2-b5c3-9fac6d17f73b',  // type: short_text
+  TIKTOK:           'dbe416b4-f966-489b-998f-dbd9f870641c',  // type: short_text
+  FIRST_NAME:       'e9a9e94c-88c0-423b-a6db-05669ff5f967',  // type: short_text
+  // Pipeline only
+  NEXT_ACTION:      '123d310a-e7f1-4d26-a951-622cdf169915',  // type: drop_down
+  OPPORTUNITY:      '1d4e9287-decb-4f8b-841e-63a4b13b345c',  // type: currency → number
+  DEAL_ACTION:      '466fb24b-14eb-4ed0-a220-41427ff1849a',  // type: drop_down
+  COMPANY_NAME:     '73785f38-2d0b-424f-b45f-a42d0cd532d0',  // type: short_text
+  CLOSE_DATE:       'b36600d5-f1c3-4e3c-8e13-17f49aab4620',  // type: date
+  PRIMARY_PHONE_P:  'd577ab3d-38c9-479f-8023-17b8612aeb20',  // type: phone (pipeline)
+  DEAL_STATUS_LABEL:'f44e6619-ef78-4bae-a0b2-a1b040f74bbe',  // type: drop_down
+  PLAN:             'f6f4749a-f850-4c4f-8434-896e47488571',  // type: labels
+  // Accounts only
+  ACCOUNT_STATUS:   'c5315bbe-aada-489b-8efd-d48f75cda9d5',  // type: drop_down
+  // Master CRM Tasks
+  RELATED_DEAL_ID:  '1aadae14-4a3d-406a-a4c9-eb6d9e6cb6dd',
+  RELATED_ACCT_ID:  '80a6aefc-e9d9-488f-926b-6dcb780f3736',
+  RELATED_LC_ID:    'f6832391-c71f-4f14-9962-172f00f23a7d',
 };
-// Branch label UUIDs (from row 2-5 of Labels Mastersheet)
+
+// Labels UUIDs (from ClickUp Labels Mastersheet)
+// Branch UUIDs confirmed from UUID Inspector
 const BRANCH_UUIDS={
-  'jtg':'a842dfdd-2da9-4a0c-8c8f-eb27543d598d',
-  'uny':'3bf70234-24f3-47b4-99a7-6fe33287aa6b',
-  'mco':'c919face-ad76-4489-b76c-6433fd574dfc',
-  'mkc sa':'bdcde1f5-8652-4512-9dfe-933e0663c9cb'
+  'JTG':   'a842dfdd-2da9-4a0c-8c8f-eb27543d598d',
+  'UNY':   '3bf70234-24f3-47b4-99a7-6fe33287aa6b',
+  'MCO':   'c919face-ad76-4489-b76c-6433fd574dfc',
+  'MKC SA':'bdcde1f5-8652-4512-9dfe-933e0663c9cb',
+};
+const LEAD_SOURCE_UUIDS={
+  'Met In-Person':    '8e5d4635-a51a-43f7-9a1a-715376f34959',
+  'Met at Event':     '55e2272f-12b6-40b7-8ef7-f4e3aeedc04c',
+  'Opted-In':         '1a391de3-84f4-4b25-98c6-04847ea1dc7d',
+  'Referral':         '76d0a5d8-3e08-49d8-ae94-79781294b1cd',
+  'MK Personal':      'e8fd098d-4adb-41a2-9096-33220365a3b4',
+  'Found Information':'d4a3238c-35ed-4265-a062-94176ad4cbfd',
+  'Inquriy':          'b4760059-ca18-4fd7-b458-ffecc6a414b6',
+};
+const LAST_ACTION_UUIDS={
+  'Called':            '846ad7cb-0995-4ff5-951c-13d1f085b17e',
+  'Texted':            'bde4d752-3167-4d17-a73f-b1c24dbb37e5',
+  'Left Voicemail':    'b79ab9fc-8c2e-4db0-b649-73bce9100f9d',
+  'Direct Messaged':   '0f0909b3-1b89-43b9-99d0-465416b1b594',
+  'Meeting/Workshop':  '56c3a6df-77ef-4abc-81df-bd6d6afcddda',
+  'Emailed':           '0fd7a35e-c878-42eb-aac5-4d2807f5e703',
+  'Auto Deal FU':      '84cc330c-bc04-4b11-b645-943cbf5ef3dc',
+};
+const PLAN_UUIDS={
+  'Basic':  'e78a8cb0-a2d9-458e-8e80-3b35f14e9071',
+  'Premium':'33a23883-fe7a-4e51-bd28-880c56886722',
+  'Custom': '4f379442-79e2-47da-b05e-615b7fceb790',
+};
+// Lead/Contact Type UUIDs — all 6 options (used for checkbox multi-select)
+const LABEL_UUIDS={
+  'high value':       '59fcb834-7901-4177-b346-101cb9abf871',
+  'demo prospect':    'b74611f9-53e5-4b9b-a9d8-b64c0a76bdef',
+  'supporter':        'e37a3fe4-ddce-4108-85c0-32e81c9c8387',
+  'resource/partner': 'aeda556e-cce5-4f86-9de7-57d792679483',
+  'potential client': 'e0825a89-720a-4212-884e-5a80fb347ed1',
+  'client':           '947afcc8-d8e9-4706-a2eb-f71dc1ba9c4c',
 };
 // Sub-branches by parent branch (for Sub-Branch field dropdown)
 const SUB_BRANCHES={
@@ -911,6 +982,73 @@ async function getListFields(listId){
   // Always fetch fresh — don't cache, field definitions can change
   try{const d=await cuFetch(`/list/${listId}/field`);return d.fields||[];}
   catch(e){return[];}
+}
+
+// ── DIRECT FIELD SETTER using hardcoded field IDs ──────────────────────
+async function setFieldById(taskId,fieldId,value,fieldType){
+  if(!fieldId||value===undefined||value===null)return;
+  let payload;
+  switch(fieldType){
+    case'short_text':case'text':case'phone':case'email':case'url':
+      payload={value:String(value)};break;
+    case'labels':
+      payload={value:Array.isArray(value)?value:[value]};break;
+    case'drop_down':
+      if(value===''||value===null){payload={value:null};break;}
+      payload={value:Number(value)};break;
+    case'date':
+      if(!value){payload={value:null};break;}
+      payload={value:typeof value==='number'?value:new Date(value).getTime()};break;
+    case'currency':case'number':
+      payload={value:Number(value)};break;
+    case'checkbox':
+      payload={value:!!value};break;
+    default:payload={value:String(value)};
+  }
+  try{
+    await cuFetch(`/task/${taskId}/field/${fieldId}`,'POST',payload);
+    console.log(`✅ OK: "${fieldId}" (${fieldType}) →`,JSON.stringify(payload).substring(0,50));
+  }catch(e){console.warn(`❌ FAIL: "${fieldId}" (${fieldType}):`,e.message);}
+}
+
+// Get UUID for a labels-type field option — uses hardcoded maps, falls back to Sheets
+function getLabelUUID(fieldKeyword,optionName){
+  const key=(optionName||'').trim();
+  // Direct lookups by field type
+  if(fieldKeyword.includes('lead source')||fieldKeyword.includes('source')){
+    return LEAD_SOURCE_UUIDS[key]||null;
+  }
+  if(fieldKeyword.includes('last action')||fieldKeyword.includes('action')){
+    return LAST_ACTION_UUIDS[key]||null;
+  }
+  if(fieldKeyword.includes('plan')){
+    return PLAN_UUIDS[key]||null;
+  }
+  if(fieldKeyword.includes('branch')){
+    return BRANCH_UUIDS[key]||null;
+  }
+  if(fieldKeyword.includes('type')){
+    return LABEL_UUIDS[key.toLowerCase()]||null;
+  }
+  // Fallback: search Sheets labels data
+  const labels=S.ref.labels||[];
+  const row=labels.find(r=>{
+    const matchField=!fieldKeyword||(r[2]||'').toLowerCase().includes(fieldKeyword.toLowerCase());
+    const matchLabel=(r[1]||'').toLowerCase()===key.toLowerCase();
+    return matchField&&matchLabel;
+  });
+  return row?row[0]:null;
+}
+
+// Get sub-branch orderindex for ClickUp drop_down field
+function getSubBranchOI(branch,sbName){
+  const jtg=['F5','F5 CEO','BMS','BB','PD','SD','BC','MBC','ACAD','BLM','BLK'];
+  const mco=['Consulting (BCM)','Investing','The Anvil'];
+  const mcoMap={'BCM':'Consulting (BCM)','Anvil':'The Anvil','MCO INV':'Investing'};
+  if(branch==='MCO'){const ck=mcoMap[sbName]||sbName;return mco.indexOf(ck);}
+  if(branch==='UNY')return -1; // UNY has no sub-branch dropdown
+  if(branch==='MKC SA')return -1;
+  return jtg.indexOf(sbName);
 }
 
 // ═══════════════════════════════════════════
@@ -2056,7 +2194,7 @@ function renderPfActions(task,type,cf,body){
   if(!cf['next action link'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Link</label><input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://…" value=""></div>`);
   if(!cf['next action date'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Date</label><input type="date" id="qf-nad" class="form-select" style="height:32px;font-size:12px"></div>`);
   if(!cf['recent opt-in action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Recent Opt-In Action</label><input type="text" id="qf-optin" class="form-select" style="height:32px;font-size:12px" placeholder="e.g. signed up for newsletter"></div>`);
-  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Follow-Up Sent','Task Completed'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
+  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
   if(!cf['lead source'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Lead Source</label><select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select></div>`);
 
   const quickFillHtml=missingFills.length?`<div style="margin-bottom:12px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
@@ -2226,34 +2364,20 @@ async function applyLeadMagnet(target){
 async function quickSaveFields(){
   if(!S.currentEntry)return;
   const{task,type}=S.currentEntry;
-  const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[type]||'';
-  const fields=await getListFields(listId);
-  const setF=async(partial,val)=>{
-    if(!val&&val!==0)return;
-    const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-    if(!f)return;
-    try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:val});}catch(e){console.warn('qf:',partial,e.message);}
-  };
-  const setDropdown=async(partial,val)=>{
-    if(!val)return;
-    const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-    if(!f)return;
-    const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===val.toLowerCase());
-    if(opt)try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});}catch(e){console.warn('qf-dd:',e.message);}
-  };
+  const tid=task.id;const F=CU_FIELDS;
+  const sf=async(fid,val,ftype)=>setFieldById(tid,fid,val,ftype);
   const nal=document.getElementById('qf-nal')?.value?.trim();
   const nad=document.getElementById('qf-nad')?.value;
   const optin=document.getElementById('qf-optin')?.value?.trim();
   const la=document.getElementById('qf-la')?.value;
   const ls=document.getElementById('qf-ls')?.value;
-  if(nal)await setF('next action link',nal);
-  if(nad)await setF('next action date',new Date(nad).getTime());
-  if(optin)await setF('recent opt-in',optin);
-  if(la)await setDropdown('last action',la);
-  if(ls)await setDropdown('lead source',ls);
+  if(nal)await sf(F.NEXT_ACTION_LINK,nal,'url');
+  if(nad)await sf(F.NEXT_ACTION_DATE,new Date(nad).getTime(),'date');
+  if(optin)await sf(F.RECENT_OPTIN,optin,'short_text');
+  if(la){const uuid=LAST_ACTION_UUIDS[la];if(uuid)await sf(F.LAST_ACTION,[uuid],'labels');}
+  if(ls){const uuid=LEAD_SOURCE_UUIDS[ls];if(uuid)await sf(F.LEAD_SOURCE,[uuid],'labels');}
   showToast('Fields saved.','success');
-  // Refresh the entry and re-render actions tab
-  const updated=await cuFetch(`/task/${task.id}?include_subtasks=true`);
+  const updated=await cuFetch(`/task/${tid}?include_subtasks=true`);
   S.currentEntry.task=updated;
   renderPfHeader(updated,type);
   switchPfTab('actions',null);
@@ -2390,9 +2514,9 @@ async function openUpdateProfile(){
   const currentSubBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'';
   const subBranchOptions=currentBranch&&SUB_BRANCHES[currentBranch]?SUB_BRANCHES[currentBranch]:Object.values(SUB_BRANCHES).flat();
   const sources=(S.ref.leadSources||[]).map(r=>r[0]).filter(Boolean);
-  const lastActions=['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Follow-Up Sent','Task Completed'];
+  const lastActions=['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'];
   const currentTypes=(cf['lead/contact type']||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-  const typeOptions=['Potential Client','Resource/Partner','Supporter'];
+  const typeOptions=['Potential Client','Resource/Partner','Supporter','High Value','Demo Prospect','Client'];
   const nadVal=cf['next action date']?new Date(parseInt(cf['next action date'])).toISOString().split('T')[0]:'';
   const closeDateVal=cf['close date']?new Date(parseInt(cf['close date'])).toISOString().split('T')[0]:'';
 
@@ -2611,7 +2735,7 @@ function openNewEntryModal(defaultType=''){
   document.getElementById('em-submit').textContent='Create Entry';
   const branches=Object.keys(SUB_BRANCHES);
   const sources=(S.ref.leadSources||[]).map(r=>r[0]).filter(Boolean);
-  const typeOptions=['Potential Client','Resource/Partner','Supporter'];
+  const typeOptions=['Potential Client','Resource/Partner','Supporter','High Value','Demo Prospect','Client'];
   document.getElementById('em-body').innerHTML=`
     <div class="form-group"><label>Entry Type <span class="req">*</span></label>
       <select class="form-select" id="nf-type" onchange="updateNFFields()">
@@ -2781,46 +2905,69 @@ async function submitEntry(){
       try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
       catch(e){console.warn('setField failed:',partial,f.type,e.message);}
     };
-    // Email & Phone — auto-prepend +1 if no country code present
-    await setField('email',document.getElementById('nf-email')?.value?.trim());
+    const ntid=newTask.id;
+    const F=CU_FIELDS;
+    const sfN=async(fid,val,ftype)=>setFieldById(ntid,fid,val,ftype);
+    // ── EMAIL & PHONE ─────────────────────────────────────────
+    const nfEmail=document.getElementById('nf-email')?.value?.trim();
+    if(nfEmail)await sfN(F.PRIMARY_EMAIL,nfEmail,'email');
     const rawNfPhone=(document.getElementById('nf-phone')?.value||'').trim();
-    if(rawNfPhone)await setField('phone',rawNfPhone.startsWith('+')?rawNfPhone:'+1 '+rawNfPhone);
-    // First/Last name custom fields if they exist on the list
+    if(rawNfPhone)await sfN(F.PHONE,rawNfPhone.startsWith('+')?rawNfPhone:'+1 '+rawNfPhone,'phone');
+    // ── FIRST / LAST NAME ─────────────────────────────────────
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
       const ln=document.getElementById('nf-lname')?.value?.trim();
-      if(fn)await setField('first name',fn);
-      if(ln)await setField('last name',ln);
+      if(fn)await sfN(F.FIRST_NAME,fn,'short_text');
+      if(ln)await sfN(F.LAST_NAME,ln,'short_text');
+      // Known As / Title
+      const knownAs=document.getElementById('nf-knownAs')?.value?.trim();
+      if(knownAs)await sfN(F.KNOWN_AS,knownAs,'short_text');
+      const titleVal=document.getElementById('nf-title')?.value?.trim();
+      if(titleVal)await sfN(F.TITLE,titleVal,'text');
     }
-    // Branch & Sub-Branch (only for Leads — not Contacts per business rule)
+    // ── BRANCH (labels — UUID array) — Leads only ─────────────
     if(type==='Lead'){
-      await setField('branch',document.getElementById('nf-branch')?.value);
-      const sbVal=document.getElementById('nf-subbranch')?.value;
-      if(sbVal){await setField('sub-branch (jtg)',sbVal);await setField('sub-branch (mco)',sbVal);await setField('sub-branch',sbVal);}
+      const bVal=document.getElementById('nf-branch')?.value;
+      if(bVal){const bUUID=BRANCH_UUIDS[bVal];if(bUUID)await sfN(F.BRANCH,[bUUID],'labels');}
+      const sbNm=document.getElementById('nf-subbranch')?.value;
+      const brVal=document.getElementById('nf-branch')?.value;
+      if(sbNm&&brVal){
+        const oi=getSubBranchOI(brVal,sbNm);
+        if(oi>=0){
+          if(brVal==='MCO')await sfN(F.SUB_BRANCH_MCO,oi,'drop_down');
+          else await sfN(F.SUB_BRANCH_JTG,oi,'drop_down');
+        }
+      }
     }
-    // Lead/Contact Type (Labels field)
-    const checkedTypes=Array.from(document.querySelectorAll('.nf-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
-    const typeUuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
-    if(typeUuids.length){
-      const tf=fields.find(f=>f.name?.toLowerCase().includes('lead/contact type')||f.name?.toLowerCase().includes('contact type'));
-      if(tf)try{await cuFetch(`/task/${newTask.id}/field/${tf.id}`,'POST',{value:typeUuids});}catch(e){console.warn('type labels:',e.message);}
-    }
-    // Lead Source (dropdown) + Source Details (text)
-    await setField('lead source',document.getElementById('nf-source')?.value);
-    await setField('lead source notes',document.getElementById('nf-source-notes')?.value?.trim());
-    // Next Action Date
-    const nadVal=document.getElementById('nf-nad')?.value;
-    if(nadVal)await setField('next action date',new Date(nadVal).getTime());
-    // Deal-specific fields
+    // ── LEAD/CONTACT TYPE (labels — UUID array) ───────────────
+    const nfChecked=Array.from(document.querySelectorAll('.nf-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
+    const nfTypeUuids=nfChecked.map(t=>LABEL_UUIDS[t]).filter(Boolean);
+    if(nfTypeUuids.length)await sfN(F.LEAD_CONTACT_TYPE,nfTypeUuids,'labels');
+    // ── LEAD SOURCE (labels — UUID lookup) ───────────────────
+    const nfLs=document.getElementById('nf-source')?.value;
+    if(nfLs){const lsUUID=getLabelUUID('lead source',nfLs)||LEAD_SOURCE_UUIDS[nfLs];if(lsUUID)await sfN(F.LEAD_SOURCE,[lsUUID],'labels');}
+    // ── LEAD SOURCE NOTES (text) ─────────────────────────────
+    const nfLsNotes=document.getElementById('nf-source-notes')?.value?.trim();
+    if(nfLsNotes)await sfN(F.LEAD_SOURCE_NOTES,nfLsNotes,'text');
+    // ── NEXT ACTION DATE ──────────────────────────────────────
+    const nfNad=document.getElementById('nf-nad')?.value;
+    if(nfNad)await sfN(F.NEXT_ACTION_DATE,new Date(nfNad).getTime(),'date');
+    // ── PIPELINE FIELDS ───────────────────────────────────────
     if(type==='Deal'){
-      await setField('company/account name',document.getElementById('nf-acctname')?.value?.trim());
-      await setField('opportunity',document.getElementById('nf-opportunity')?.value?.trim());
-      await setField('plan',document.getElementById('nf-plan')?.value);
+      const coName=document.getElementById('nf-acctname')?.value?.trim();
+      if(coName)await sfN(F.COMPANY_NAME,coName,'short_text');
+      const oppRaw=document.getElementById('nf-opportunity')?.value?.trim();
+      if(oppRaw)await sfN(F.OPPORTUNITY,parseFloat(oppRaw.replace(/[^0-9.]/g,''))||0,'currency');
+      const planVal=document.getElementById('nf-plan')?.value;
+      if(planVal){const planUUID=getLabelUUID('plan',planVal);if(planUUID)await sfN(F.PLAN,[planUUID],'labels');}
     }
-    // Account-specific fields
+    // ── ACCOUNT FIELDS ────────────────────────────────────────
     if(type==='Account'){
-      await setField('industry',document.getElementById('nf-industry')?.value?.trim());
-      await setField('primary contact',document.getElementById('nf-primary-contact')?.value?.trim());
+      const indOpts=['Agribusiness / Agricultural Development','Business Advisory/Consulting','Childcare','Engineering','Financial Services','Fitness','Food & Restaurants','Government','Holding Company','Hospitality','Media','Personal Brand','Printing Services','Property Restoration','Retail','Wellness'];
+      const indVal=document.getElementById('nf-industry')?.value?.trim();
+      if(indVal){const oi=indOpts.indexOf(indVal);if(oi>=0)await sfN(F.INDUSTRY,oi,'drop_down');}
+      const pcVal=document.getElementById('nf-primary-contact')?.value?.trim();
+      if(pcVal)await sfN(F.PRIMARY_EMAIL,document.getElementById('nf-email')?.value?.trim(),'email');
     }
     await syncToSheets(newTask,{Lead:'leads',Contact:'contacts',Deal:'pipeline',Account:'accounts'}[type]);
     closeModal('entry-modal');
@@ -2844,95 +2991,101 @@ async function saveUpdateProfile(){
     if(newNotes!==undefined)updateBody.description=newNotes;
     await cuFetch(`/task/${task.id}`,'PUT',updateBody);
 
-    const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts,master:S.creds.listTasks}[type]||'';
-    const fields=await getListFields(listId);
-
-    // Universal type-aware field setter — allows clearing fields with empty string
-    const setField=async(partial,val,allowClear=false)=>{
-      if(val===undefined||val===null)return;
-      if(val===''&&!allowClear)return;  // Skip empty unless explicitly clearing
-      const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
-              ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()))
-              ||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
-              ||(task.custom_fields||[]).find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f){console.warn('Field not found:',partial);return;}
-      let payload;
-      switch(f.type){
-        case'drop_down':{
-          if(val===''){payload={value:null};break;}  // Clear dropdown
-          const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===String(val).toLowerCase());
-          if(!opt){console.warn('Dropdown option not found:',partial,val);return;}
-          payload={value:opt.orderindex!==undefined?opt.orderindex:opt.id};
-          break;}
-        case'labels':{
-          payload={value:Array.isArray(val)?val:[val]};
-          break;}
-        case'date':{
-          if(val===''){payload={value:null};break;}
-          payload={value:typeof val==='number'?val:new Date(val).getTime()};
-          break;}
-        case'number':{
-          if(val===''){payload={value:null};break;}
-          payload={value:Number(val)};
-          break;}
-        case'url':
-        case'email':
-        case'phone':
-        case'text':
-        default:{
-          payload={value:String(val)};  // Empty string clears the field
-          break;}
-      }
-      try{await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',payload);}
-      catch(e){console.warn('setField failed:',partial,f.type,e.message);}
+    const tid=task.id;
+    const F=CU_FIELDS;
+    const sf=async(fid,val,ftype)=>setFieldById(tid,fid,val,ftype);
+    const sfClear=async(fid,val,ftype)=>{
+      if(val===''||val===null||val===undefined)await setFieldById(tid,fid,'',ftype);
+      else await setFieldById(tid,fid,val,ftype);
     };
-    // Wrapper: always send value even if empty (to allow clearing)
-    const setFieldClear=async(partial,val)=>setField(partial,val??'',true);
 
-    // Branch & Sub-Branch (Leads only — not Contacts per business rule)
-    if(type==='leads'){
-      await setField('branch',document.getElementById('up-branch')?.value);
-      const sbVal=document.getElementById('up-subbranch')?.value;
-      if(sbVal){await setField('sub-branch (jtg)',sbVal);await setField('sub-branch (mco)',sbVal);await setField('sub-branch',sbVal);}
+    // ── BRANCH (labels type — send UUID array) ──────────────
+    const branchVal=document.getElementById('up-branch')?.value;
+    if(branchVal){
+      const bUUID=BRANCH_UUIDS[branchVal];
+      if(bUUID)await sf(F.BRANCH,[bUUID],'labels');
     }
-    // Lead/Contact Type — Labels field, send array of UUIDs
+    // ── SUB-BRANCH (drop_down — orderindex) ──────────────────
+    const sbName=document.getElementById('up-subbranch')?.value;
+    if(sbName&&branchVal){
+      const oi=getSubBranchOI(branchVal,sbName);
+      if(oi>=0){
+        if(branchVal==='MCO')await sf(F.SUB_BRANCH_MCO,oi,'drop_down');
+        else await sf(F.SUB_BRANCH_JTG,oi,'drop_down');
+      }
+    }
+    // ── LEAD/CONTACT TYPE (labels — UUID array) ───────────────
     if(type==='leads'||type==='contacts'){
-      const checkedTypes=Array.from(document.querySelectorAll('.up-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
-      const uuids=checkedTypes.map(t=>LABEL_UUIDS[t]).filter(Boolean);
-      if(uuids.length)await setField('lead/contact type',uuids);
+      const checked=Array.from(document.querySelectorAll('.up-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
+      const uuids=checked.map(t=>LABEL_UUIDS[t]).filter(Boolean);
+      if(uuids.length)await sf(F.LEAD_CONTACT_TYPE,uuids,'labels');
     }
-    // Lead Source + Details
-    await setField('lead source',document.getElementById('up-source')?.value);
-    await setFieldClear('lead source notes',document.getElementById('up-source-notes')?.value?.trim());
-    // Last Action
-    await setField('last action',document.getElementById('up-lastaction')?.value);
-    // Dates
+    // ── LEAD SOURCE (labels — UUID lookup) ───────────────────
+    const lsVal=document.getElementById('up-source')?.value;
+    if(lsVal){
+      const lsUUID=getLabelUUID('lead source',lsVal)||LEAD_SOURCE_UUIDS[lsVal];
+      if(lsUUID)await sf(F.LEAD_SOURCE,[lsUUID],'labels');
+    }
+    // ── LEAD SOURCE NOTES (text) ─────────────────────────────
+    await sfClear(F.LEAD_SOURCE_NOTES,document.getElementById('up-source-notes')?.value?.trim(),'text');
+    // ── LAST ACTION (labels — UUID lookup) ───────────────────
+    const laVal=document.getElementById('up-lastaction')?.value;
+    if(laVal){
+      const laUUID=getLabelUUID('last action',laVal);
+      if(laUUID)await sf(F.LAST_ACTION,[laUUID],'labels');
+    }
+    // ── DATES ─────────────────────────────────────────────────
     const nadVal=document.getElementById('up-nad')?.value;
-    if(nadVal)await setField('next action date',new Date(nadVal).getTime());
-    else await setField('next action date',null,true);
+    if(nadVal)await sf(F.NEXT_ACTION_DATE,new Date(nadVal).getTime(),'date');
     const closeDateVal=document.getElementById('up-closedate')?.value;
-    if(closeDateVal)await setField('close date',new Date(closeDateVal).getTime());
-    // Text/URL fields — all clearable
-    await setFieldClear('next action link',document.getElementById('up-nal')?.value?.trim());
-    await setFieldClear('recent opt-in',document.getElementById('up-optin')?.value?.trim());
-    await setFieldClear('known as',document.getElementById('up-knownAs')?.value?.trim());
-    await setFieldClear('title',document.getElementById('up-title')?.value?.trim());
-    await setFieldClear('email',document.getElementById('up-email')?.value?.trim());
-    // Phone — single input, auto-prepend +1 if no country code
+    if(closeDateVal)await sf(F.CLOSE_DATE,new Date(closeDateVal).getTime(),'date');
+    // ── TEXT / URL FIELDS ─────────────────────────────────────
+    await sfClear(F.NEXT_ACTION_LINK,document.getElementById('up-nal')?.value?.trim(),'url');
+    await sfClear(F.RECENT_OPTIN,document.getElementById('up-optin')?.value?.trim(),'short_text');
+    await sfClear(F.KNOWN_AS,document.getElementById('up-knownAs')?.value?.trim(),'short_text');
+    await sfClear(F.TITLE,document.getElementById('up-title')?.value?.trim(),'text');
+    await sfClear(F.PRIMARY_EMAIL,document.getElementById('up-email')?.value?.trim(),'email');
+    await sfClear(F.NOTEBOOK_LINK,document.getElementById('up-notebook')?.value?.trim(),'url');
+    // ── PHONE ─────────────────────────────────────────────────
     const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
     const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
-    await setFieldClear('phone',cleanPhone);
-    // Pipeline fields
-    await setFieldClear('company/account name',document.getElementById('up-company')?.value?.trim());
-    await setFieldClear('opportunity',document.getElementById('up-opportunity')?.value?.trim());
-    // Plan — text/datalist field (accepts any value)
-    await setFieldClear('plan',document.getElementById('up-plan')?.value?.trim());
-    // Account fields
-    await setFieldClear('industry',document.getElementById('up-industry')?.value?.trim());
-    await setFieldClear('primary contact',document.getElementById('up-primary-contact')?.value?.trim());
-    await setField('account status',document.getElementById('up-acct-status')?.value);
-    // Shared
-    await setFieldClear('notebook link',document.getElementById('up-notebook')?.value?.trim());
+    await sfClear(F.PHONE,cleanPhone,'phone');
+    // ── PIPELINE FIELDS ───────────────────────────────────────
+    if(type==='pipeline'){
+      await sfClear(F.COMPANY_NAME,document.getElementById('up-company')?.value?.trim(),'short_text');
+      const oppRaw=document.getElementById('up-opportunity')?.value?.trim();
+      if(oppRaw)await sf(F.OPPORTUNITY,parseFloat(oppRaw.replace(/[^0-9.]/g,''))||0,'currency');
+      // Plan = labels
+      const planVal=document.getElementById('up-plan')?.value;
+      if(planVal){
+        const planUUID=getLabelUUID('plan',planVal);
+        if(planUUID)await sf(F.PLAN,[planUUID],'labels');
+      }
+      const phoneRawP=(document.getElementById('up-phone-num')?.value||'').trim();
+      const cleanPhoneP=phoneRawP?(phoneRawP.startsWith('+')?phoneRawP:'+1 '+phoneRawP):'';
+      await sfClear(F.PRIMARY_PHONE_P,cleanPhoneP,'phone');
+    }
+    // ── ACCOUNT FIELDS ────────────────────────────────────────
+    if(type==='accounts'){
+      const indOpts=['Agribusiness / Agricultural Development','Business Advisory/Consulting','Childcare','Engineering','Financial Services','Fitness','Food & Restaurants','Government','Holding Company','Hospitality','Media','Personal Brand','Printing Services','Property Restoration','Retail','Wellness'];
+      const indVal=document.getElementById('up-industry')?.value;
+      if(indVal){const oi=indOpts.indexOf(indVal);if(oi>=0)await sf(F.INDUSTRY,oi,'drop_down');}
+      await sfClear(F.PRIMARY_EMAIL,document.getElementById('up-email')?.value?.trim(),'email');
+      const acctStatOpts=['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'];
+      const acctStat=document.getElementById('up-acct-status')?.value;
+      if(acctStat){const oi=acctStatOpts.indexOf(acctStat);if(oi>=0)await sf(F.ACCOUNT_STATUS,oi,'drop_down');}
+    }
+    // ── FIRST/LAST NAME (Leads+Contacts) ─────────────────────
+    if(type==='leads'||type==='contacts'){
+      const nameParts=(task.name||'').split(' ');
+      // Only update if name changed
+      const newName=document.getElementById('up-name')?.value?.trim();
+      if(newName&&newName!==task.name){
+        const parts=newName.split(' ');
+        await sf(F.FIRST_NAME,parts[0]||'','short_text');
+        await sf(F.LAST_NAME,parts.slice(1).join(' ')||'','short_text');
+      }
+    }
 
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
