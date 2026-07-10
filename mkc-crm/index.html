@@ -52,6 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background .15s;white-space:nowrap}
 .btn svg{width:14px;height:14px}
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
 .btn-secondary{background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--border)}
 .btn-ghost{background:transparent;color:var(--text-secondary)}.btn-ghost:hover{background:var(--bg-main)}
 .btn-danger{background:var(--danger);color:#fff}
@@ -258,6 +259,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   .kanban-col{width:220px}
   .page-title{font-size:13px}
   .search-bar{max-width:180px}
+  .search-bar input{padding-left:36px}
   .btn{padding:6px 10px;font-size:12px}
   .modal{max-width:calc(100vw - 32px)}
   .pf-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -315,6 +317,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="sidebar-section-label">Main</div>
     <div class="nav-item active" data-view="dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    </div>
+    <div class="nav-item" data-view="mywork">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 016-6h4a6 6 0 016 6v2"/></svg>My Work <span class="nav-badge" id="badge-mywork">0</span>
     </div>
     <div class="nav-item" data-view="leads">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Leads <span class="nav-badge" id="badge-leads">0</span>
@@ -407,6 +412,26 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </div>
     </div>
 
+    <!-- MY WORK (Personal Dashboard, Section 11-H) -->
+    <div class="view" id="view-mywork">
+      <div class="summary-grid">
+        <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">My Leads</div><div class="sc-value" id="mw-leads">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f0fdf4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="sc-label">My Deals</div><div class="sc-value" id="mw-deals">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sc-label">My Contacts</div><div class="sc-value" id="mw-contacts">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><div class="sc-label">My Accounts</div><div class="sc-value" id="mw-accounts">—</div><div class="sc-meta">Assigned to you</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-header"><h3>My Open Tasks</h3><button class="btn btn-ghost btn-sm" onclick="renderMyWork()">Refresh</button></div>
+          <div id="mw-tasks"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>My Entries</h3></div>
+          <div id="mw-entries"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- LEADS -->
     <div class="view" id="view-leads">
       <div class="view-toggle" id="vt-leads">
@@ -462,7 +487,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </button>
         </div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-primary btn-sm" onclick="openNewTaskModal()">
+          <button class="btn btn-success btn-sm" onclick="openNewTaskModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Task
           </button>
         </div>
@@ -584,11 +609,13 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="pf-tab" onclick="switchPfTab('actions',this)">CRM Actions</div>
     <div class="pf-tab" onclick="switchPfTab('activity',this)">Activity</div>
     <div class="pf-tab" onclick="switchPfTab('related',this)">Related</div>
+    <div class="pf-tab" onclick="switchPfTab('tasks',this)">Tasks</div>
   </div>
   <div class="pf-body" id="pf-body"></div>
   <div class="pf-footer">
     <button class="btn btn-primary" onclick="openUpdateProfile()">Edit Record</button>
     <button class="btn btn-secondary" onclick="openActivityModal()">Log New Activity</button>
+    <button class="btn btn-success" id="pf-addtask-btn" onclick="openNewTaskModal(S.currentEntry?.task?.id||'',S.currentEntry?.task?.name||'')">+ Add Task</button>
     <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook ↗</button>
     <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp ↗</button>
   </div>
@@ -619,6 +646,19 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </div>
       <div class="form-group"><label>Activity Date</label><input type="date" id="act-date"></div>
       <div class="form-group"><label>Note</label><textarea class="form-textarea" id="act-note" rows="4" placeholder="Describe what happened…"></textarea></div>
+      <div class="form-group"><label>Attachment <span style="font-size:10px;color:var(--text-muted)">(optional)</span></label>
+        <input type="file" id="act-file" onchange="document.getElementById('act-file-name').textContent=this.files[0]?('Selected: '+this.files[0].name):''">
+        <div id="act-file-name" style="font-size:11.5px;color:var(--text-muted);margin-top:4px"></div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="act-create-task" onchange="toggleActTaskFields(this.checked)"> Also create a task?
+        </label>
+      </div>
+      <div id="act-task-fields" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:-6px;margin-bottom:12px">
+        <div class="form-group"><label>Task Name</label><input type="text" id="act-task-name" placeholder="e.g. Follow up next week"></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="act-task-due"></div>
+      </div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('activity-modal')">Cancel</button><button class="btn btn-primary" onclick="submitActivity()">Post Activity</button></div>
   </div>
@@ -1058,7 +1098,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const saved=sessionStorage.getItem('mkc_session');
   const tok=sessionStorage.getItem('mkc_cu');
   if(tok)S.creds.cuToken=tok;
-  if(saved){try{S.user=JSON.parse(saved);document.getElementById('login-overlay').style.display='none';updateUserUI();init();}catch(e){showLogin();}}
+  if(saved){try{S.user=JSON.parse(saved);document.getElementById('login-overlay').style.display='none';updateUserUI();init();resolveClickupUserId();}catch(e){showLogin();}}
   else showLogin();
   setupSearch();
   initMobileMenu();
@@ -1134,6 +1174,7 @@ async function attemptLogin(){
     sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
     document.getElementById('login-overlay').style.display='none';
     updateUserUI();init();
+    resolveClickupUserId(); // fire-and-forget: needed for "My Work" assignee matching (Section 11-H)
   }catch(e){showLoginErr('Auth error: '+e.message);btn.disabled=false;btn.textContent='Sign In';}
 }
 
@@ -1151,6 +1192,7 @@ async function init(){
   await loadMasterTasks();
   populateTaskFilters();
   renderDashboard();
+  renderMyWork();
   startAutoRefresh();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
 }
@@ -1161,6 +1203,7 @@ function startAutoRefresh(){
     setSyncState('syncing','Refreshing…');
     await loadAllEntries();
     renderDashboard();
+    renderMyWork();
     setSyncState('ok','Synced '+new Date().toLocaleTimeString());
   },5*60*1000);
 }
@@ -1173,6 +1216,7 @@ async function refreshAll(){
   populateTaskFilters();
   renderDashboard();
   renderTasks();
+  renderMyWork();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
   showToast('Data refreshed.','success');
 }
@@ -1246,13 +1290,14 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el=document.getElementById(`view-${view}`);
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub','search-view':'Search',export:'Export',settings:'Settings'};
+  const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub','search-view':'Search',export:'Export',settings:'Settings'};
   document.getElementById('page-title').textContent=titles[view]||view;
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
   }
   if(view==='export')updateExportFields();
   if(view==='tasks'){populateTaskFilters();renderTasks();}
+  if(view==='mywork')renderMyWork();
 }
 
 function setViewMode(type,mode,btn){
@@ -1616,6 +1661,86 @@ async function loadMasterTasks(){
   }catch(e){console.warn('Master tasks load:',e.message);}
 }
 
+// ═══════════════════════════════════════════
+// PERSONAL DASHBOARD / MY WORK (Section 11-H)
+// ═══════════════════════════════════════════
+// Look up the logged-in user's ClickUp workspace member ID by matching their
+// Workspace Email (Team Directory col P) against the ClickUp team member list.
+// Matching by ID (not username) avoids false negatives from name typos/variations.
+async function resolveClickupUserId(){
+  if(!S.user||S.user.clickupId)return;
+  try{
+    const d=await cuFetch('/team');
+    const team=(d.teams||[]).find(t=>t.id===S.creds.wsId)||(d.teams||[])[0];
+    const members=team?.members||[];
+    const email=(S.user.wsEmail||'').toLowerCase().trim();
+    const match=email?members.find(m=>(m.user?.email||'').toLowerCase().trim()===email):null;
+    if(match){
+      S.user.clickupId=match.user.id;
+      sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
+    }
+  }catch(e){console.warn('resolveClickupUserId failed:',e.message);}
+}
+
+// Does this task/entry belong to the logged-in user? Prefer matching by ClickUp
+// assignee.id (reliable); fall back to username/email if the ID lookup hasn't resolved yet.
+function isAssignedToMe(item){
+  const assignees=item.assignees||[];
+  if(!assignees.length)return false;
+  if(S.user?.clickupId)return assignees.some(a=>a.id===S.user.clickupId);
+  const myName=(S.user?.name||'').toLowerCase();
+  const myEmail=(S.user?.wsEmail||'').toLowerCase();
+  return assignees.some(a=>(a.username||'').toLowerCase()===myName||(a.email||'').toLowerCase()===myEmail);
+}
+
+async function renderMyWork(){
+  const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
+  const myLeads=S.entries.leads.filter(t=>!t.parent&&isAssignedToMe(t));
+  const myDeals=S.entries.pipeline.filter(t=>!t.parent&&isAssignedToMe(t));
+  const myContacts=S.entries.contacts.filter(t=>!t.parent&&isAssignedToMe(t));
+  const myAccounts=S.entries.accounts.filter(t=>!t.parent&&isAssignedToMe(t));
+  const myTasks=S_masterTasks.filter(t=>{
+    if(!isAssignedToMe(t))return false;
+    const s=(t.status?.status||'').toUpperCase();
+    return !(s.includes('COMPLETED')||s.includes('APPROVED'));
+  });
+
+  document.getElementById('mw-leads').textContent=myLeads.length;
+  document.getElementById('mw-deals').textContent=myDeals.length;
+  document.getElementById('mw-contacts').textContent=myContacts.length;
+  document.getElementById('mw-accounts').textContent=myAccounts.length;
+  const badge=document.getElementById('badge-mywork');
+  if(badge){badge.textContent=myTasks.length;badge.className='nav-badge'+(myTasks.length?' has-items':'');}
+
+  const lookup=buildEntryLookup();
+  myTasks.sort((a,b)=>(a.due_date||99e12)-(b.due_date||99e12));
+  document.getElementById('mw-tasks').innerHTML=myTasks.length
+    ?myTasks.map(t=>{
+        const cf=getCF(t);
+        const{name:linkedName,type:linkedType}=resolveLinkedEntry(cf,lookup);
+        const due=t.due_date?parseInt(t.due_date):null;
+        return `<div class="task-item" onclick="openTaskProfile('${t.id}')">
+          <div class="task-dot" style="background:var(--accent)"></div>
+          <div class="task-info">
+            <div class="task-name">${esc(t.name)}</div>
+            <div class="task-parent">${linkedName?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span> <span style="font-size:10.5px;color:var(--text-muted)">· ${linkedType}</span>`:'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>'}</div>
+          </div>
+          <div class="task-meta" style="flex-shrink:0">${makeSB(t.status?.status||'')}${due?`<span style="font-size:11.5px;color:var(--text-muted);margin-left:6px">${fmtDateShort(due)}</span>`:''}</div>
+        </div>`;
+      }).join('')
+    :'<div class="empty-state"><p>No open tasks assigned to you.</p></div>';
+
+  const entryRow=(t,type)=>`<div class="related-item" onclick="openProfile('${t.id}','${type}')">
+      <span class="badge" style="background:var(--accent-light);color:var(--accent);font-size:11px">${ENTRY_TYPE_LABELS[type]||type}</span>
+      <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
+      ${makeSB(t.status?.status||'')}
+    </div>`;
+  const allMine=[...myLeads.map(t=>[t,'leads']),...myDeals.map(t=>[t,'pipeline']),...myContacts.map(t=>[t,'contacts']),...myAccounts.map(t=>[t,'accounts'])];
+  document.getElementById('mw-entries').innerHTML=allMine.length
+    ?allMine.map(([t,type])=>entryRow(t,type)).join('')
+    :'<div class="empty-state"><p>No entries assigned to you.</p></div>';
+}
+
 // Build lookup map: taskId → entry name, from all Big 4 lists
 function buildEntryLookup(){
   const map={};
@@ -1624,6 +1749,27 @@ function buildEntryLookup(){
     arr.filter(t=>!t.parent).forEach(t=>{map[t.id]={name:t.name,type:key};});
   });
   return map;
+}
+
+// Human-readable label per Big 4 list type — single source of truth so
+// Action Hub never mislabels a task by guessing which related-ID field it came from.
+const ENTRY_TYPE_LABELS={leads:'Lead/Contact',contacts:'Lead/Contact',pipeline:'Pipeline',accounts:'Account'};
+
+// Resolve the entry a Master CRM Task is actually linked to by checking all
+// three related-ID fields against the FULL cross-list lookup, and label it
+// using the resolved entry's real type — not just which field happened to be set.
+function resolveLinkedEntry(cf,lookup){
+  const relLead=cf['related lead/contact id']||cf['related lead']||'';
+  const relDeal=cf['related deal id']||cf['related deal']||'';
+  const relAcct=cf['related account id']||cf['related account']||'';
+  for(const id of [relLead,relDeal,relAcct]){
+    if(!id)continue;
+    const entry=lookup[id];
+    if(entry)return{id,name:entry.name,type:ENTRY_TYPE_LABELS[entry.type]||''};
+  }
+  // No ID resolved against any of the 4 lists — fall back to whichever ID is present, unlabeled.
+  const fallbackId=relLead||relDeal||relAcct||'';
+  return{id:fallbackId,name:'',type:''};
 }
 
 // Populate Action Hub filter dropdowns with real entry names
@@ -1686,13 +1832,8 @@ function renderTasks(){
     if(relDealFilter&&relDeal!==relDealFilter)return;
     if(relAcctFilter&&relAcct!==relAcctFilter)return;
 
-    // Resolve entry names from lookup
-    const leadEntry=relLead?lookup[relLead]:null;
-    const dealEntry=relDeal?lookup[relDeal]:null;
-    const acctEntry=relAcct?lookup[relAcct]:null;
-    const linkedName=leadEntry?.name||dealEntry?.name||acctEntry?.name||'';
-    const linkedType=leadEntry?'Lead/Contact':dealEntry?'Pipeline':acctEntry?'Account':'';
-    const linkedId=relLead||relDeal||relAcct;
+    // Resolve entry name + correct type label from the ACTUAL linked entry (fixes "Pipeline" mislabel bug)
+    const{name:linkedName,type:linkedType,id:linkedId}=resolveLinkedEntry(cf,lookup);
 
     // Hide completed tasks unless Show Completed is ticked
     const taskStatus=(t.status?.status||'').toUpperCase();
@@ -1800,10 +1941,7 @@ function renderTasksKanban(){
     const cards=grouped[status]||[];
     const cardsHtml=cards.map(task=>{
       const cf=getCF(task);
-      const relId=cf['related lead/contact id']||cf['related lead']||cf['related deal id']||cf['related deal']||cf['related account id']||cf['related account']||'';
-      const linked=relId?lookup[relId]:null;
-      const linkedName=linked?.name||'';
-      const linkedType={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'}[linked?.type||'']||'';
+      const{name:linkedName,type:linkedType}=resolveLinkedEntry(cf,lookup);
       const asgn=task.assignees?.[0]?.username||'';
       const curSt=(task.status?.status||'').toUpperCase();
       const cardId=task.id;
@@ -2028,15 +2166,20 @@ function switchPfTab(tab,btnEl){
   const tabEls=document.querySelectorAll('.pf-tab');
   tabEls.forEach(b=>b.classList.remove('active'));
   // Build visible tab list
-  const allTabs=['details','actions','activity','related'];
+  const allTabs=['details','actions','activity','related','tasks'];
   const visibleTabs=isMaster?['details','activity','related']:allTabs;
-  // Show/hide action tab
+  // Show/hide action tab (master tasks don't have CRM Actions or a Tasks-linked-to-a-task view)
   tabEls.forEach(b=>{
-    const isActionsTab=b.textContent.trim()==='CRM Actions';
-    b.style.display=(isMaster&&isActionsTab)?'none':'';
+    const label=b.textContent.trim();
+    const isActionsTab=label==='CRM Actions';
+    const isTasksTab=label==='Tasks';
+    b.style.display=(isMaster&&(isActionsTab||isTasksTab))?'none':'';
   });
+  // Hide the entry-level "+ Add Task" footer button when viewing a Master Task itself
+  const addTaskBtn=document.getElementById('pf-addtask-btn');
+  if(addTaskBtn)addTaskBtn.style.display=isMaster?'none':'';
   // Activate correct tab
-  if(isMaster&&tab==='actions')tab='details';
+  if(isMaster&&(tab==='actions'||tab==='tasks'))tab='details';
   S.currentPfTab=tab;
   if(btnEl){btnEl.classList.add('active');}
   else{
@@ -2050,6 +2193,7 @@ function switchPfTab(tab,btnEl){
   else if(tab==='actions')renderPfActions(task,type,cf,body);
   else if(tab==='activity')renderPfActivity(comments,body);
   else if(tab==='related')renderPfRelated(task,body);
+  else if(tab==='tasks')renderPfTasks(task,body);
 }
 
 function renderPfDetails(task,type,cf,body){
@@ -2063,7 +2207,7 @@ function renderPfDetails(task,type,cf,body){
       ['Related Lead/Contact ID',cf['related lead/contact id']||cf['related lead']||'—'],
       ['Related Deal ID',cf['related deal id']||cf['related deal']||'—'],
       ['Related Account ID',cf['related account id']||cf['related account']||'—'],
-      ['Next Action Date',fmtDate(cf['next action date'])],
+      ['Due Date',fmtDate(task.due_date)],
       ['Notebook Link',cf['notebook link']||'—'],
       ['Assignee(s)',asgn],
       ['Last Updated',fmtDate(task.date_updated)]
@@ -2383,6 +2527,71 @@ async function quickSaveFields(){
   switchPfTab('actions',null);
 }
 
+// Master CRM Tasks linked to a given Big 4 entry, matched by ID across all Related ID fields.
+// Shared by the Related tab and the Tasks tab so both stay in sync.
+function getLinkedTasksForEntry(taskId){
+  const idLower=(taskId||'').toLowerCase();
+  return S_masterTasks.filter(t=>{
+    const cf=getCF(t);
+    const allRefs=[
+      cf['related lead/contact id']||'',
+      cf['related deal id']||'',
+      cf['related account id']||'',
+      cf['related lead']||'',
+      cf['related deal']||'',
+      cf['related contact']||'',
+      cf['related account']||''
+    ].join(' ').toLowerCase();
+    return allRefs.includes(idLower);
+  });
+}
+
+// ═══════════════════════════════════════════
+// PROFILE PANEL — TASKS TAB (Section 11-E)
+// ═══════════════════════════════════════════
+function renderPfTasks(task,body,showCompleted){
+  const taskId=task.id||'';
+  const linked=getLinkedTasksForEntry(taskId);
+  showCompleted=showCompleted===undefined?(S._pfTasksShowCompleted||false):showCompleted;
+  S._pfTasksShowCompleted=showCompleted;
+
+  const isCompletedTask=t=>{
+    const s=(t.status?.status||'').toUpperCase();
+    return s.includes('COMPLETED')||s.includes('APPROVED');
+  };
+  const visible=linked.filter(t=>showCompleted?isCompletedTask(t):!isCompletedTask(t));
+
+  const rows=visible.length?visible.map(t=>{
+    const curStatus=(t.status?.status||'').toUpperCase();
+    const due=t.due_date?parseInt(t.due_date):null;
+    return `<div class="related-item" style="cursor:pointer" onclick="openTaskProfile('${t.id}')">
+      ${makeSB(t.status?.status||'')}
+      <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
+      ${due?`<span style="font-size:11.5px;color:var(--text-muted)">${fmtDateShort(due)}</span>`:''}
+      <select class="filter-select" style="height:26px;font-size:11px;padding:0 6px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${t.id}','${esc(t.name)}',this.value);setTimeout(()=>renderPfTasks(S.currentEntry.task,document.getElementById('pf-body'),S._pfTasksShowCompleted),400)">
+        <option value="">Status…</option>
+        <option value="TO DO"${curStatus==='TO DO'?' selected':''}>To Do</option>
+        <option value="IN PROGRESS"${curStatus==='IN PROGRESS'?' selected':''}>In Progress</option>
+        <option value="FOR REVIEW"${curStatus==='FOR REVIEW'?' selected':''}>For Review</option>
+        <option value="COMPLETED/APPROVED"${curStatus.includes('COMPLETED')?' selected':''}>Completed/Approved</option>
+      </select>
+    </div>`;
+  }).join(''):`<div style="font-size:13px;color:var(--text-muted);padding:12px 0">No ${showCompleted?'completed':'incomplete'} tasks linked to this entry.</div>`;
+
+  body.innerHTML=`
+    <div class="pf-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h4 style="margin:0">Linked Tasks</h4>
+        <div class="view-toggle" style="margin:0">
+          <button class="vt-btn${!showCompleted?' active':''}" onclick="renderPfTasks(S.currentEntry.task,document.getElementById('pf-body'),false)">Incomplete</button>
+          <button class="vt-btn${showCompleted?' active':''}" onclick="renderPfTasks(S.currentEntry.task,document.getElementById('pf-body'),true)">Completed</button>
+        </div>
+      </div>
+      ${rows}
+      <button class="btn btn-success btn-sm" style="margin-top:8px" onclick="openNewTaskModal('${taskId}','${esc(task.name||'')}')">+ Add Task for this Entry</button>
+    </div>`;
+}
+
 function renderPfActivity(comments,body){
   const html=comments.length?comments.slice(0,15).map(c=>`
     <div class="comment-item">
@@ -2400,19 +2609,7 @@ function renderPfRelated(task,body){
   const taskId=task.id||'';
 
   // Find Master CRM Tasks linked to this entry by checking Related ID fields
-  const linkedTasks=S_masterTasks.filter(t=>{
-    const cf=getCF(t);
-    const allRefs=[
-      cf['related lead/contact id']||'',
-      cf['related deal id']||'',
-      cf['related account id']||'',
-      cf['related lead']||'',
-      cf['related deal']||'',
-      cf['related contact']||'',
-      cf['related account']||''
-    ].join(' ').toLowerCase();
-    return allRefs.includes(taskId.toLowerCase());
-  });
+  const linkedTasks=getLinkedTasksForEntry(taskId);
 
   // ClickUp relationship custom fields on the task itself
   // These show up as type='url' or type='list_relationship' custom fields
@@ -2530,6 +2727,7 @@ async function openUpdateProfile(){
 
   // Master CRM Task update form
   if(type==='master'){
+    const dueVal=task.due_date?new Date(parseInt(task.due_date)).toISOString().split('T')[0]:'';
     document.getElementById('em-body').innerHTML=`
       <div class="form-row">
         <div class="form-group"><label>Task Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
@@ -2541,7 +2739,7 @@ async function openUpdateProfile(){
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="up-due-date" value="${dueVal}"></div>
         <div class="form-group"><label>Notebook Link</label><input type="url" id="up-notebook" value="${esc(cf['notebook link']||'')}"></div>
       </div>
       <div class="form-group"><label>Notes (Task Description)</label>
@@ -2702,7 +2900,24 @@ function openActivityModal(){
   const today=new Date().toISOString().split('T')[0];
   const dateEl=document.getElementById('act-date');
   if(dateEl)dateEl.value=today;
+  // Reset attachment (Section 11-A)
+  const fileEl=document.getElementById('act-file');
+  if(fileEl)fileEl.value='';
+  const fileNameEl=document.getElementById('act-file-name');
+  if(fileNameEl)fileNameEl.textContent='';
+  // Reset "also create a task" toggle (Section 11-C)
+  const taskCb=document.getElementById('act-create-task');
+  if(taskCb)taskCb.checked=false;
+  toggleActTaskFields(false);
+  const taskNameEl=document.getElementById('act-task-name');
+  if(taskNameEl)taskNameEl.value='Follow up: '+(S.currentEntry.task?.name||'');
+  const taskDueEl=document.getElementById('act-task-due');
+  if(taskDueEl)taskDueEl.value='';
   document.getElementById('activity-modal').style.display='flex';
+}
+function toggleActTaskFields(show){
+  const el=document.getElementById('act-task-fields');
+  if(el)el.style.display=show?'block':'none';
 }
 function selHash(el,tag){
   document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
@@ -2715,15 +2930,81 @@ async function submitActivity(){
   const tag=S.selectedHash||'#note';
   const actDate=document.getElementById('act-date')?.value||'';
   const dateStr=actDate?` [${actDate}]`:'';
+  const btn=document.querySelector('#activity-modal .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='Posting…';}
   try{
     await cuFetch(`/task/${S.currentEntry.task.id}/comment`,'POST',{comment_text:`${tag}${dateStr} ${note} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+
+    // ── ATTACHMENT UPLOAD (Section 11-A) ──────────────────────
+    const fileEl=document.getElementById('act-file');
+    const file=fileEl?.files?.[0];
+    if(file){
+      try{
+        await uploadTaskAttachment(S.currentEntry.task.id,file);
+        showToast(`Attached "${file.name}".`,'success');
+      }catch(e){showToast('Attachment upload failed: '+e.message,'error');}
+    }
+
     await syncToSheets(S.currentEntry.task,S.currentEntry.type);
+
+    // ── OPTIONAL RELATED TASK (Section 11-C) ──────────────────
+    const wantsTask=document.getElementById('act-create-task')?.checked;
+    if(wantsTask){
+      const taskName=document.getElementById('act-task-name')?.value?.trim();
+      const taskDue=document.getElementById('act-task-due')?.value||'';
+      if(taskName){
+        try{
+          await createQuickTaskForEntry(taskName,taskDue,S.currentEntry.task.id,S.currentEntry.task.name);
+          showToast(`Task "${taskName}" created.`,'success');
+        }catch(e){showToast('Task creation failed: '+e.message,'error');}
+      }else{
+        showToast('Task name required to create a related task — activity was still logged.','error');
+      }
+    }
+
     closeModal('activity-modal');
     showToast('Activity logged.','success');
     const c=await cuFetch(`/task/${S.currentEntry.task.id}/comment`);
     S.currentEntry.comments=c.comments||[];
     if(S.currentPfTab==='activity')renderPfActivity(S.currentEntry.comments,document.getElementById('pf-body'));
+    if(S.currentPfTab==='tasks')renderPfTasks(S.currentEntry.task,document.getElementById('pf-body'),S._pfTasksShowCompleted);
   }catch(e){showToast('Failed: '+e.message,'error');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Post Activity';}}
+}
+
+// Upload a file to a ClickUp task as an attachment — multipart/form-data (Section 11-A)
+async function uploadTaskAttachment(taskId,file){
+  const token=S.creds.cuToken||sessionStorage.getItem('mkc_cu')||'';
+  const fd=new FormData();
+  fd.append('attachment',file,file.name);
+  const r=await fetch(`${CU_BASE}/task/${taskId}/attachment`,{method:'POST',headers:{Authorization:token},body:fd});
+  if(!r.ok)throw new Error(`CU ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+// Create a Master CRM Task pre-linked to a given entry — used by the Activity modal's
+// "Also create a task?" toggle. Reuses submitNewTask's link/sync pattern (Section 11-C).
+async function createQuickTaskForEntry(name,dueStr,entryId,entryName){
+  if(!S.creds.listTasks)throw new Error('Master CRM Tasks list ID not configured.');
+  const body={name,status:'TO DO'};
+  if(dueStr)body.due_date=new Date(dueStr).getTime();
+  const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
+  // Link using hardcoded field IDs — resolve which Related field to use based on the entry's list type
+  const entryType=S.currentEntry?.type||'';
+  if(entryType==='pipeline')await setFieldById(newTask.id,CU_FIELDS.RELATED_DEAL_ID,entryId,'short_text');
+  else if(entryType==='accounts')await setFieldById(newTask.id,CU_FIELDS.RELATED_ACCT_ID,entryId,'short_text');
+  else await setFieldById(newTask.id,CU_FIELDS.RELATED_LC_ID,entryId,'short_text');
+  try{
+    const linkedLead=entryType==='leads'||entryType==='contacts'?entryId:'';
+    const linkedDeal=entryType==='pipeline'?entryId:'';
+    const linkedAcct=entryType==='accounts'?entryId:'';
+    const dueDisp=dueStr?new Date(dueStr).toLocaleDateString():'';
+    await gsAppend('Master CRM Tasks!A:H',[[name,'TO DO',linkedLead,linkedDeal,linkedAcct,dueDisp,S.user?.name||'','']]);
+  }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
+  await loadMasterTasks();
+  renderTasks();
+  if(S_tasksView==='kanban')renderTasksKanban();
+  return newTask;
 }
 
 // ═══════════════════════════════════════════
@@ -2989,6 +3270,28 @@ async function saveUpdateProfile(){
     const updateBody={name:newName};
     if(newStatus)updateBody.status=newStatus;
     if(newNotes!==undefined)updateBody.description=newNotes;
+
+    // ── MASTER CRM TASKS: Due Date maps to the task's native due_date, NOT the
+    //    "Next Action Date" custom field (Section 11-B). Handle separately and
+    //    skip all the Leads/Pipeline/Accounts-only custom field logic below.
+    if(type==='master'){
+      const dueVal=document.getElementById('up-due-date')?.value;
+      if(dueVal)updateBody.due_date=new Date(dueVal).getTime();
+      else if(dueVal==='')updateBody.due_date=null;
+      await cuFetch(`/task/${task.id}`,'PUT',updateBody);
+      const notebookVal=document.getElementById('up-notebook')?.value?.trim();
+      await setFieldById(task.id,CU_FIELDS.NOTEBOOK_LINK,notebookVal||'','url');
+      await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Task updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+      const dueStr=dueVal?new Date(dueVal).toLocaleDateString():'';
+      await syncTaskUpdateToSheets(newName,newStatus||task.status?.status||'','','','',dueStr,S.user?.name||'');
+      showToast('Task updated & synced.','success');
+      closeModal('entry-modal');
+      await openProfile(task.id,type);
+      await loadMasterTasks();renderTasks();if(S_tasksView==='kanban')renderTasksKanban();
+      btn.disabled=false;btn.textContent='Save & Sync';
+      return;
+    }
+
     await cuFetch(`/task/${task.id}`,'PUT',updateBody);
 
     const tid=task.id;
