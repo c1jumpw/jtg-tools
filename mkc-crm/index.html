@@ -196,6 +196,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 .sc-meta{font-size:12px;color:var(--text-secondary);margin-top:3px}
 .dash-grid{display:grid;grid-template-columns:1fr 340px;gap:14px}
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.qc-item:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .card-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .card-header h3{font-size:13px;font-weight:600}
 .card-body{padding:14px 18px}
@@ -336,6 +337,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
   <div class="sidebar-section">
     <div class="sidebar-section-label">Tools</div>
+    <div class="nav-item" data-view="qcinbox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>QC Inbox <span class="nav-badge" id="badge-qcinbox">0</span>
+    </div>
     <div class="nav-item" data-view="tasks">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Action Hub <span class="nav-badge" id="badge-tasks">0</span>
     </div>
@@ -509,6 +513,30 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="tasks-kanban-view" style="display:none"></div>
     </div>
 
+    <!-- QC INBOX -->
+    <div class="view" id="view-qcinbox">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="list-toolbar" style="margin-bottom:0">
+          <select class="filter-select" id="qc-status-filter" onchange="S.qc.statusFilter=this.value;loadQcInbox()">
+            <option value="pending">Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="archived">Archived</option>
+            <option value="">All (except archived)</option>
+          </select>
+          <select class="filter-select" id="qc-source-filter" onchange="S.qc.sourceFilter=this.value;renderQcInbox()">
+            <option value="">All Sources</option>
+            <option value="quo">Quo (calls/texts)</option>
+            <option value="zoho_mail">Zoho Mail</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadQcInbox()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Refresh
+        </button>
+      </div>
+      <div id="qc-conn-warning" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#dc2626;margin-bottom:12px;line-height:1.5"></div>
+      <div id="qc-feed"></div>
+    </div>
+
     <!-- SEARCH -->
     <div class="view" id="view-search-view">
       <div style="max-width:700px">
@@ -556,10 +584,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
             <div><div class="text-sm text-muted" style="margin-bottom:5px">ClickUp API</div><span class="conn-status pending" id="cu-status">● Not tested</span></div>
             <div><div class="text-sm text-muted" style="margin-bottom:5px">Google Sheets</div><span class="conn-status pending" id="gs-status">● Not tested</span></div>
+            <div><div class="text-sm text-muted" style="margin-bottom:5px">Activity Logger</div><span class="conn-status pending" id="wk-status">● Not tested</span></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="testClickUp()">Test ClickUp</button>
             <button class="btn btn-secondary btn-sm" onclick="testSheets()">Test Google Sheets</button>
+            <button class="btn btn-secondary btn-sm" onclick="testWorkerLogger()">Test Activity Logger</button>
             <button class="btn btn-secondary btn-sm" onclick="refreshAll()">Sync Now</button>
             <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="signOut()">Sign Out</button>
           </div>
@@ -570,6 +600,19 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           <div style="display:flex;gap:8px">
             <input type="password" id="s-cu-token" placeholder="pk_…" style="flex:1;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
             <button class="btn btn-primary btn-sm" onclick="saveToken()">Save</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Activity Logger (QC Inbox backend)</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Cloudflare Worker that receives Quo/Zoho activity and feeds the QC Inbox tab. Stored in session only — re-enter after closing the tab. See the Worker's README for the deployed <code>*.workers.dev</code> URL and the <code>ADMIN_TOKEN</code> value set via <code>wrangler secret put</code>.</p>
+          <div class="form-group"><label>Worker Base URL</label>
+            <input type="text" id="s-wk-base" placeholder="https://mkc-activity-logger.….workers.dev" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="form-group" style="flex:1;margin-bottom:0"><label>Admin Token</label>
+              <input type="password" id="s-wk-token" placeholder="Bearer token…" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveWorkerConfig()" style="height:36px">Save</button>
           </div>
         </div>
         <div class="settings-section">
@@ -691,6 +734,39 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
 </div>
 
+<!-- QC INBOX: thread / chat view + markdown export -->
+<div id="qc-thread-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:640px;max-height:82vh;display:flex;flex-direction:column">
+    <div class="modal-header"><h3 id="qct-title">Activity Thread</h3><button class="pf-close" onclick="closeModal('qc-thread-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="qct-body" style="overflow-y:auto;flex:1"></div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-secondary btn-sm" onclick="qcExportMarkdown()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Markdown
+      </button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
+        <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assign…</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QC INBOX: assign-to-record search -->
+<div id="qc-assign-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Assign to Record</h3><button class="pf-close" onclick="closeModal('qc-assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="qc-assign-body">
+      <div id="qc-assign-context" style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px"></div>
+      <div id="qc-assign-suggested" style="margin-bottom:10px"></div>
+      <div class="form-group"><label>Search all entries</label>
+        <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC ID…" oninput="qcSearchAssign(this.value)" autocomplete="off">
+      </div>
+      <div id="qc-assign-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('qc-assign-modal')">Cancel</button></div>
+  </div>
+</div>
+
 <div id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 <div id="toast-container"></div>
 <script>
@@ -706,6 +782,14 @@ const APP_CONFIG={
   listLeads:'901710477809',listPipeline:'901710326878',
   listContacts:'901710477009',listAccounts:'901710481777',
   listTasks:'901714539764'  // Master CRM Tasks list
+};
+// Activity Logger (Cloudflare Worker) — QC Inbox reads/writes here.
+// Left blank on purpose: fill in from Settings → Activity Logger once the
+// Worker is deployed (`wrangler deploy`), rather than baking another
+// secret into this public file. Values are kept in sessionStorage only.
+const WORKER_DEFAULT={
+  baseUrl:'',      // e.g. https://mkc-activity-logger.<subdomain>.workers.dev
+  adminToken:''    // matches the ADMIN_TOKEN secret set via `wrangler secret put`
 };
 const SA={
   clientEmail:'mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com',
@@ -891,7 +975,7 @@ const SUB_BRANCHES={
 // STATE
 // ═══════════════════════════════════════════
 const S={
-  creds:{...APP_CONFIG},
+  creds:{...APP_CONFIG,workerBase:sessionStorage.getItem('mkc_wk_base')||WORKER_DEFAULT.baseUrl,workerToken:sessionStorage.getItem('mkc_wk_tok')||WORKER_DEFAULT.adminToken},
   user:null,
   entries:{leads:[],pipeline:[],contacts:[],accounts:[]},
   filtered:{leads:[],pipeline:[],contacts:[],accounts:[]},
@@ -906,7 +990,8 @@ const S={
   isEditMode:false,
   autoTimer:null,
   gsToken:null,gsTokenExp:0,
-  fieldCache:{}
+  fieldCache:{},
+  qc:{items:[],statusFilter:'pending',sourceFilter:'',current:null,assignTarget:null}
 };
 
 // ═══════════════════════════════════════════
@@ -1007,6 +1092,28 @@ async function cuFetch(path,method='GET',body=null){
   const r=await fetch(CU_BASE+path,opts);
   if(!r.ok)throw new Error(`CU ${r.status}: ${await r.text()}`);
   return r.json();
+}
+
+// ═══════════════════════════════════════════
+// ACTIVITY LOGGER (Cloudflare Worker) API
+// ═══════════════════════════════════════════
+async function wkFetch(path,method='GET',params=null){
+  if(!S.creds.workerBase)throw new Error('Activity Logger URL not set — add it in Settings.');
+  if(!S.creds.workerToken)throw new Error('Activity Logger token not set — add it in Settings.');
+  const base=S.creds.workerBase.replace(/\/$/,'');
+  let url=base+path;
+  const opts={method,headers:{Authorization:`Bearer ${S.creds.workerToken}`}};
+  if(method==='GET'&&params){
+    const qs=new URLSearchParams(params).toString();
+    if(qs)url+=(url.includes('?')?'&':'?')+qs;
+  }else if(params){
+    opts.headers['Content-Type']='application/json';
+    opts.body=JSON.stringify(params);
+  }
+  const r=await fetch(url,opts);
+  if(!r.ok)throw new Error(`Activity Logger ${r.status}: ${await r.text()}`);
+  const ct=r.headers.get('content-type')||'';
+  return ct.includes('application/json')?r.json():r.text();
 }
 async function fetchAllTasks(listId){
   let page=0,all=[];
@@ -1193,6 +1300,7 @@ async function init(){
   populateTaskFilters();
   renderDashboard();
   renderMyWork();
+  refreshQcBadge();
   startAutoRefresh();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
 }
@@ -1217,6 +1325,7 @@ async function refreshAll(){
   renderDashboard();
   renderTasks();
   renderMyWork();
+  refreshQcBadge();
   setSyncState('ok','Synced '+new Date().toLocaleTimeString());
   showToast('Data refreshed.','success');
 }
@@ -1290,7 +1399,7 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el=document.getElementById(`view-${view}`);
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub','search-view':'Search',export:'Export',settings:'Settings'};
+  const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub',qcinbox:'QC Inbox','search-view':'Search',export:'Export',settings:'Settings'};
   document.getElementById('page-title').textContent=titles[view]||view;
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
@@ -1298,6 +1407,7 @@ function switchView(view){
   if(view==='export')updateExportFields();
   if(view==='tasks'){populateTaskFilters();renderTasks();}
   if(view==='mywork')renderMyWork();
+  if(view==='qcinbox')loadQcInbox();
 }
 
 function setViewMode(type,mode,btn){
@@ -3699,6 +3809,242 @@ async function testSheets(){
   }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Sheets: '+e.message,'error');}
 }
 function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
+
+function saveWorkerConfig(){
+  const base=document.getElementById('s-wk-base').value.trim();
+  const tok=document.getElementById('s-wk-token').value.trim();
+  if(!base||!tok)return showToast('Enter both the Worker URL and admin token.','error');
+  S.creds.workerBase=base;S.creds.workerToken=tok;
+  sessionStorage.setItem('mkc_wk_base',base);sessionStorage.setItem('mkc_wk_tok',tok);
+  showToast('Activity Logger config saved for this session.','success');
+  refreshQcBadge();
+}
+async function testWorkerLogger(){
+  const el=document.getElementById('wk-status');
+  el.className='conn-status pending';el.textContent='Testing…';
+  try{
+    await wkFetch('/api/staging','GET',{status:'pending'});
+    el.className='conn-status ok';el.textContent='● Connected';
+    showToast('Activity Logger connected.','success');
+  }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Activity Logger: '+e.message,'error');}
+}
+
+// ═══════════════════════════════════════════
+// QC INBOX (Activity Logger feed)
+// ═══════════════════════════════════════════
+const QC_ICONS={
+  text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.94a16 16 0 006.15 6.15l1.3-1.3a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
+  email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
+};
+function qcSourceLabel(s){return s==='quo'?'Quo':s==='zoho_mail'?'Zoho Mail':(s||'—');}
+function qcStatusBadge(status){
+  const map={pending:['#fef3c7','#92400e'],assigned:['#dcfce7','#166534'],archived:['#f3f4f6','#6b7280'],posted:['#e0f2fe','#0369a1']};
+  const[bg,fg]=map[status]||['#e5e7eb','#374151'];
+  return`<span class="badge" style="background:${bg};color:${fg}">${esc(status||'—')}</span>`;
+}
+function qcRelTime(iso){
+  if(!iso)return'—';
+  const d=new Date(/[TZ]/.test(iso)?iso:iso.replace(' ','T')+'Z');
+  const ms=Date.now()-d.getTime();
+  if(isNaN(ms))return iso;
+  const min=Math.floor(ms/60000);
+  if(min<1)return'just now';
+  if(min<60)return`${min}m ago`;
+  const hr=Math.floor(min/60);
+  if(hr<24)return`${hr}h ago`;
+  const day=Math.floor(hr/24);
+  if(day<7)return`${day}d ago`;
+  return fmtDateShort(d.getTime());
+}
+
+async function refreshQcBadge(){
+  if(!S.creds.workerBase||!S.creds.workerToken)return updateBadge('qcinbox',0);
+  try{
+    const items=await wkFetch('/api/staging','GET',{status:'pending'});
+    const list=Array.isArray(items)?items:(items.results||items.events||[]);
+    updateBadge('qcinbox',list.length);
+  }catch(e){/* silent — Worker may not be deployed/configured yet */}
+}
+
+async function loadQcInbox(){
+  const feed=document.getElementById('qc-feed');
+  const warn=document.getElementById('qc-conn-warning');
+  if(!S.creds.workerBase||!S.creds.workerToken){
+    warn.style.display='block';
+    warn.innerHTML='Activity Logger isn\'t configured yet. Add the Worker URL and admin token in <a href="#" onclick="switchView(\'settings\');return false" style="color:#dc2626;text-decoration:underline">Settings</a>.';
+    feed.innerHTML='';
+    updateBadge('qcinbox',0);
+    return;
+  }
+  warn.style.display='none';
+  feed.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
+  try{
+    const status=S.qc.statusFilter;
+    const items=await wkFetch('/api/staging','GET',status?{status}:null);
+    S.qc.items=Array.isArray(items)?items:(items.results||items.events||[]);
+    renderQcInbox();
+    if(status==='pending')updateBadge('qcinbox',S.qc.items.length);else refreshQcBadge();
+  }catch(e){
+    feed.innerHTML=`<div class="empty-state"><p>Couldn't load the activity feed</p><small>${esc(e.message)}</small></div>`;
+  }
+}
+
+function renderQcInbox(){
+  const feed=document.getElementById('qc-feed');
+  const srcFilter=S.qc.sourceFilter;
+  const items=(S.qc.items||[]).filter(it=>!srcFilter||it.source_type===srcFilter);
+  if(!items.length){
+    feed.innerHTML='<div class="empty-state"><p>No activity here right now</p><small>New texts, calls, and emails will show up here as they\'re batched in.</small></div>';
+    return;
+  }
+  feed.innerHTML=items.map(it=>{
+    const icon=QC_ICONS[it.event_type]||QC_ICONS.text;
+    const who=esc(it.contact_name||it.contact_identifier||'Unknown contact');
+    const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc((it.body||'').slice(0,140));
+    const owner=it.owner_name?`<span class="badge" style="background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)">${esc(it.owner_name)}</span>`:'';
+    return`
+    <div class="card qc-item" style="margin-bottom:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="qcOpenThread('${it.id}')">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">
+          <strong style="font-size:13.5px">${who}</strong>
+          <span style="font-size:11px;color:var(--text-muted)">${qcSourceLabel(it.source_type)} · ${esc(it.direction||'')}</span>
+          ${owner}${qcStatusBadge(it.status)}
+          <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${qcRelTime(it.occurred_at)}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub||'<em>No preview available</em>'}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+        ${it.status!=='archived'?`<button class="btn btn-ghost btn-sm" title="Archive" onclick="qcArchive('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></button>`:''}
+        ${it.status==='pending'?`<button class="btn btn-secondary btn-sm" onclick="qcOpenAssign('${it.id}')">Assign</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function qcArchive(id){
+  try{
+    await wkFetch(`/api/staging/${id}/archive`,'POST',{});
+    showToast('Archived.','success');
+    S.qc.items=(S.qc.items||[]).filter(it=>it.id!==id);
+    renderQcInbox();
+    refreshQcBadge();
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+
+async function qcOpenThread(id){
+  S.qc.current=id;
+  const modal=document.getElementById('qc-thread-modal');
+  const body=document.getElementById('qct-body');
+  modal.style.display='flex';
+  body.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
+  try{
+    const thread=await wkFetch(`/api/staging/${id}/thread`);
+    const msgs=Array.isArray(thread)?thread:(thread.results||thread.events||[thread]);
+    S.qc.currentThread=msgs;
+    const item=msgs[msgs.length-1]||msgs[0]||{};
+    document.getElementById('qct-title').textContent=item.contact_name||item.contact_identifier||'Activity Thread';
+    body.innerHTML=msgs.map(m=>{
+      const out=m.direction==='outgoing';
+      return`<div style="display:flex;flex-direction:column;align-items:${out?'flex-end':'flex-start'};margin-bottom:10px">
+        <div style="max-width:78%;background:${out?'var(--accent)':'var(--bg-main)'};color:${out?'#fff':'var(--text-primary)'};border-radius:12px;padding:8px 13px;font-size:13px;line-height:1.5">
+          ${m.event_type==='email'&&m.subject?`<div style="font-weight:700;margin-bottom:3px">${esc(m.subject)}</div>`:''}${esc(m.body||'(no content)')}
+        </div>
+        <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} · ${esc(m.direction||'')} · ${fmtDate(new Date(m.occurred_at).getTime())}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('qct-assign-btn').style.display=item.status==='pending'?'inline-flex':'none';
+  }catch(e){
+    body.innerHTML=`<div class="empty-state"><p>Couldn't load thread</p><small>${esc(e.message)}</small></div>`;
+  }
+}
+
+async function qcExportMarkdown(){
+  const id=S.qc.current;
+  if(!id)return;
+  try{
+    const md=await wkFetch(`/api/staging/${id}/thread`,'GET',{format:'markdown'});
+    const text=typeof md==='string'?md:JSON.stringify(md,null,2);
+    const blob=new Blob([text],{type:'text/markdown'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`activity-${id}.md`;document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Markdown exported.','success');
+  }catch(e){showToast('Export failed: '+e.message,'error');}
+}
+
+function qcOpenAssign(id,fromThread){
+  const item=(S.qc.items||[]).find(it=>it.id===id)||(fromThread&&S.qc.currentThread?S.qc.currentThread[S.qc.currentThread.length-1]:null);
+  S.qc.assignTarget=id;
+  document.getElementById('qc-assign-context').textContent=item?`Assigning: ${item.contact_name||item.contact_identifier||'this item'} (${qcSourceLabel(item.source_type)})`:'Assigning this item';
+  document.getElementById('qc-assign-body').querySelector('.form-group')?.scrollIntoView?.({block:'nearest'});
+  const searchInput=document.getElementById('qc-assign-search');
+  if(searchInput)searchInput.value='';
+  const resultsBox=document.getElementById('qc-assign-results');
+  if(resultsBox)resultsBox.innerHTML='';
+  const suggestedBox=document.getElementById('qc-assign-suggested');
+  const ident=(item?.contact_identifier||item?.contact_name||'').toLowerCase();
+  if(suggestedBox){
+    const matches=qcMatchEntries(ident);
+    suggestedBox.innerHTML=matches.length?
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:5px">Suggested matches</div>'+qcRenderAssignResults(matches):
+      '';
+  }
+  document.getElementById('qc-assign-modal').style.display='flex';
+}
+
+function qcMatchEntries(q){
+  if(!q||q.length<2)return[];
+  const ql=q.toLowerCase();
+  const qDigits=ql.replace(/\D/g,'');
+  const matches=[];
+  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+    (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
+      const cf=getCF(t);
+      const phone=(cf.phone||'').replace(/\D/g,'');
+      const email=(cf['primary contact email']||cf.email||'').toLowerCase();
+      const hit=(t.name||'').toLowerCase().includes(ql)||(t.id||'').toLowerCase().includes(ql)
+        ||(email&&ql.length>2&&email.includes(ql))||(qDigits.length>=7&&phone&&phone.includes(qDigits));
+      if(hit)matches.push({id:t.id,name:t.name,type:key});
+    });
+  });
+  return matches.slice(0,8);
+}
+
+function qcRenderAssignResults(matches){
+  const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
+  if(!matches.length)return'<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No matches — try a different search</div>';
+  return matches.map(m=>`<div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmousedown="qcConfirmAssign('${m.id}','${m.type}','${esc(m.name)}')">${makeSB(typeLabel[m.type])}<span><strong>${esc(m.name)}</strong> <span style="color:var(--text-muted);font-size:11px">${(m.id||'').toUpperCase()}</span></span></div>`).join('');
+}
+
+function qcSearchAssign(q){
+  const res=document.getElementById('qc-assign-results');
+  if(!res)return;
+  if(!q||q.length<2){res.innerHTML='';return;}
+  res.innerHTML=qcRenderAssignResults(qcMatchEntries(q));
+}
+
+async function qcConfirmAssign(taskId,taskType,name){
+  const id=S.qc.assignTarget;
+  if(!id)return;
+  try{
+    await wkFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
+    showToast(`Assigned to ${name}.`,'success');
+    const it=(S.qc.items||[]).find(i=>i.id===id);
+    if(it)it.status='assigned';
+    renderQcInbox();
+    refreshQcBadge();
+    document.getElementById('qc-assign-body').innerHTML=`
+      <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openNewTaskModal('${taskId}','${esc(name)}')">Create Related Task</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openProfile('${taskId}','${taskType}')">Open Record</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('qc-assign-modal')">Done</button>
+      </div>`;
+  }catch(e){showToast('Assign failed: '+e.message,'error');}
+}
 
 // ═══════════════════════════════════════════
 // UTILITIES
