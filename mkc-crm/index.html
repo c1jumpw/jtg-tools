@@ -236,7 +236,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 ::-webkit-scrollbar-thumb:hover{background:#c0c7d4}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
 
-/* â”€â”€ MOBILE RESPONSIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── MOBILE RESPONSIVE ─────────────────────────────────────────── */
 @media(max-width:768px){
   :root{--sidebar-width:0px;--topbar-height:54px}
   #sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;z-index:300;transform:translateX(-100%);transition:transform .25s ease}
@@ -293,7 +293,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     </div>
     <div class="form-group">
       <label>Select Your MKC ID</label>
-      <select class="form-select" id="login-id" onchange="onLoginChange()"><option value="">â€” Loadingâ€¦ â€”</option></select>
+      <select class="form-select" id="login-id" onchange="onLoginChange()"><option value="">— Loading… —</option></select>
     </div>
     <div class="form-group" id="login-name-row" style="display:none">
       <label>Team Member</label>
@@ -301,7 +301,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     </div>
     <div class="form-group">
       <label>Workspace Passcode</label>
-      <input type="password" inputmode="numeric" pattern="[0-9]*" id="login-pass" placeholder="Enter your passcodeâ€¦" onkeydown="if(event.key==='Enter')attemptLogin()">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" id="login-pass" placeholder="Enter your passcode…" onkeydown="if(event.key==='Enter')attemptLogin()">
     </div>
     <div id="login-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:9px 13px;font-size:12px;color:#dc2626;margin-bottom:12px;line-height:1.5"></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;height:42px;font-size:14px" onclick="attemptLogin()" id="login-btn">Sign In</button>
@@ -373,7 +373,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <span class="page-title" id="page-title">Dashboard</span>
     <div class="search-bar" id="gsw">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Search entriesâ€¦" id="gsi" autocomplete="off">
+      <input type="text" placeholder="Search entries…" id="gsi" autocomplete="off">
       <div class="srp" id="srp"></div>
     </div>
     <div class="topbar-right">
@@ -392,10 +392,10 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
       <div class="summary-grid">
-        <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">Active Leads</div><div class="sc-value" id="d-leads">â€”</div><div class="sc-meta">Leads list</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#f0fdf4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="sc-label">Active Deals</div><div class="sc-value" id="d-deals">â€”</div><div class="sc-meta">Pipeline</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sc-label">Contacts</div><div class="sc-value" id="d-contacts">â€”</div><div class="sc-meta">Contacts list</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><div class="sc-label">Accounts</div><div class="sc-value" id="d-accounts">â€”</div><div class="sc-meta">Companies</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">Active Leads</div><div class="sc-value" id="d-leads">—</div><div class="sc-meta">Leads list</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f0fdf4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="sc-label">Active Deals</div><div class="sc-value" id="d-deals">—</div><div class="sc-meta">Pipeline</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sc-label">Contacts</div><div class="sc-value" id="d-contacts">—</div><div class="sc-meta">Contacts list</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><div class="sc-label">Accounts</div><div class="sc-value" id="d-accounts">—</div><div class="sc-meta">Companies</div></div>
       </div>
       <div class="dash-grid">
         <div>
@@ -419,10 +419,10 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <!-- MY WORK (Personal Dashboard, Section 11-H) -->
     <div class="view" id="view-mywork">
       <div class="summary-grid">
-        <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">My Leads</div><div class="sc-value" id="mw-leads">â€”</div><div class="sc-meta">Assigned to you</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#f0fdf4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="sc-label">My Deals</div><div class="sc-value" id="mw-deals">â€”</div><div class="sc-meta">Assigned to you</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sc-label">My Contacts</div><div class="sc-value" id="mw-contacts">â€”</div><div class="sc-meta">Assigned to you</div></div>
-        <div class="sc"><div class="sc-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><div class="sc-label">My Accounts</div><div class="sc-value" id="mw-accounts">â€”</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">My Leads</div><div class="sc-value" id="mw-leads">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f0fdf4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="sc-label">My Deals</div><div class="sc-value" id="mw-deals">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#fffbeb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sc-label">My Contacts</div><div class="sc-value" id="mw-contacts">—</div><div class="sc-meta">Assigned to you</div></div>
+        <div class="sc"><div class="sc-icon" style="background:#f5f3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><div class="sc-label">My Accounts</div><div class="sc-value" id="mw-accounts">—</div><div class="sc-meta">Assigned to you</div></div>
       </div>
       <div class="dash-grid">
         <div class="card">
@@ -542,7 +542,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div style="max-width:700px">
         <div class="search-bar" style="max-width:100%;margin-bottom:18px;position:relative">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="fsearch" placeholder="Search all entries by name, email, phone, MKC IDâ€¦" style="height:44px;font-size:15px" oninput="runFullSearch(this.value)">
+          <input type="text" id="fsearch" placeholder="Search all entries by name, email, phone, MKC ID…" style="height:44px;font-size:15px" oninput="runFullSearch(this.value)">
         </div>
         <div id="fsearch-results"></div>
       </div>
@@ -582,9 +582,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         <div class="settings-section">
           <h3>Connection Status</h3>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
-            <div><div class="text-sm text-muted" style="margin-bottom:5px">ClickUp API</div><span class="conn-status pending" id="cu-status">â— Not tested</span></div>
-            <div><div class="text-sm text-muted" style="margin-bottom:5px">Google Sheets</div><span class="conn-status pending" id="gs-status">â— Not tested</span></div>
-            <div><div class="text-sm text-muted" style="margin-bottom:5px">Activity Logger</div><span class="conn-status pending" id="wk-status">â— Not tested</span></div>
+            <div><div class="text-sm text-muted" style="margin-bottom:5px">ClickUp API</div><span class="conn-status pending" id="cu-status">● Not tested</span></div>
+            <div><div class="text-sm text-muted" style="margin-bottom:5px">Google Sheets</div><span class="conn-status pending" id="gs-status">● Not tested</span></div>
+            <div><div class="text-sm text-muted" style="margin-bottom:5px">Activity Logger</div><span class="conn-status pending" id="wk-status">● Not tested</span></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="testClickUp()">Test ClickUp</button>
@@ -596,21 +596,21 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         </div>
         <div class="settings-section">
           <h3>ClickUp API Token</h3>
-          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Personal ClickUp API token â€” stored in session only.</p>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Personal ClickUp API token — stored in session only.</p>
           <div style="display:flex;gap:8px">
-            <input type="password" id="s-cu-token" placeholder="pk_â€¦" style="flex:1;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
+            <input type="password" id="s-cu-token" placeholder="pk_…" style="flex:1;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
             <button class="btn btn-primary btn-sm" onclick="saveToken()">Save</button>
           </div>
         </div>
         <div class="settings-section">
           <h3>Activity Logger (QC Inbox backend)</h3>
-          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Cloudflare Worker that receives Quo/Zoho activity and feeds the QC Inbox tab. Stored in session only â€” re-enter after closing the tab. See the Worker's README for the deployed <code>*.workers.dev</code> URL and the <code>ADMIN_TOKEN</code> value set via <code>wrangler secret put</code>.</p>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Cloudflare Worker that receives Quo/Zoho activity and feeds the QC Inbox tab. Stored in session only — re-enter after closing the tab. See the Worker's README for the deployed <code>*.workers.dev</code> URL and the <code>ADMIN_TOKEN</code> value set via <code>wrangler secret put</code>.</p>
           <div class="form-group"><label>Worker Base URL</label>
-            <input type="text" id="s-wk-base" placeholder="https://mkc-activity-logger.â€¦.workers.dev" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
+            <input type="text" id="s-wk-base" placeholder="https://mkc-activity-logger.….workers.dev" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end">
             <div class="form-group" style="flex:1;margin-bottom:0"><label>Admin Token</label>
-              <input type="password" id="s-wk-token" placeholder="Bearer tokenâ€¦" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
+              <input type="password" id="s-wk-token" placeholder="Bearer token…" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveWorkerConfig()" style="height:36px">Save</button>
           </div>
@@ -625,11 +625,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         </div>
         <div class="settings-section">
           <h3>Integrations <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;margin-left:6px;font-weight:600">Coming Soon</span></h3>
-          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Per-user automation tools. Settings reference your team directory profile automatically â€” assignee lookup maps to your credentials.</p>
-          <div class="int-card"><div class="int-icon" style="background:#fef3c7">ðŸ“§</div><div><div style="font-size:13px;font-weight:600">SendGrid</div><div style="font-size:12px;color:var(--text-muted)">Uses your Workspace Email from team directory</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
-          <div class="int-card"><div class="int-icon" style="background:#f0fdf4">ðŸ“ž</div><div><div style="font-size:13px;font-weight:600">OpenPhone / Quo</div><div style="font-size:12px;color:var(--text-muted)">Uses your Quo Phone ID from team directory</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
-          <div class="int-card"><div class="int-icon" style="background:#eff3ff">ðŸ”—</div><div><div style="font-size:13px;font-weight:600">Systeme.io</div><div style="font-size:12px;color:var(--text-muted)">Branch-specific funnel & campaign triggers</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
-          <div class="int-card"><div class="int-icon" style="background:#fdf4ff">âš¡</div><div><div style="font-size:13px;font-weight:600">Custom CRM Actions</div><div style="font-size:12px;color:var(--text-muted)">Add webhook or Zapier-powered automation triggers</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Manage</button></div></div>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Per-user automation tools. Settings reference your team directory profile automatically — assignee lookup maps to your credentials.</p>
+          <div class="int-card"><div class="int-icon" style="background:#fef3c7">📧</div><div><div style="font-size:13px;font-weight:600">SendGrid</div><div style="font-size:12px;color:var(--text-muted)">Uses your Workspace Email from team directory</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
+          <div class="int-card"><div class="int-icon" style="background:#f0fdf4">📞</div><div><div style="font-size:13px;font-weight:600">OpenPhone / Quo</div><div style="font-size:12px;color:var(--text-muted)">Uses your Quo Phone ID from team directory</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
+          <div class="int-card"><div class="int-icon" style="background:#eff3ff">🔗</div><div><div style="font-size:13px;font-weight:600">Systeme.io</div><div style="font-size:12px;color:var(--text-muted)">Branch-specific funnel & campaign triggers</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Configure</button></div></div>
+          <div class="int-card"><div class="int-icon" style="background:#fdf4ff">⚡</div><div><div style="font-size:13px;font-weight:600">Custom CRM Actions</div><div style="font-size:12px;color:var(--text-muted)">Add webhook or Zapier-powered automation triggers</div></div><div style="margin-left:auto"><button class="btn btn-secondary btn-sm" disabled>Manage</button></div></div>
         </div>
       </div>
     </div>
@@ -642,7 +642,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 <div id="profile-panel">
   <div class="pf-header">
     <div class="pf-header-top">
-      <div><div class="pf-name" id="pf-name">â€”</div><div class="pf-mkcid" id="pf-mkcid"></div><div class="pf-badges" id="pf-badges"></div></div>
+      <div><div class="pf-name" id="pf-name">—</div><div class="pf-mkcid" id="pf-mkcid"></div><div class="pf-badges" id="pf-badges"></div></div>
       <button class="pf-close" onclick="closeProfile()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="pf-contact-row" id="pf-contacts-row"></div>
@@ -659,8 +659,8 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <button class="btn btn-primary" onclick="openUpdateProfile()">Edit Record</button>
     <button class="btn btn-secondary" onclick="openActivityModal()">Log New Activity</button>
     <button class="btn btn-success" id="pf-addtask-btn" onclick="openNewTaskModal(S.currentEntry?.task?.id||'',S.currentEntry?.task?.name||'')">+ Add Task</button>
-    <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook â†—</button>
-    <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp â†—</button>
+    <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook ↗</button>
+    <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp ↗</button>
   </div>
 </div>
 
@@ -688,7 +688,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         </div>
       </div>
       <div class="form-group"><label>Activity Date</label><input type="date" id="act-date"></div>
-      <div class="form-group"><label>Note</label><textarea class="form-textarea" id="act-note" rows="4" placeholder="Describe what happenedâ€¦"></textarea></div>
+      <div class="form-group"><label>Note</label><textarea class="form-textarea" id="act-note" rows="4" placeholder="Describe what happened…"></textarea></div>
       <div class="form-group"><label>Attachment <span style="font-size:10px;color:var(--text-muted)">(optional)</span></label>
         <input type="file" id="act-file" onchange="document.getElementById('act-file-name').textContent=this.files[0]?('Selected: '+this.files[0].name):''">
         <div id="act-file-name" style="font-size:11.5px;color:var(--text-muted);margin-top:4px"></div>
@@ -724,11 +724,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         </div>
       </div>
       <div class="form-group"><label>Link to CRM Entry (search by name or ID)</label>
-        <input type="text" id="nt-search" placeholder="Type name to searchâ€¦" oninput="searchForTaskLink(this.value)" autocomplete="off">
+        <input type="text" id="nt-search" placeholder="Type name to search…" oninput="searchForTaskLink(this.value)" autocomplete="off">
         <div id="nt-results" style="border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:180px;overflow-y:auto;background:var(--bg-card)"></div>
         <div id="nt-linked" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"></div>
       </div>
-      <div class="form-group"><label>Notes</label><textarea class="form-textarea" id="nt-notes" rows="3" placeholder="Task detailsâ€¦"></textarea></div>
+      <div class="form-group"><label>Notes</label><textarea class="form-textarea" id="nt-notes" rows="3" placeholder="Task details…"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('task-modal')">Cancel</button><button class="btn btn-primary" onclick="submitNewTask()">Create Task</button></div>
   </div>
@@ -745,7 +745,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
-        <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assignâ€¦</button>
+        <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assign…</button>
       </div>
     </div>
   </div>
@@ -759,7 +759,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="qc-assign-context" style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px"></div>
       <div id="qc-assign-suggested" style="margin-bottom:10px"></div>
       <div class="form-group"><label>Search all entries</label>
-        <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC IDâ€¦" oninput="qcSearchAssign(this.value)" autocomplete="off">
+        <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC ID…" oninput="qcSearchAssign(this.value)" autocomplete="off">
       </div>
       <div id="qc-assign-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px"></div>
     </div>
@@ -770,9 +770,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 <div id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 <div id="toast-container"></div>
 <script>
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // CONFIG & CREDENTIALS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 const SHEETS_ID='1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw';
 const CU_BASE='https://api.clickup.com/api/v2';
 const GS_BASE=`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values`;
@@ -783,8 +783,8 @@ const APP_CONFIG={
   listContacts:'901710477009',listAccounts:'901710481777',
   listTasks:'901714539764'  // Master CRM Tasks list
 };
-// Activity Logger (Cloudflare Worker) â€” QC Inbox reads/writes here.
-// Left blank on purpose: fill in from Settings â†’ Activity Logger once the
+// Activity Logger (Cloudflare Worker) — QC Inbox reads/writes here.
+// Left blank on purpose: fill in from Settings → Activity Logger once the
 // Worker is deployed (`wrangler deploy`), rather than baking another
 // secret into this public file. Values are kept in sessionStorage only.
 const WORKER_DEFAULT={
@@ -825,11 +825,11 @@ K3zEFgOBo0pY1QY4CTLdcPrW
 `
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // STATUS / BRANCH / TYPE COLOR MAPS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 const STATUS_COLORS={
-  // â”€â”€ Leads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Leads ──────────────────────────────────────
   'pre-engagement':['#e5e7eb','#374151'],
   'manual outreach cue':['#374151','#ffffff'],
   'initial contact made':['#6366f1','#ffffff'],
@@ -837,7 +837,7 @@ const STATUS_COLORS={
   'attention needed':['#f59e0b','#ffffff'],
   'churned/disqualified':['#ef4444','#ffffff'],
   'ready for pipeline':['#22c55e','#ffffff'],
-  // â”€â”€ Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pipeline ───────────────────────────────────
   'oppurtunity':['#8b5cf6','#ffffff'],
   'opportunity':['#8b5cf6','#ffffff'],
   'scheduled ds / intro':['#60a5fa','#ffffff'],
@@ -848,25 +848,25 @@ const STATUS_COLORS={
   'disqualified':['#ef4444','#ffffff'],
   'closed / won':['#22c55e','#ffffff'],
   'closed / lost':['#dc2626','#ffffff'],
-  // â”€â”€ Contacts & Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Contacts & Accounts ────────────────────────
   'listed':['#e5e7eb','#374151'],
   'to do':['#6b7280','#ffffff'],
   'in progress':['#3b82f6','#ffffff'],
   'in review':['#f59e0b','#ffffff'],
   'burnt':['#ef4444','#ffffff'],
   'completed':['#22c55e','#ffffff'],
-  // â”€â”€ Account status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Account status labels ──────────────────────
   'active':['#22c55e','#ffffff'],
   'inactive':['#ef4444','#ffffff'],
   'under review':['#f59e0b','#ffffff'],
   'pre-deal':['#6b7280','#ffffff'],
   'onboarding cue':['#818cf8','#ffffff'],
-  // â”€â”€ Deal status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Deal status labels ─────────────────────────
   'closed/won':['#22c55e','#ffffff'],
   'close/lost':['#dc2626','#ffffff'],
   'upsell':['#10b981','#ffffff'],
   'payments in progress':['#f59e0b','#ffffff'],
-  // â”€â”€ Master CRM Tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Master CRM Tasks ───────────────────────────
   'for review':['#f59e0b','#ffffff'],
   'completed/approved':['#22c55e','#ffffff']
 };
@@ -879,7 +879,7 @@ const TYPE_COLORS={
   'client':['#dcfce7','#166534']
 };
 
-// â”€â”€ EXACT FIELD IDs FROM CLICKUP INSPECTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── EXACT FIELD IDs FROM CLICKUP INSPECTION ────────────────────────────
 // Source: mkc-field-inspector.html run 2026-06-19
 const CU_FIELDS={
   // Shared across all lists
@@ -909,7 +909,7 @@ const CU_FIELDS={
   FIRST_NAME:       'e9a9e94c-88c0-423b-a6db-05669ff5f967',  // type: short_text
   // Pipeline only
   NEXT_ACTION:      '123d310a-e7f1-4d26-a951-622cdf169915',  // type: drop_down
-  OPPORTUNITY:      '1d4e9287-decb-4f8b-841e-63a4b13b345c',  // type: currency â†’ number
+  OPPORTUNITY:      '1d4e9287-decb-4f8b-841e-63a4b13b345c',  // type: currency → number
   DEAL_ACTION:      '466fb24b-14eb-4ed0-a220-41427ff1849a',  // type: drop_down
   COMPANY_NAME:     '73785f38-2d0b-424f-b45f-a42d0cd532d0',  // type: short_text
   CLOSE_DATE:       'b36600d5-f1c3-4e3c-8e13-17f49aab4620',  // type: date
@@ -955,7 +955,7 @@ const PLAN_UUIDS={
   'Premium':'33a23883-fe7a-4e51-bd28-880c56886722',
   'Custom': '4f379442-79e2-47da-b05e-615b7fceb790',
 };
-// Lead/Contact Type UUIDs â€” all 6 options (used for checkbox multi-select)
+// Lead/Contact Type UUIDs — all 6 options (used for checkbox multi-select)
 const LABEL_UUIDS={
   'high value':       '59fcb834-7901-4177-b346-101cb9abf871',
   'demo prospect':    'b74611f9-53e5-4b9b-a9d8-b64c0a76bdef',
@@ -972,9 +972,9 @@ const SUB_BRANCHES={
   'MKC SA':['MKC SA']
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // STATE
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 const S={
   creds:{...APP_CONFIG,workerBase:sessionStorage.getItem('mkc_wk_base')||WORKER_DEFAULT.baseUrl,workerToken:sessionStorage.getItem('mkc_wk_tok')||WORKER_DEFAULT.adminToken},
   user:null,
@@ -995,9 +995,9 @@ const S={
   qc:{items:[],statusFilter:'pending',sourceFilter:'',current:null,assignTarget:null}
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// GOOGLE AUTH â€” Service Account JWT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
+// GOOGLE AUTH — Service Account JWT
+// ═══════════════════════════════════════════
 const GS_API_KEY='AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg';
 
 async function getGSToken(){
@@ -1020,7 +1020,7 @@ async function getGSToken(){
   return S.gsToken;
 }
 
-// READ â€” uses service account JWT (sheet stays private)
+// READ — uses service account JWT (sheet stays private)
 async function gsFetch(range){
   const t=await getGSToken();
   const r=await fetch(`${GS_BASE}/${encodeURIComponent(range)}`,{headers:{Authorization:`Bearer ${t}`}});
@@ -1033,7 +1033,7 @@ async function gsFetch(range){
   return(await r.json()).values||[];
 }
 
-// WRITE â€” uses service account JWT (sheet must be shared with service account as Editor)
+// WRITE — uses service account JWT (sheet must be shared with service account as Editor)
 async function gsWrite(range,values,method='append'){
   try{
     const t=await getGSToken();
@@ -1051,7 +1051,7 @@ async function gsWrite(range,values,method='append'){
 async function gsAppend(range,values){await gsWrite(range,values,'append');}
 async function gsUpdate(range,value){await gsWrite(range,value,'update');}
 
-// Sync entry to Master CRM Entries sheet â€” find row by task ID or append
+// Sync entry to Master CRM Entries sheet — find row by task ID or append
 async function syncToSheets(task,type){
   try{
     const cf=getCF(task);
@@ -1083,9 +1083,9 @@ async function syncTaskUpdateToSheets(taskName,status,relLead,relDeal,relAcct,du
   }catch(e){console.warn('Task sheet sync:',e.message);}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // CLICKUP API
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function cuFetch(path,method='GET',body=null){
   const token=S.creds.cuToken||sessionStorage.getItem('mkc_cu')||'';
   const opts={method,headers:{Authorization:token,'Content-Type':'application/json'}};
@@ -1095,12 +1095,12 @@ async function cuFetch(path,method='GET',body=null){
   return r.json();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // ACTIVITY LOGGER (Cloudflare Worker) API
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function wkFetch(path,method='GET',params=null){
-  if(!S.creds.workerBase)throw new Error('Activity Logger URL not set â€” add it in Settings.');
-  if(!S.creds.workerToken)throw new Error('Activity Logger token not set â€” add it in Settings.');
+  if(!S.creds.workerBase)throw new Error('Activity Logger URL not set — add it in Settings.');
+  if(!S.creds.workerToken)throw new Error('Activity Logger token not set — add it in Settings.');
   const base=S.creds.workerBase.replace(/\/$/,'');
   let url=base+path;
   const opts={method,headers:{Authorization:`Bearer ${S.creds.workerToken}`}};
@@ -1127,12 +1127,12 @@ async function fetchAllTasks(listId){
   return all;
 }
 async function getListFields(listId){
-  // Always fetch fresh â€” don't cache, field definitions can change
+  // Always fetch fresh — don't cache, field definitions can change
   try{const d=await cuFetch(`/list/${listId}/field`);return d.fields||[];}
   catch(e){return[];}
 }
 
-// â”€â”€ DIRECT FIELD SETTER using hardcoded field IDs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── DIRECT FIELD SETTER using hardcoded field IDs ──────────────────────
 async function setFieldById(taskId,fieldId,value,fieldType){
   if(!fieldId||value===undefined||value===null)return;
   let payload;
@@ -1155,11 +1155,11 @@ async function setFieldById(taskId,fieldId,value,fieldType){
   }
   try{
     await cuFetch(`/task/${taskId}/field/${fieldId}`,'POST',payload);
-    console.log(`âœ… OK: "${fieldId}" (${fieldType}) â†’`,JSON.stringify(payload).substring(0,50));
-  }catch(e){console.warn(`âŒ FAIL: "${fieldId}" (${fieldType}):`,e.message);}
+    console.log(`✅ OK: "${fieldId}" (${fieldType}) →`,JSON.stringify(payload).substring(0,50));
+  }catch(e){console.warn(`❌ FAIL: "${fieldId}" (${fieldType}):`,e.message);}
 }
 
-// Get UUID for a labels-type field option â€” uses hardcoded maps, falls back to Sheets
+// Get UUID for a labels-type field option — uses hardcoded maps, falls back to Sheets
 function getLabelUUID(fieldKeyword,optionName){
   const key=(optionName||'').trim();
   // Direct lookups by field type
@@ -1199,9 +1199,9 @@ function getSubBranchOI(branch,sbName){
   return jtg.indexOf(sbName);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // INIT & AUTH
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   const saved=sessionStorage.getItem('mkc_session');
   const tok=sessionStorage.getItem('mkc_cu');
@@ -1218,20 +1218,20 @@ document.addEventListener('DOMContentLoaded',()=>{
 async function showLogin(){
   document.getElementById('login-overlay').style.display='flex';
   const sel=document.getElementById('login-id');
-  sel.innerHTML='<option value="">â€” Loadingâ€¦ â€”</option>';
+  sel.innerHTML='<option value="">— Loading… —</option>';
   try{
     const rows=await gsFetch('MKC Team Member Directory!A:T');
     S.ref.team=rows.slice(1);
     const active=S.ref.team.filter(r=>(r[1]||'').toLowerCase()==='active'&&r[0]);
     S._loginDir=active;
     if(!active.length){
-      sel.innerHTML='<option value="">â€” No active members found â€”</option>';
+      sel.innerHTML='<option value="">— No active members found —</option>';
       showLoginErr('Sheet loaded but no active members found. Check that column B contains "Active" for your row.');
       return;
     }
-    sel.innerHTML='<option value="">â€” Select your MKC ID â€”</option>'+active.map(r=>`<option value="${r[0]}">${r[0].toUpperCase()} â€” ${r[2]||''} ${r[3]||''}</option>`).join('');
+    sel.innerHTML='<option value="">— Select your MKC ID —</option>'+active.map(r=>`<option value="${r[0]}">${r[0].toUpperCase()} — ${r[2]||''} ${r[3]||''}</option>`).join('');
   }catch(e){
-    sel.innerHTML='<option value="">â€” Error â€”</option>';
+    sel.innerHTML='<option value="">— Error —</option>';
     let msg=e.message||'Unknown error';
     if(msg.includes('403')||msg.includes('permission')){
       msg='Permission denied. Share the Google Sheet with: mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com';
@@ -1250,7 +1250,7 @@ function onLoginChange(){
   const nr=document.getElementById('login-name-row');
   if(!id){nr.style.display='none';return;}
   const row=(S._loginDir||[]).find(r=>r[0]===id);
-  if(row){document.getElementById('login-name').textContent=`${row[2]||''} ${row[3]||''} Â· ${row[4]||''}`;nr.style.display='block';}
+  if(row){document.getElementById('login-name').textContent=`${row[2]||''} ${row[3]||''} · ${row[4]||''}`;nr.style.display='block';}
   document.getElementById('login-error').style.display='none';
   document.getElementById('login-pass').focus();
 }
@@ -1294,7 +1294,7 @@ function saveToken(){
 }
 
 async function init(){
-  setSyncState('syncing','Loadingâ€¦');
+  setSyncState('syncing','Loading…');
   await loadRef();
   await loadAllEntries();
   await loadMasterTasks();
@@ -1309,7 +1309,7 @@ async function init(){
 function startAutoRefresh(){
   if(S.autoTimer)clearInterval(S.autoTimer);
   S.autoTimer=setInterval(async()=>{
-    setSyncState('syncing','Refreshingâ€¦');
+    setSyncState('syncing','Refreshing…');
     await loadAllEntries();
     renderDashboard();
     renderMyWork();
@@ -1318,7 +1318,7 @@ function startAutoRefresh(){
 }
 
 async function refreshAll(){
-  setSyncState('syncing','Refreshingâ€¦');
+  setSyncState('syncing','Refreshing…');
   await loadRef();
   await loadAllEntries();
   await loadMasterTasks();
@@ -1338,9 +1338,9 @@ function setSyncState(state,label){
   if(lbl)lbl.textContent=label;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // REFERENCE DATA
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function loadRef(){
   const sheets=[
     ['ClickUp Labels Mastersheet!A:C','labels'],
@@ -1362,9 +1362,9 @@ function populateAssigneeFilter(){
   if(sel)sel.innerHTML='<option value="">All Assignees</option>'+active.map(r=>`<option value="${(r[2]||'')+' '+(r[3]||'')}">${r[2]||''} ${r[3]||''}</option>`).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // LOAD ENTRIES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function loadAllEntries(){
   const lists={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts};
   const typeKeys=Object.keys(lists);
@@ -1387,9 +1387,9 @@ async function loadAllEntries(){
   renderTasks();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // NAVIGATION
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
   el.addEventListener('click',()=>switchView(el.dataset.view));
 });
@@ -1429,9 +1429,9 @@ function renderViewMode(type,mode){
   if(mode==='calendar')renderCalendar(type);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // TABLE RENDERING
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function renderTable(type){
   const items=S.filtered[type];
   const page=S.pages[type]||1,ps=50;
@@ -1449,10 +1449,10 @@ function renderTable(type){
     const cf=getCF(task);
     const isSub=!!task.parent;
     const id=(task.id||'').toUpperCase();
-    const name=task.name||'â€”';
-    const email=cf['primary contact email']||cf.email||'â€”';
-    const phone=cf.phone||'â€”';
-    const status=task.status?.status||'â€”';
+    const name=task.name||'—';
+    const email=cf['primary contact email']||cf.email||'—';
+    const phone=cf.phone||'—';
+    const status=task.status?.status||'—';
     const branch=cf.branch||'';
     const upd=fmtDate(task.date_updated);
     const sb=makeSB(status);
@@ -1463,7 +1463,7 @@ function renderTable(type){
       const ct=cf['lead/contact type']||'';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
-        <td><div style="font-weight:500">${esc(name)}</div>${isSub?'<div style="font-size:11px;color:var(--text-muted)">â†³ Subtask</div>':''}</td>
+        <td><div style="font-weight:500">${esc(name)}</div>${isSub?'<div style="font-size:11px;color:var(--text-muted)">↳ Subtask</div>':''}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(email)}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(phone)}</td>
         <td>${sb}</td><td>${bb}</td><td>${ct?makeTypeBadge(ct):''}</td>
@@ -1471,8 +1471,8 @@ function renderTable(type){
       </tr>`;
     }
     if(type==='pipeline'){
-      const acct=cf['company/account name']||'â€”';
-      const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'â€”';
+      const acct=cf['company/account name']||'—';
+      const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'—';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
         <td><div style="font-weight:500">${esc(name)}</div></td>
@@ -1483,8 +1483,8 @@ function renderTable(type){
       </tr>`;
     }
     if(type==='accounts'){
-      const pc=cf['primary contact']||'â€”';
-      const as=cf['account status']||'â€”';
+      const pc=cf['primary contact']||'—';
+      const as=cf['account status']||'—';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
         <td><div style="font-weight:500">${esc(name)}</div></td>
@@ -1525,28 +1525,28 @@ function buildToolbar(type){
   el.innerHTML=`
     <div style="position:relative;flex:1;max-width:220px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="fs-search-${type}" placeholder="Filter ${type}â€¦" style="width:100%;height:34px;border:1px solid var(--border);border-radius:7px;padding:0 12px 0 34px;font-size:13px;background:var(--bg-card);outline:none" oninput="filterTable('${type}',this.value)">
+      <input type="text" id="fs-search-${type}" placeholder="Filter ${type}…" style="width:100%;height:34px;border:1px solid var(--border);border-radius:7px;padding:0 12px 0 34px;font-size:13px;background:var(--bg-card);outline:none" oninput="filterTable('${type}',this.value)">
     </div>
     ${showStatus?`<select class="filter-select" id="fs-status-${type}" onchange="filterByField('${type}','status',this.value)">
-      <option value="">â€” Status â€”</option><option value="">All Statuses</option>${statuses.map(s=>`<option value="${s}">${s}</option>`).join('')}
+      <option value="">— Status —</option><option value="">All Statuses</option>${statuses.map(s=>`<option value="${s}">${s}</option>`).join('')}
     </select>`:''}
     <select class="filter-select" id="fs-branch-${type}" onchange="filterByField('${type}','branch',this.value)">
-      <option value="">â€” Branch â€”</option><option value="">All Branches</option>${branches.map(b=>`<option value="${b}">${b}</option>`).join('')}
+      <option value="">— Branch —</option><option value="">All Branches</option>${branches.map(b=>`<option value="${b}">${b}</option>`).join('')}
     </select>
     <select class="filter-select" id="fs-subbranch-${type}" onchange="filterByField('${type}','subbranch',this.value)">
-      <option value="">â€” Sub-Branch â€”</option><option value="">All Sub-Branches</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
+      <option value="">— Sub-Branch —</option><option value="">All Sub-Branches</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
     </select>
     <select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value)">
-      <option value="">â€” Assignee â€”</option><option value="">All Assignees</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
+      <option value="">— Assignee —</option><option value="">All Assignees</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
     </select>
     <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value)">
-      <option value="">â€” Sort by â€”</option>
-      <option value="date_updated_desc">Last Updated â†“</option>
-      <option value="date_updated_asc">Last Updated â†‘</option>
-      <option value="date_created_desc">Date Created â†“</option>
-      <option value="date_created_asc">Date Created â†‘</option>
+      <option value="">— Sort by —</option>
+      <option value="date_updated_desc">Last Updated ↓</option>
+      <option value="date_updated_asc">Last Updated ↑</option>
+      <option value="date_created_desc">Date Created ↓</option>
+      <option value="date_created_asc">Date Created ↑</option>
     </select>
-    <button class="btn btn-ghost btn-sm" onclick="clearFilters('${type}')" title="Clear all filters" style="color:var(--text-muted);padding:5px 8px;flex-shrink:0">âœ• Clear</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearFilters('${type}')" title="Clear all filters" style="color:var(--text-muted);padding:5px 8px;flex-shrink:0">✕ Clear</button>
     <button class="btn btn-secondary btn-sm" style="margin-left:auto;flex-shrink:0" onclick="switchView('export')">Export CSV</button>
   `;
 }
@@ -1622,9 +1622,9 @@ function sortTable(type,mode){
   S.pages[type]=1;renderTable(type);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // KANBAN
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function renderKanban(type){
   const el=document.getElementById(`${type}-kanban-wrap`);
   if(!el)return;
@@ -1648,15 +1648,15 @@ function renderKanban(type){
       const cf=getCF(task);
       const bb=makeBB(cf.branch||'');
       const tb=cf['lead/contact type']?makeTypeBadge(cf['lead/contact type']):'';
-      const nad=cf['next action date']?'ðŸ“… '+fmtDateShort(cf['next action date']):'';
+      const nad=cf['next action date']?'📅 '+fmtDateShort(cf['next action date']):'';
       const asgn=task.assignees?.[0]?.username||'';
       return `<div class="kanban-card" onclick="openProfile('${task.id}','${lk}')">
         <div class="kc-name">${esc(task.name)}</div>
         <div class="kc-meta">${bb}${tb}</div>
-        <div class="kc-footer">${nad?`<span>${nad}</span>`:''}${asgn?`<span>ðŸ‘¤ ${esc(asgn)}</span>`:''}</div>
+        <div class="kc-footer">${nad?`<span>${nad}</span>`:''}${asgn?`<span>👤 ${esc(asgn)}</span>`:''}</div>
         <div class="kc-actions">
-          <div class="kc-btn" onclick="event.stopPropagation();quickAction('${task.id}','${lk}')">âš¡ Action</div>
-          <div class="kc-btn" onclick="event.stopPropagation();openProfile('${task.id}','${lk}')">View â†’</div>
+          <div class="kc-btn" onclick="event.stopPropagation();quickAction('${task.id}','${lk}')">⚡ Action</div>
+          <div class="kc-btn" onclick="event.stopPropagation();openProfile('${task.id}','${lk}')">View →</div>
         </div>
       </div>`;
     }).join('')||'<div style="font-size:11.5px;color:var(--text-muted);text-align:center;padding:18px">Empty</div>';
@@ -1687,9 +1687,9 @@ async function quickAction(taskId,type){
   switchPfTab('actions',document.querySelectorAll('.pf-tab')[1]);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // CALENDAR
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function renderCalendar(type){
   const el=document.getElementById(`${type}-cal-wrap`);
   if(!el)return;
@@ -1725,9 +1725,9 @@ function renderCalendar(type){
   }
   el.innerHTML=`<div class="calendar-wrap">
     <div class="cal-header">
-      <button class="btn btn-ghost btn-sm" onclick="calNav('${type}',-1)">â€¹</button>
+      <button class="btn btn-ghost btn-sm" onclick="calNav('${type}',-1)">‹</button>
       <h3>${months[m]} ${y}</h3>
-      <button class="btn btn-ghost btn-sm" onclick="calNav('${type}',1)">â€º</button>
+      <button class="btn btn-ghost btn-sm" onclick="calNav('${type}',1)">›</button>
     </div>
     <div class="cal-grid">
       ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-day-lbl">${d}</div>`).join('')}
@@ -1748,10 +1748,10 @@ function calNav(type,d){
   renderCalendar(type);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // PENDING TASKS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// â”€â”€ ACTION HUB STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ═══════════════════════════════════════════
+// ── ACTION HUB STATE ──────────────────────────────
 let S_tasksView='list';
 let S_masterTasks=[];
 
@@ -1772,9 +1772,9 @@ async function loadMasterTasks(){
   }catch(e){console.warn('Master tasks load:',e.message);}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // PERSONAL DASHBOARD / MY WORK (Section 11-H)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // Look up the logged-in user's ClickUp workspace member ID by matching their
 // Workspace Email (Team Directory col P) against the ClickUp team member list.
 // Matching by ID (not username) avoids false negatives from name typos/variations.
@@ -1834,7 +1834,7 @@ async function renderMyWork(){
           <div class="task-dot" style="background:var(--accent)"></div>
           <div class="task-info">
             <div class="task-name">${esc(t.name)}</div>
-            <div class="task-parent">${linkedName?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span> <span style="font-size:10.5px;color:var(--text-muted)">Â· ${linkedType}</span>`:'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>'}</div>
+            <div class="task-parent">${linkedName?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span> <span style="font-size:10.5px;color:var(--text-muted)">· ${linkedType}</span>`:'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>'}</div>
           </div>
           <div class="task-meta" style="flex-shrink:0">${makeSB(t.status?.status||'')}${due?`<span style="font-size:11.5px;color:var(--text-muted);margin-left:6px">${fmtDateShort(due)}</span>`:''}</div>
         </div>`;
@@ -1852,7 +1852,7 @@ async function renderMyWork(){
     :'<div class="empty-state"><p>No entries assigned to you.</p></div>';
 }
 
-// Build lookup map: taskId â†’ entry name, from all Big 4 lists
+// Build lookup map: taskId → entry name, from all Big 4 lists
 function buildEntryLookup(){
   const map={};
   const lists={leads:S.entries.leads,pipeline:S.entries.pipeline,contacts:S.entries.contacts,accounts:S.entries.accounts};
@@ -1862,13 +1862,13 @@ function buildEntryLookup(){
   return map;
 }
 
-// Human-readable label per Big 4 list type â€” single source of truth so
+// Human-readable label per Big 4 list type — single source of truth so
 // Action Hub never mislabels a task by guessing which related-ID field it came from.
 const ENTRY_TYPE_LABELS={leads:'Lead/Contact',contacts:'Lead/Contact',pipeline:'Pipeline',accounts:'Account'};
 
 // Resolve the entry a Master CRM Task is actually linked to by checking all
 // three related-ID fields against the FULL cross-list lookup, and label it
-// using the resolved entry's real type â€” not just which field happened to be set.
+// using the resolved entry's real type — not just which field happened to be set.
 function resolveLinkedEntry(cf,lookup){
   const relLead=cf['related lead/contact id']||cf['related lead']||'';
   const relDeal=cf['related deal id']||cf['related deal']||'';
@@ -1878,7 +1878,7 @@ function resolveLinkedEntry(cf,lookup){
     const entry=lookup[id];
     if(entry)return{id,name:entry.name,type:ENTRY_TYPE_LABELS[entry.type]||''};
   }
-  // No ID resolved against any of the 4 lists â€” fall back to whichever ID is present, unlabeled.
+  // No ID resolved against any of the 4 lists — fall back to whichever ID is present, unlabeled.
   const fallbackId=relLead||relDeal||relAcct||'';
   return{id:fallbackId,name:'',type:''};
 }
@@ -1975,9 +1975,9 @@ function renderTasks(){
   el.innerHTML='<div class="tasks-list">'+all.map(({task,urgency,eff,asgn,linkedName,linkedType})=>{
     const curStatus=(task.status?.status||'').toUpperCase();
     const statusLine=linkedName
-      ?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span>${linkedType?` <span style="font-size:10.5px;color:var(--text-muted)">Â· ${linkedType}</span>`:''}`
+      ?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span>${linkedType?` <span style="font-size:10.5px;color:var(--text-muted)">· ${linkedType}</span>`:''}`
       :'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>';
-    const asgnLine=asgn?` Â· <span style="font-size:11px">ðŸ‘¤ ${esc(asgn)}</span>`:'';
+    const asgnLine=asgn?` · <span style="font-size:11px">👤 ${esc(asgn)}</span>`:'';
     return `<div class="task-item ${urgency}" onclick="openTaskProfile('${task.id}')" style="border-left-color:${urgColors[urgency]}">
       <div class="task-dot" style="background:${urgColors[urgency]}"></div>
       <div class="task-info">
@@ -1988,7 +1988,7 @@ function renderTasks(){
         ${makeSB(task.status?.status||'')}
         ${eff?`<span style="font-size:11.5px;color:${urgency==='overdue'?'var(--danger)':urgency==='today'?'var(--warning)':'var(--text-muted)'}">${fmtDateShort(eff)}</span>`:''}
         <select class="filter-select" style="height:26px;font-size:11px;padding:0 6px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${task.id}','${esc(task.name)}',this.value)">
-          <option value="">Statusâ€¦</option>
+          <option value="">Status…</option>
           <option value="TO DO"${curStatus==='TO DO'?' selected':''}>To Do</option>
           <option value="IN PROGRESS"${curStatus==='IN PROGRESS'?' selected':''}>In Progress</option>
           <option value="FOR REVIEW"${curStatus==='FOR REVIEW'?' selected':''}>For Review</option>
@@ -2059,8 +2059,8 @@ function renderTasksKanban(){
       return '<div class="kanban-card" onclick="openTaskProfile(\'' +cardId+ '\')">'+
         '<div class="kc-name">'+esc(task.name)+'</div>'+
         '<div style="margin-top:5px">'+
-          (linkedName?'<div style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">'+esc(linkedName)+(linkedType?' <span style="color:var(--text-muted);font-weight:400">Â· '+linkedType+'</span>':'')+'</div>':'<div style="font-size:11px;color:var(--text-muted)">No linked entry</div>')+
-          (asgn?'<div style="font-size:11px;color:var(--text-muted)">ðŸ‘¤ '+esc(asgn)+'</div>':'')+
+          (linkedName?'<div style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">'+esc(linkedName)+(linkedType?' <span style="color:var(--text-muted);font-weight:400">· '+linkedType+'</span>':'')+'</div>':'<div style="font-size:11px;color:var(--text-muted)">No linked entry</div>')+
+          (asgn?'<div style="font-size:11px;color:var(--text-muted)">👤 '+esc(asgn)+'</div>':'')+
           '<select class="filter-select" style="height:23px;font-size:10.5px;padding:0 4px;margin-top:4px;width:100%" onclick="event.stopPropagation()" data-tid="'+cardId+'" data-tname="'+task.name.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" onchange="quickUpdateTaskStatus(this.dataset.tid,this.dataset.tname,this.value)">'+
             '<option value="TO DO"'+(curSt==='TO DO'?' selected':'')+'>To Do</option>'+
             '<option value="IN PROGRESS"'+(curSt==='IN PROGRESS'?' selected':'')+'>In Progress</option>'+
@@ -2082,7 +2082,7 @@ async function quickUpdateTaskStatus(taskId,taskName,newStatus){
     await cuFetch(`/task/${taskId}`,'PUT',{status:newStatus});
     // Update in Google Sheet
     await syncTaskUpdateToSheets(taskName,newStatus,'','','','',S.user?.name||'');
-    showToast(`Status â†’ ${newStatus}`,'success');
+    showToast(`Status → ${newStatus}`,'success');
     // Refresh master tasks
     await loadMasterTasks();
     renderTasks();
@@ -2141,7 +2141,7 @@ function unlinkTask(id){
 function renderTaskLinks(){
   const el=document.getElementById('nt-linked');
   if(!el)return;
-  el.innerHTML=(S._taskLinks||[]).map(l=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500">${esc(l.name)}<button onclick="unlinkTask('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:14px;padding:0;opacity:.6">Ã—</button></span>`).join('');
+  el.innerHTML=(S._taskLinks||[]).map(l=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500">${esc(l.name)}<button onclick="unlinkTask('${l.id}')" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:14px;padding:0;opacity:.6">×</button></span>`).join('');
 }
 
 async function submitNewTask(){
@@ -2149,7 +2149,7 @@ async function submitNewTask(){
   if(!name)return showToast('Task name required.','error');
   if(!S.creds.listTasks)return showToast('Master CRM Tasks list ID not configured.','error');
   const btn=document.querySelector('#task-modal .btn-primary');
-  if(btn){btn.disabled=true;btn.textContent='Creatingâ€¦';}
+  if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
     const due=document.getElementById('nt-due')?.value;
     const notes=document.getElementById('nt-notes')?.value?.trim()||'';
@@ -2190,11 +2190,11 @@ async function submitNewTask(){
   finally{if(btn){btn.disabled=false;btn.textContent='Create Task';}}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // PROFILE PANEL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function openProfile(taskId,type){
-  document.getElementById('pf-name').textContent='Loadingâ€¦';
+  document.getElementById('pf-name').textContent='Loading…';
   document.getElementById('pf-mkcid').textContent='';
   document.getElementById('pf-badges').innerHTML='';
   document.getElementById('pf-contacts-row').innerHTML='';
@@ -2215,7 +2215,7 @@ async function openProfile(taskId,type){
 
 function renderPfHeader(task,type){
   const cf=getCF(task);
-  const name=task.name||'â€”';
+  const name=task.name||'—';
   const email=cf['primary contact email']||cf.email||'';
   const phone=cf.phone||'';
   const status=task.status?.status||'';
@@ -2230,7 +2230,7 @@ function renderPfHeader(task,type){
       ${statuses.map(s=>`<option value="${esc(s)}"${s.toLowerCase()===status.toLowerCase()?' selected':''}>${esc(s)}</option>`).join('')}
     </select>
     <span class="badge" style="background:${sbg};color:${sfg};cursor:pointer;padding-right:20px" title="Click to change status">
-      ${esc(status||'â€”')} <span style="font-size:9px;opacity:.7">â–¼</span>
+      ${esc(status||'—')} <span style="font-size:9px;opacity:.7">▼</span>
     </span>
   </span>`;
 
@@ -2259,7 +2259,7 @@ async function quickUpdateEntryStatus(newStatus){
     task.status={status:newStatus};
     S.currentEntry.task=task;
     renderPfHeader(task,type);
-    showToast(`Status â†’ ${newStatus}`,'success');
+    showToast(`Status → ${newStatus}`,'success');
     // If it's a master task, also update sheet
     if(type==='master')await syncTaskUpdateToSheets(task.name,newStatus,'','','','',S.user?.name||'');
     else await syncToSheets(task,type);
@@ -2308,18 +2308,18 @@ function switchPfTab(tab,btnEl){
 }
 
 function renderPfDetails(task,type,cf,body){
-  const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'â€”';
-  const subBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'â€”';
+  const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'—';
+  const subBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'—';
   let pairs=[];
   if(type==='master'){
     // Master CRM Tasks custom fields
     pairs=[
-      ['MKC ID',cf['mkc id']||cf['mkcid']||'â€”'],
-      ['Related Lead/Contact ID',cf['related lead/contact id']||cf['related lead']||'â€”'],
-      ['Related Deal ID',cf['related deal id']||cf['related deal']||'â€”'],
-      ['Related Account ID',cf['related account id']||cf['related account']||'â€”'],
+      ['MKC ID',cf['mkc id']||cf['mkcid']||'—'],
+      ['Related Lead/Contact ID',cf['related lead/contact id']||cf['related lead']||'—'],
+      ['Related Deal ID',cf['related deal id']||cf['related deal']||'—'],
+      ['Related Account ID',cf['related account id']||cf['related account']||'—'],
       ['Due Date',fmtDate(task.due_date)],
-      ['Notebook Link',cf['notebook link']||'â€”'],
+      ['Notebook Link',cf['notebook link']||'—'],
       ['Assignee(s)',asgn],
       ['Last Updated',fmtDate(task.date_updated)]
     ];
@@ -2377,9 +2377,9 @@ function renderPfDetails(task,type,cf,body){
 
   body.innerHTML=`<div class="pf-section"><h4>Fields</h4>
     <div class="field-grid">${pairs.map(([l,v])=>{
-      const empty=!v||v==='â€”'||v==='undefined'||v==='null';
+      const empty=!v||v==='—'||v==='undefined'||v==='null';
       const isLink=l.toLowerCase().includes('link')&&(v||'').startsWith('http');
-      return `<div class="field-item"><label>${l}</label><div class="field-val${empty?' empty':''}${isLink?' link':''}"${isLink?` onclick="window.open('${esc(v)}','_blank')"`:''}>${esc(empty?'â€”':v)}</div></div>`;
+      return `<div class="field-item"><label>${l}</label><div class="field-val${empty?' empty':''}${isLink?' link':''}"${isLink?` onclick="window.open('${esc(v)}','_blank')"`:''}>${esc(empty?'—':v)}</div></div>`;
     }).join('')}</div>
   </div>${descHtml}${subHtml}`;
 }
@@ -2389,7 +2389,7 @@ const ACTION_GROUPS={
     'Invite':['Invite to Intro Call','Invite to Brand Craftsman Newsletter','Invite to F5 CEO Newsletter','Invite to Conversion Leak Test'],
     'Complete':['Completed Intro Call'],
     'Attempt':['Attempt Warm Outreach','Attempt Warm Outreach 2nd','Attempt Cold Outreach','Attempt Cold Outreach 2nd','Attempt Cold Outreach 3rd'],
-    'Follow Up':['Follow Up â€” Missed Call','Follow Up â€” Missed Appointment','Mark Incomplete Call'],
+    'Follow Up':['Follow Up — Missed Call','Follow Up — Missed Appointment','Mark Incomplete Call'],
     'Disruptor':['Send Disruptor Message 1','Send Disruptor Message 2','Add to Disruptor Funnel']
   },
   pipeline:{
@@ -2407,8 +2407,8 @@ const ACTION_REQS={
   'Attempt Cold Outreach':'Lead Source required',
   'Attempt Cold Outreach 2nd':'Lead Source required',
   'Attempt Cold Outreach 3rd':'Lead Source required',
-  'Follow Up â€” Missed Call':'Last Action required',
-  'Follow Up â€” Missed Appointment':'Next Action Link required',
+  'Follow Up — Missed Call':'Last Action required',
+  'Follow Up — Missed Appointment':'Next Action Link required',
   'Send Disruptor Message 1':'Last Action required',
   'Send Disruptor Message 2':'Last Action required',
   'Send Post Walkthrough Message':'Next Action + Next Action Link required',
@@ -2424,7 +2424,7 @@ function renderPfActions(task,type,cf,body){
   const groups=isLead?ACTION_GROUPS.lead:ACTION_GROUPS.pipeline;
   const currentAction=cf['lead crm action']||cf['crm action']||cf['deal action']||'';
 
-  // Preflight field status â€” check which fields are filled
+  // Preflight field status — check which fields are filled
   const fields_status={
     'next action link':!!(cf['next action link']),
     'recent opt-in action':!!(cf['recent opt-in action']),
@@ -2436,8 +2436,8 @@ function renderPfActions(task,type,cf,body){
   };
 
   const checkIcon=(ok)=>ok
-    ?'<span style="color:var(--success);font-size:13px">âœ“</span>'
-    :'<span style="color:var(--danger);font-size:13px">âœ•</span>';
+    ?'<span style="color:var(--success);font-size:13px">✓</span>'
+    :'<span style="color:var(--danger);font-size:13px">✕</span>';
 
   const preflightHtml=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:10px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);width:100%;margin-bottom:4px">Field Status</div>
@@ -2446,11 +2446,11 @@ function renderPfActions(task,type,cf,body){
 
   // Quick-fill panel for missing fields
   const missingFills=[];
-  if(!cf['next action link'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Link</label><input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://â€¦" value=""></div>`);
+  if(!cf['next action link'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Link</label><input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://…" value=""></div>`);
   if(!cf['next action date'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Date</label><input type="date" id="qf-nad" class="form-select" style="height:32px;font-size:12px"></div>`);
   if(!cf['recent opt-in action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Recent Opt-In Action</label><input type="text" id="qf-optin" class="form-select" style="height:32px;font-size:12px" placeholder="e.g. signed up for newsletter"></div>`);
-  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">â€”</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
-  if(!cf['lead source'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Lead Source</label><select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">â€”</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select></div>`);
+  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
+  if(!cf['lead source'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Lead Source</label><select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select></div>`);
 
   const quickFillHtml=missingFills.length?`<div style="margin-bottom:12px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400e;margin-bottom:8px">Quick Fill Missing Fields</div>
@@ -2474,13 +2474,13 @@ function renderPfActions(task,type,cf,body){
         <div class="action-name">${esc(a)}</div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:5px">
           ${req?`<span class="action-req">${esc(req)}</span>`:''}
-          ${req?(canTrigger?'<span style="color:var(--success);font-size:12px">âœ“</span>':'<span style="color:var(--danger);font-size:12px">âœ•</span>'):''}
+          ${req?(canTrigger?'<span style="color:var(--success);font-size:12px">✓</span>':'<span style="color:var(--danger);font-size:12px">✕</span>'):''}
         </div>
       </div>`;
     }).join('')}
   `).join('');
 
-  // Lead Magnet selector â€” show all, col A=branch, B=leadType, C=name, D=desc, E=dateAdded, F=adminLink, G=publicLink
+  // Lead Magnet selector — show all, col A=branch, B=leadType, C=name, D=desc, E=dateAdded, F=adminLink, G=publicLink
   const allMagnets=S.ref.leadMagnets||[];
   // Group unique names with their public link (col G index 6)
   const magnetMap={};
@@ -2496,19 +2496,19 @@ function renderPfActions(task,type,cf,body){
   const lmHtml=magnetList.length?`
     <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Select a lead magnet to auto-fill the Next Action Link field.</div>
     <select class="form-select" id="lm-sel" style="margin-bottom:8px" onchange="previewMagnet(this)">
-      <option value="">â€” Select Lead Magnet â€”</option>
+      <option value="">— Select Lead Magnet —</option>
       ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.pubLink)}" data-name="${esc(m.name)}">[${esc(m.branch)}] ${esc(m.name)}</option>`).join('')}
     </select>
     <div id="lm-preview" style="display:none;font-size:12px;padding:8px 10px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-secondary)"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('nal')">â†’ Set as Next Action Link</button>
-      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('optin')">â†’ Set as Recent Opt-In</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('nal')">→ Set as Next Action Link</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('optin')">→ Set as Recent Opt-In</button>
     </div>
     <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:10px;text-decoration:none">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Manage lead magnets â†’
+      Manage lead magnets →
     </a>`
-    :'<div style="font-size:13px;color:var(--text-muted)">No lead magnets found. <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="color:var(--accent)">Add some â†’</a></div>';
+    :'<div style="font-size:13px;color:var(--text-muted)">No lead magnets found. <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="color:var(--accent)">Add some →</a></div>';
 
   body.innerHTML=`
     <div class="pf-section"><h4>Current CRM Action</h4>
@@ -2520,7 +2520,7 @@ function renderPfActions(task,type,cf,body){
       ${actionHtml}
       <div class="val-warn" id="action-warn"></div>
       <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
-        <button class="btn btn-primary btn-sm" onclick="triggerAction()">âš¡ Trigger Selected</button>
+        <button class="btn btn-primary btn-sm" onclick="triggerAction()">⚡ Trigger Selected</button>
         <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
       </div>
     </div>
@@ -2547,10 +2547,10 @@ async function triggerAction(){
     if(req.includes('Last Action')&&!cf['last action'])missing=true;
     if(req.includes('Plan')&&!cf.plan)missing=true;
     if(req.includes('Next Action Date')&&!cf['next action date'])missing=true;
-    if(missing){if(warn){warn.textContent='âš  Cannot trigger: '+req;warn.classList.add('visible');}return;}
+    if(missing){if(warn){warn.textContent='⚠ Cannot trigger: '+req;warn.classList.add('visible');}return;}
   }
   const statusEl=document.getElementById('action-status');
-  if(statusEl)statusEl.textContent='Triggeringâ€¦';
+  if(statusEl)statusEl.textContent='Triggering…';
   try{
     const fieldName=type==='pipeline'?'deal action':'lead crm action';
     const fieldId=findCFId(task,fieldName)||findCFId(task,'crm action');
@@ -2564,9 +2564,9 @@ async function triggerAction(){
         if(opt)await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});
       }
     }
-    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] CRM Action: ${S.selectedAction} â€” ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] CRM Action: ${S.selectedAction} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
-    if(statusEl)statusEl.textContent='âœ“ Done';
+    if(statusEl)statusEl.textContent='✓ Done';
     showToast(`"${S.selectedAction}" triggered.`,'success');
     if(type==='pipeline')showToast('Reminder: Remove Deal Action label after Zapier processes it.','info');
     const c=await cuFetch(`/task/${task.id}/comment`);
@@ -2657,9 +2657,9 @@ function getLinkedTasksForEntry(taskId){
   });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// PROFILE PANEL â€” TASKS TAB (Section 11-E)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
+// PROFILE PANEL — TASKS TAB (Section 11-E)
+// ═══════════════════════════════════════════
 function renderPfTasks(task,body,showCompleted){
   const taskId=task.id||'';
   const linked=getLinkedTasksForEntry(taskId);
@@ -2680,7 +2680,7 @@ function renderPfTasks(task,body,showCompleted){
       <div style="flex:1;font-size:13px;font-weight:500">${esc(t.name)}</div>
       ${due?`<span style="font-size:11.5px;color:var(--text-muted)">${fmtDateShort(due)}</span>`:''}
       <select class="filter-select" style="height:26px;font-size:11px;padding:0 6px" onclick="event.stopPropagation()" onchange="quickUpdateTaskStatus('${t.id}','${esc(t.name)}',this.value);setTimeout(()=>renderPfTasks(S.currentEntry.task,document.getElementById('pf-body'),S._pfTasksShowCompleted),400)">
-        <option value="">Statusâ€¦</option>
+        <option value="">Status…</option>
         <option value="TO DO"${curStatus==='TO DO'?' selected':''}>To Do</option>
         <option value="IN PROGRESS"${curStatus==='IN PROGRESS'?' selected':''}>In Progress</option>
         <option value="FOR REVIEW"${curStatus==='FOR REVIEW'?' selected':''}>For Review</option>
@@ -2793,7 +2793,7 @@ function renderPfRelated(task,body){
     <div class="pf-section">
       <h4>ClickUp Relationships</h4>
       ${relHtml}
-      <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px">ClickUp relationships are set in ClickUp â†’ task â†’ Relate items. They will appear here automatically.</p>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-top:8px">ClickUp relationships are set in ClickUp → task → Relate items. They will appear here automatically.</p>
     </div>
     ${crossHtml}`;
 }
@@ -2807,9 +2807,9 @@ function openNotebook(){if(S._notebookLink)window.open(S._notebookLink,'_blank')
 function openInClickUp(){if(S._clickupLink)window.open(S._clickupLink,'_blank');}
 function copyVal(v){navigator.clipboard.writeText(v).then(()=>showToast('Copied: '+v,'success'));}
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // UPDATE PROFILE MODAL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function openUpdateProfile(){
   if(!S.currentEntry)return;
   const{task,type}=S.currentEntry;
@@ -2844,7 +2844,7 @@ async function openUpdateProfile(){
         <div class="form-group"><label>Task Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
         <div class="form-group"><label>Status</label>
           <select class="form-select" id="up-status">
-            <option value="">â€” Keep current â€”</option>
+            <option value="">— Keep current —</option>
             ${getStatusesForType(type).map(s=>`<option value="${s}"${(task.status?.status||'').toLowerCase()===s.toLowerCase()?' selected':''}>${s}</option>`).join('')}
           </select>
         </div>
@@ -2864,7 +2864,7 @@ async function openUpdateProfile(){
     <div class="form-group"><label>Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
     <div class="form-group"><label>Status</label>
       <select class="form-select" id="up-status">
-        <option value="">â€” Keep current (${esc(task.status?.status||'')}) â€”</option>
+        <option value="">— Keep current (${esc(task.status?.status||'')}) —</option>
         ${getStatusesForType(type).map(s=>`<option value="${s}"${(task.status?.status||'').toLowerCase()===s.toLowerCase()?' selected':''}>${s}</option>`).join('')}
       </select>
     </div>
@@ -2873,12 +2873,12 @@ async function openUpdateProfile(){
   const branchRow=`<div class="form-row">
     <div class="form-group"><label>Branch</label>
       <select class="form-select" id="up-branch" onchange="updateSubBranchOptions()">
-        <option value="">â€”</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}
+        <option value="">—</option>${branches.map(b=>`<option${cf.branch===b?' selected':''}>${b}</option>`).join('')}
       </select>
     </div>
     <div class="form-group"><label>Sub-Branch</label>
       <select class="form-select" id="up-subbranch">
-        <option value="">â€”</option>${subBranchOptions.map(s=>`<option${currentSubBranch===s?' selected':''}>${s}</option>`).join('')}
+        <option value="">—</option>${subBranchOptions.map(s=>`<option${currentSubBranch===s?' selected':''}>${s}</option>`).join('')}
       </select>
     </div>
   </div>`;
@@ -2895,7 +2895,7 @@ async function openUpdateProfile(){
   const crmFields=`
     <div class="form-row">
       <div class="form-group"><label>Last Action</label>
-        <select class="form-select" id="up-lastaction"><option value="">â€”</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
+        <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
       </div>
       <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
     </div>
@@ -2906,7 +2906,7 @@ async function openUpdateProfile(){
 
   const sourceRow=`<div class="form-row">
     <div class="form-group"><label>Lead Source</label>
-      <select class="form-select" id="up-source"><option value="">â€”</option>${sources.map(s=>`<option${cf['lead source']===s?' selected':''}>${s}</option>`).join('')}</select>
+      <select class="form-select" id="up-source"><option value="">—</option>${sources.map(s=>`<option${cf['lead source']===s?' selected':''}>${s}</option>`).join('')}</select>
     </div>
     <div class="form-group"><label>Lead Source Details</label>
       <input type="text" id="up-source-notes" value="${esc(cf['lead source notes']||cf['source details']||'')}">
@@ -2940,7 +2940,7 @@ async function openUpdateProfile(){
     <div class="form-row">
       <div class="form-group"><label>Industry</label>
         ${industryDatalist}
-        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industryâ€¦">
+        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industry…">
       </div>
     </div>`+crmFields;
   } else if(type==='pipeline'){
@@ -2952,13 +2952,13 @@ async function openUpdateProfile(){
     <div class="form-row">
       <div class="form-group"><label>Plan</label>
         ${planDatalist}
-        <input type="text" id="up-plan" value="${esc(cf.plan||'')}" list="dl-plan" placeholder="Type or select planâ€¦">
+        <input type="text" id="up-plan" value="${esc(cf.plan||'')}" list="dl-plan" placeholder="Type or select plan…">
       </div>
       <div class="form-group"><label>Close Date</label><input type="date" id="up-closedate" value="${closeDateVal}"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Last Action</label>
-        <select class="form-select" id="up-lastaction"><option value="">â€”</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
+        <select class="form-select" id="up-lastaction"><option value="">—</option>${lastActions.map(a=>`<option${cf['last action']===a?' selected':''}>${a}</option>`).join('')}</select>
       </div>
       <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
     </div>
@@ -2971,10 +2971,10 @@ async function openUpdateProfile(){
     <div class="form-row">
       <div class="form-group"><label>Industry</label>
         ${industryDatalist}
-        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industryâ€¦">
+        <input type="text" id="up-industry" value="${esc(cf.industry||'')}" list="dl-industry" placeholder="Type or select industry…">
       </div>
       <div class="form-group"><label>Account Status</label>
-        <select class="form-select" id="up-acct-status"><option value="">â€”</option>${['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'].map(s=>`<option${cf['account status']===s?' selected':''}>${s}</option>`).join('')}</select>
+        <select class="form-select" id="up-acct-status"><option value="">—</option>${['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'].map(s=>`<option${cf['account status']===s?' selected':''}>${s}</option>`).join('')}</select>
       </div>
     </div>
     <div class="form-row">
@@ -2996,12 +2996,12 @@ function updateSubBranchOptions(){
   const sel=document.getElementById('up-subbranch');
   if(!sel)return;
   const opts=branch&&SUB_BRANCHES[branch]?SUB_BRANCHES[branch]:Object.values(SUB_BRANCHES).flat();
-  sel.innerHTML='<option value="">â€”</option>'+opts.map(s=>`<option>${s}</option>`).join('');
+  sel.innerHTML='<option value="">—</option>'+opts.map(s=>`<option>${s}</option>`).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // ACTIVITY MODAL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function openActivityModal(){
   if(!S.currentEntry)return;
   S.selectedHash='';
@@ -3042,11 +3042,11 @@ async function submitActivity(){
   const actDate=document.getElementById('act-date')?.value||'';
   const dateStr=actDate?` [${actDate}]`:'';
   const btn=document.querySelector('#activity-modal .btn-primary');
-  if(btn){btn.disabled=true;btn.textContent='Postingâ€¦';}
+  if(btn){btn.disabled=true;btn.textContent='Posting…';}
   try{
-    await cuFetch(`/task/${S.currentEntry.task.id}/comment`,'POST',{comment_text:`${tag}${dateStr} ${note} â€” ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+    await cuFetch(`/task/${S.currentEntry.task.id}/comment`,'POST',{comment_text:`${tag}${dateStr} ${note} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
 
-    // â”€â”€ ATTACHMENT UPLOAD (Section 11-A) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ATTACHMENT UPLOAD (Section 11-A) ──────────────────────
     const fileEl=document.getElementById('act-file');
     const file=fileEl?.files?.[0];
     if(file){
@@ -3058,7 +3058,7 @@ async function submitActivity(){
 
     await syncToSheets(S.currentEntry.task,S.currentEntry.type);
 
-    // â”€â”€ OPTIONAL RELATED TASK (Section 11-C) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── OPTIONAL RELATED TASK (Section 11-C) ──────────────────
     const wantsTask=document.getElementById('act-create-task')?.checked;
     if(wantsTask){
       const taskName=document.getElementById('act-task-name')?.value?.trim();
@@ -3069,7 +3069,7 @@ async function submitActivity(){
           showToast(`Task "${taskName}" created.`,'success');
         }catch(e){showToast('Task creation failed: '+e.message,'error');}
       }else{
-        showToast('Task name required to create a related task â€” activity was still logged.','error');
+        showToast('Task name required to create a related task — activity was still logged.','error');
       }
     }
 
@@ -3083,7 +3083,7 @@ async function submitActivity(){
   finally{if(btn){btn.disabled=false;btn.textContent='Post Activity';}}
 }
 
-// Upload a file to a ClickUp task as an attachment â€” multipart/form-data (Section 11-A)
+// Upload a file to a ClickUp task as an attachment — multipart/form-data (Section 11-A)
 async function uploadTaskAttachment(taskId,file){
   const token=S.creds.cuToken||sessionStorage.getItem('mkc_cu')||'';
   const fd=new FormData();
@@ -3093,14 +3093,14 @@ async function uploadTaskAttachment(taskId,file){
   return r.json();
 }
 
-// Create a Master CRM Task pre-linked to a given entry â€” used by the Activity modal's
+// Create a Master CRM Task pre-linked to a given entry — used by the Activity modal's
 // "Also create a task?" toggle. Reuses submitNewTask's link/sync pattern (Section 11-C).
 async function createQuickTaskForEntry(name,dueStr,entryId,entryName){
   if(!S.creds.listTasks)throw new Error('Master CRM Tasks list ID not configured.');
   const body={name,status:'TO DO'};
   if(dueStr)body.due_date=new Date(dueStr).getTime();
   const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
-  // Link using hardcoded field IDs â€” resolve which Related field to use based on the entry's list type
+  // Link using hardcoded field IDs — resolve which Related field to use based on the entry's list type
   const entryType=S.currentEntry?.type||'';
   if(entryType==='pipeline')await setFieldById(newTask.id,CU_FIELDS.RELATED_DEAL_ID,entryId,'short_text');
   else if(entryType==='accounts')await setFieldById(newTask.id,CU_FIELDS.RELATED_ACCT_ID,entryId,'short_text');
@@ -3118,9 +3118,9 @@ async function createQuickTaskForEntry(name,dueStr,entryId,entryName){
   return newTask;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // NEW ENTRY MODAL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function openNewEntryModal(defaultType=''){
   S.isEditMode=false;
   document.getElementById('em-title').textContent='New CRM Entry';
@@ -3131,7 +3131,7 @@ function openNewEntryModal(defaultType=''){
   document.getElementById('em-body').innerHTML=`
     <div class="form-group"><label>Entry Type <span class="req">*</span></label>
       <select class="form-select" id="nf-type" onchange="updateNFFields()">
-        <option value="">â€” Select â€”</option>
+        <option value="">— Select —</option>
         ${['Lead','Contact','Deal','Account'].map(t=>`<option${t===defaultType?' selected':''}>${t}</option>`).join('')}
       </select>
     </div>
@@ -3139,12 +3139,12 @@ function openNewEntryModal(defaultType=''){
     ${(defaultType==='Lead'||defaultType==='')?`<div class="form-row" id="nf-branch-row">
       <div class="form-group"><label>Branch</label>
         <select class="form-select" id="nf-branch" onchange="updateNFSubBranch()">
-          <option value="">â€”</option>${branches.map(b=>`<option>${b}</option>`).join('')}
+          <option value="">—</option>${branches.map(b=>`<option>${b}</option>`).join('')}
         </select>
       </div>
       <div class="form-group"><label>Sub-Branch</label>
         <select class="form-select" id="nf-subbranch">
-          <option value="">â€”</option>${Object.values(SUB_BRANCHES).flat().map(s=>`<option>${s}</option>`).join('')}
+          <option value="">—</option>${Object.values(SUB_BRANCHES).flat().map(s=>`<option>${s}</option>`).join('')}
         </select>
       </div>
     </div>`:''}
@@ -3158,7 +3158,7 @@ function openNewEntryModal(defaultType=''){
     </div>
     <div id="nf-source-row" class="form-row">
       <div class="form-group"><label>Lead Source</label>
-        <select class="form-select" id="nf-source"><option value="">â€”</option>${sources.map(s=>`<option>${s}</option>`).join('')}</select>
+        <select class="form-select" id="nf-source"><option value="">—</option>${sources.map(s=>`<option>${s}</option>`).join('')}</select>
       </div>
       <div class="form-group"><label>Lead Source Details</label>
         <input type="text" id="nf-source-notes" placeholder="e.g. Met at F5 CEO event May 2026">
@@ -3171,7 +3171,7 @@ function openNewEntryModal(defaultType=''){
         </div>
     </div>
     <div class="form-group"><label>Next Action Date</label><input type="date" id="nf-nad"></div>
-    <div class="form-group"><label>Notes (Task Description)</label><textarea class="form-textarea" id="nf-notes" rows="3" placeholder="Internal notes about this entryâ€¦"></textarea></div>`;
+    <div class="form-group"><label>Notes (Task Description)</label><textarea class="form-textarea" id="nf-notes" rows="3" placeholder="Internal notes about this entry…"></textarea></div>`;
   if(defaultType)updateNFFields();
   document.getElementById('entry-modal').style.display='flex';
 }
@@ -3181,7 +3181,7 @@ function updateNFSubBranch(){
   const sel=document.getElementById('nf-subbranch');
   if(!sel)return;
   const opts=branch&&SUB_BRANCHES[branch]?SUB_BRANCHES[branch]:Object.values(SUB_BRANCHES).flat();
-  sel.innerHTML='<option value="">â€”</option>'+opts.map(s=>`<option>${s}</option>`).join('');
+  sel.innerHTML='<option value="">—</option>'+opts.map(s=>`<option>${s}</option>`).join('');
 }
 
 function updateNFFields(){
@@ -3208,7 +3208,7 @@ function updateNFFields(){
       <div class="form-row">
         <div class="form-group"><label>Opportunity / Value</label><input type="text" id="nf-opportunity" placeholder="e.g. $5,000/mo"></div>
         <div class="form-group"><label>Plan</label>
-          <select class="form-select" id="nf-plan"><option value="">â€”</option><option>Basic</option><option>Premium</option><option>Custom</option></select>
+          <select class="form-select" id="nf-plan"><option value="">—</option><option>Basic</option><option>Premium</option><option>Custom</option></select>
         </div>
       </div>
       <div class="form-row">
@@ -3223,7 +3223,7 @@ function updateNFFields(){
       <div class="form-row">
         <div class="form-group"><label>Industry</label>
           <datalist id="dl-industry-nf">${[...new Set(S.entries.accounts.concat(S.entries.pipeline).filter(t=>!t.parent).map(t=>getCF(t).industry||'').filter(Boolean))].sort().map(i=>`<option value="${esc(i)}">`).join('')}</datalist>
-          <input type="text" id="nf-industry" list="dl-industry-nf" placeholder="Type or select industryâ€¦">
+          <input type="text" id="nf-industry" list="dl-industry-nf" placeholder="Type or select industry…">
         </div>
         <div class="form-group"><label>Primary Contact</label><input type="text" id="nf-primary-contact" placeholder="Contact name"></div>
       </div>
@@ -3259,12 +3259,12 @@ async function submitEntry(){
   else{name=document.getElementById('nf-acctname-s')?.value?.trim();if(!name)return showToast('Account name required.','error');}
   const listId={Lead:S.creds.listLeads,Contact:S.creds.listContacts,Deal:S.creds.listPipeline,Account:S.creds.listAccounts}[type];
   if(!listId)return showToast(`${type} list ID not configured.`,'error');
-  const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Creatingâ€¦';
+  const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Creating…';
   try{
     const notes=document.getElementById('nf-notes')?.value?.trim()||'';
     const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name:name.trim(),description:notes});
     const fields=await getListFields(listId);
-    // Universal field setter â€” handles all ClickUp field types correctly
+    // Universal field setter — handles all ClickUp field types correctly
     const setField=async(partial,val)=>{
       if(val===undefined||val===null||val==='')return;
       const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
@@ -3300,12 +3300,12 @@ async function submitEntry(){
     const ntid=newTask.id;
     const F=CU_FIELDS;
     const sfN=async(fid,val,ftype)=>setFieldById(ntid,fid,val,ftype);
-    // â”€â”€ EMAIL & PHONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── EMAIL & PHONE ─────────────────────────────────────────
     const nfEmail=document.getElementById('nf-email')?.value?.trim();
     if(nfEmail)await sfN(F.PRIMARY_EMAIL,nfEmail,'email');
     const rawNfPhone=(document.getElementById('nf-phone')?.value||'').trim();
     if(rawNfPhone)await sfN(F.PHONE,rawNfPhone.startsWith('+')?rawNfPhone:'+1 '+rawNfPhone,'phone');
-    // â”€â”€ FIRST / LAST NAME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── FIRST / LAST NAME ─────────────────────────────────────
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
       const ln=document.getElementById('nf-lname')?.value?.trim();
@@ -3317,7 +3317,7 @@ async function submitEntry(){
       const titleVal=document.getElementById('nf-title')?.value?.trim();
       if(titleVal)await sfN(F.TITLE,titleVal,'text');
     }
-    // â”€â”€ BRANCH (labels â€” UUID array) â€” Leads only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── BRANCH (labels — UUID array) — Leads only ─────────────
     if(type==='Lead'){
       const bVal=document.getElementById('nf-branch')?.value;
       if(bVal){const bUUID=BRANCH_UUIDS[bVal];if(bUUID)await sfN(F.BRANCH,[bUUID],'labels');}
@@ -3331,20 +3331,20 @@ async function submitEntry(){
         }
       }
     }
-    // â”€â”€ LEAD/CONTACT TYPE (labels â€” UUID array) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD/CONTACT TYPE (labels — UUID array) ───────────────
     const nfChecked=Array.from(document.querySelectorAll('.nf-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
     const nfTypeUuids=nfChecked.map(t=>LABEL_UUIDS[t]).filter(Boolean);
     if(nfTypeUuids.length)await sfN(F.LEAD_CONTACT_TYPE,nfTypeUuids,'labels');
-    // â”€â”€ LEAD SOURCE (labels â€” UUID lookup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD SOURCE (labels — UUID lookup) ───────────────────
     const nfLs=document.getElementById('nf-source')?.value;
     if(nfLs){const lsUUID=getLabelUUID('lead source',nfLs)||LEAD_SOURCE_UUIDS[nfLs];if(lsUUID)await sfN(F.LEAD_SOURCE,[lsUUID],'labels');}
-    // â”€â”€ LEAD SOURCE NOTES (text) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD SOURCE NOTES (text) ─────────────────────────────
     const nfLsNotes=document.getElementById('nf-source-notes')?.value?.trim();
     if(nfLsNotes)await sfN(F.LEAD_SOURCE_NOTES,nfLsNotes,'text');
-    // â”€â”€ NEXT ACTION DATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── NEXT ACTION DATE ──────────────────────────────────────
     const nfNad=document.getElementById('nf-nad')?.value;
     if(nfNad)await sfN(F.NEXT_ACTION_DATE,new Date(nfNad).getTime(),'date');
-    // â”€â”€ PIPELINE FIELDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PIPELINE FIELDS ───────────────────────────────────────
     if(type==='Deal'){
       const coName=document.getElementById('nf-acctname')?.value?.trim();
       if(coName)await sfN(F.COMPANY_NAME,coName,'short_text');
@@ -3353,7 +3353,7 @@ async function submitEntry(){
       const planVal=document.getElementById('nf-plan')?.value;
       if(planVal){const planUUID=getLabelUUID('plan',planVal);if(planUUID)await sfN(F.PLAN,[planUUID],'labels');}
     }
-    // â”€â”€ ACCOUNT FIELDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ACCOUNT FIELDS ────────────────────────────────────────
     if(type==='Account'){
       const indOpts=['Agribusiness / Agricultural Development','Business Advisory/Consulting','Childcare','Engineering','Financial Services','Fitness','Food & Restaurants','Government','Holding Company','Hospitality','Media','Personal Brand','Printing Services','Property Restoration','Retail','Wellness'];
       const indVal=document.getElementById('nf-industry')?.value?.trim();
@@ -3372,7 +3372,7 @@ async function submitEntry(){
 async function saveUpdateProfile(){
   if(!S.currentEntry)return;
   const{task,type}=S.currentEntry;
-  const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Savingâ€¦';
+  const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Saving…';
   try{
     const newName=document.getElementById('up-name')?.value?.trim()||task.name;
     const newStatus=document.getElementById('up-status')?.value?.trim();
@@ -3382,7 +3382,7 @@ async function saveUpdateProfile(){
     if(newStatus)updateBody.status=newStatus;
     if(newNotes!==undefined)updateBody.description=newNotes;
 
-    // â”€â”€ MASTER CRM TASKS: Due Date maps to the task's native due_date, NOT the
+    // ── MASTER CRM TASKS: Due Date maps to the task's native due_date, NOT the
     //    "Next Action Date" custom field (Section 11-B). Handle separately and
     //    skip all the Leads/Pipeline/Accounts-only custom field logic below.
     if(type==='master'){
@@ -3392,7 +3392,7 @@ async function saveUpdateProfile(){
       await cuFetch(`/task/${task.id}`,'PUT',updateBody);
       const notebookVal=document.getElementById('up-notebook')?.value?.trim();
       await setFieldById(task.id,CU_FIELDS.NOTEBOOK_LINK,notebookVal||'','url');
-      await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Task updated â€” ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+      await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Task updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
       const dueStr=dueVal?new Date(dueVal).toLocaleDateString():'';
       await syncTaskUpdateToSheets(newName,newStatus||task.status?.status||'','','','',dueStr,S.user?.name||'');
       showToast('Task updated & synced.','success');
@@ -3413,13 +3413,13 @@ async function saveUpdateProfile(){
       else await setFieldById(tid,fid,val,ftype);
     };
 
-    // â”€â”€ BRANCH (labels type â€” send UUID array) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── BRANCH (labels type — send UUID array) ──────────────
     const branchVal=document.getElementById('up-branch')?.value;
     if(branchVal){
       const bUUID=BRANCH_UUIDS[branchVal];
       if(bUUID)await sf(F.BRANCH,[bUUID],'labels');
     }
-    // â”€â”€ SUB-BRANCH (drop_down â€” orderindex) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SUB-BRANCH (drop_down — orderindex) ──────────────────
     const sbName=document.getElementById('up-subbranch')?.value;
     if(sbName&&branchVal){
       const oi=getSubBranchOI(branchVal,sbName);
@@ -3428,43 +3428,43 @@ async function saveUpdateProfile(){
         else await sf(F.SUB_BRANCH_JTG,oi,'drop_down');
       }
     }
-    // â”€â”€ LEAD/CONTACT TYPE (labels â€” UUID array) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD/CONTACT TYPE (labels — UUID array) ───────────────
     if(type==='leads'||type==='contacts'){
       const checked=Array.from(document.querySelectorAll('.up-ctype-cb:checked')).map(cb=>cb.value.toLowerCase());
       const uuids=checked.map(t=>LABEL_UUIDS[t]).filter(Boolean);
       if(uuids.length)await sf(F.LEAD_CONTACT_TYPE,uuids,'labels');
     }
-    // â”€â”€ LEAD SOURCE (labels â€” UUID lookup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD SOURCE (labels — UUID lookup) ───────────────────
     const lsVal=document.getElementById('up-source')?.value;
     if(lsVal){
       const lsUUID=getLabelUUID('lead source',lsVal)||LEAD_SOURCE_UUIDS[lsVal];
       if(lsUUID)await sf(F.LEAD_SOURCE,[lsUUID],'labels');
     }
-    // â”€â”€ LEAD SOURCE NOTES (text) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LEAD SOURCE NOTES (text) ─────────────────────────────
     await sfClear(F.LEAD_SOURCE_NOTES,document.getElementById('up-source-notes')?.value?.trim(),'text');
-    // â”€â”€ LAST ACTION (labels â€” UUID lookup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── LAST ACTION (labels — UUID lookup) ───────────────────
     const laVal=document.getElementById('up-lastaction')?.value;
     if(laVal){
       const laUUID=getLabelUUID('last action',laVal);
       if(laUUID)await sf(F.LAST_ACTION,[laUUID],'labels');
     }
-    // â”€â”€ DATES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── DATES ─────────────────────────────────────────────────
     const nadVal=document.getElementById('up-nad')?.value;
     if(nadVal)await sf(F.NEXT_ACTION_DATE,new Date(nadVal).getTime(),'date');
     const closeDateVal=document.getElementById('up-closedate')?.value;
     if(closeDateVal)await sf(F.CLOSE_DATE,new Date(closeDateVal).getTime(),'date');
-    // â”€â”€ TEXT / URL FIELDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── TEXT / URL FIELDS ─────────────────────────────────────
     await sfClear(F.NEXT_ACTION_LINK,document.getElementById('up-nal')?.value?.trim(),'url');
     await sfClear(F.RECENT_OPTIN,document.getElementById('up-optin')?.value?.trim(),'short_text');
     await sfClear(F.KNOWN_AS,document.getElementById('up-knownAs')?.value?.trim(),'short_text');
     await sfClear(F.TITLE,document.getElementById('up-title')?.value?.trim(),'text');
     await sfClear(F.PRIMARY_EMAIL,document.getElementById('up-email')?.value?.trim(),'email');
     await sfClear(F.NOTEBOOK_LINK,document.getElementById('up-notebook')?.value?.trim(),'url');
-    // â”€â”€ PHONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PHONE ─────────────────────────────────────────────────
     const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
     const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
     await sfClear(F.PHONE,cleanPhone,'phone');
-    // â”€â”€ PIPELINE FIELDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── PIPELINE FIELDS ───────────────────────────────────────
     if(type==='pipeline'){
       await sfClear(F.COMPANY_NAME,document.getElementById('up-company')?.value?.trim(),'short_text');
       const oppRaw=document.getElementById('up-opportunity')?.value?.trim();
@@ -3479,7 +3479,7 @@ async function saveUpdateProfile(){
       const cleanPhoneP=phoneRawP?(phoneRawP.startsWith('+')?phoneRawP:'+1 '+phoneRawP):'';
       await sfClear(F.PRIMARY_PHONE_P,cleanPhoneP,'phone');
     }
-    // â”€â”€ ACCOUNT FIELDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── ACCOUNT FIELDS ────────────────────────────────────────
     if(type==='accounts'){
       const indOpts=['Agribusiness / Agricultural Development','Business Advisory/Consulting','Childcare','Engineering','Financial Services','Fitness','Food & Restaurants','Government','Holding Company','Hospitality','Media','Personal Brand','Printing Services','Property Restoration','Retail','Wellness'];
       const indVal=document.getElementById('up-industry')?.value;
@@ -3489,7 +3489,7 @@ async function saveUpdateProfile(){
       const acctStat=document.getElementById('up-acct-status')?.value;
       if(acctStat){const oi=acctStatOpts.indexOf(acctStat);if(oi>=0)await sf(F.ACCOUNT_STATUS,oi,'drop_down');}
     }
-    // â”€â”€ FIRST/LAST NAME (Leads+Contacts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── FIRST/LAST NAME (Leads+Contacts) ─────────────────────
     if(type==='leads'||type==='contacts'){
       const nameParts=(task.name||'').split(' ');
       // Only update if name changed
@@ -3501,7 +3501,7 @@ async function saveUpdateProfile(){
       }
     }
 
-    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated â€” ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
     showToast('Profile updated & synced.','success');
     closeModal('entry-modal');
@@ -3511,16 +3511,16 @@ async function saveUpdateProfile(){
   finally{btn.disabled=false;btn.textContent='Save & Sync';}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // DASHBOARD
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function renderDashboard(){
   const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
   const active=arr=>arr.filter(t=>!t.parent&&!closed.includes((t.status?.status||'').toLowerCase()));
-  document.getElementById('d-leads').textContent=active(S.entries.leads).length||'â€”';
-  document.getElementById('d-deals').textContent=active(S.entries.pipeline).length||'â€”';
-  document.getElementById('d-contacts').textContent=S.entries.contacts.filter(t=>!t.parent).length||'â€”';
-  document.getElementById('d-accounts').textContent=S.entries.accounts.filter(t=>!t.parent).length||'â€”';
+  document.getElementById('d-leads').textContent=active(S.entries.leads).length||'—';
+  document.getElementById('d-deals').textContent=active(S.entries.pipeline).length||'—';
+  document.getElementById('d-contacts').textContent=S.entries.contacts.filter(t=>!t.parent).length||'—';
+  document.getElementById('d-accounts').textContent=S.entries.accounts.filter(t=>!t.parent).length||'—';
   updateBadge('leads',S.entries.leads.filter(t=>!t.parent).length);
   updateBadge('pipeline',S.entries.pipeline.filter(t=>!t.parent).length);
   updateBadge('contacts',S.entries.contacts.filter(t=>!t.parent).length);
@@ -3539,7 +3539,7 @@ function renderDashboard(){
     `<div class="act-item" onclick="openProfile('${t.id}','${typeKeys[t._t]}')">
       <div class="act-dot" style="background:${typeColors[t._t]}"></div>
       <div><div style="font-size:13px;font-weight:500">${esc(t.name)}</div>
-      <div style="font-size:11.5px;color:var(--text-muted)">${t._t} Â· ${esc(t.status?.status||'â€”')} Â· ${fmtDateShort(t.date_updated)}</div></div>
+      <div style="font-size:11.5px;color:var(--text-muted)">${t._t} · ${esc(t.status?.status||'—')} · ${fmtDateShort(t.date_updated)}</div></div>
     </div>`
   ).join('')||'<div class="empty-state" style="padding:20px"><p>No recent activity</p></div>';
 
@@ -3556,9 +3556,9 @@ function updateBadge(type,count){
   if(el){el.textContent=count||0;el.className='nav-badge'+(count?' has-items':'');}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // SEARCH
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function setupSearch(){
   const input=document.getElementById('gsi');
   const panel=document.getElementById('srp');
@@ -3610,16 +3610,16 @@ function runFullSearch(q){
   c.innerHTML=Object.entries(byType).map(([type,items])=>
     `<div style="margin-bottom:16px"><div class="srp-group">${type} (${items.length})</div>`+
     items.map(r=>`<div class="srp-item" onclick="openProfile('${r.id}','${r.key}')">
-      <div><div style="font-size:13px;font-weight:500">${esc(r.name)}</div><div style="font-size:11.5px;color:var(--text-muted)">${esc(r.email||'')} ${r.status?'Â· '+r.status:''}</div></div>
+      <div><div style="font-size:13px;font-weight:500">${esc(r.name)}</div><div style="font-size:11.5px;color:var(--text-muted)">${esc(r.email||'')} ${r.status?'· '+r.status:''}</div></div>
       ${makeSB(r.status||'')}
     </div>`).join('')+'</div>'
   ).join('');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // EXPORT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// â”€â”€ EXPORT WITH FIELD SELECTOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ═══════════════════════════════════════════
+// ── EXPORT WITH FIELD SELECTOR ────────────────────────────────────────────
 const EXPORT_FIELDS={
   leads:[
     {id:'id',label:'MKC ID',default:true},
@@ -3791,23 +3791,23 @@ function dlCSV(rows,fn){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));a.download=fn;a.click();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // SETTINGS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 async function testClickUp(){
   const el=document.getElementById('cu-status');
-  el.className='conn-status pending';el.textContent='Testingâ€¦';
-  try{await cuFetch(`/team/${S.creds.wsId}/member`);el.className='conn-status ok';el.textContent='â— Connected';showToast('ClickUp connected.','success');}
-  catch(e){el.className='conn-status err';el.textContent='â— Failed';showToast('ClickUp: '+e.message,'error');}
+  el.className='conn-status pending';el.textContent='Testing…';
+  try{await cuFetch(`/team/${S.creds.wsId}/member`);el.className='conn-status ok';el.textContent='● Connected';showToast('ClickUp connected.','success');}
+  catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('ClickUp: '+e.message,'error');}
 }
 async function testSheets(){
   const el=document.getElementById('gs-status');
-  el.className='conn-status pending';el.textContent='Testingâ€¦';
+  el.className='conn-status pending';el.textContent='Testing…';
   try{
     await gsFetch('Entities & Branches!A1');
-    el.className='conn-status ok';el.textContent='â— Connected';
+    el.className='conn-status ok';el.textContent='● Connected';
     showToast('Google Sheets connected.','success');
-  }catch(e){el.className='conn-status err';el.textContent='â— Failed';showToast('Sheets: '+e.message,'error');}
+  }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Sheets: '+e.message,'error');}
 }
 function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
 
@@ -3822,30 +3822,30 @@ function saveWorkerConfig(){
 }
 async function testWorkerLogger(){
   const el=document.getElementById('wk-status');
-  el.className='conn-status pending';el.textContent='Testingâ€¦';
+  el.className='conn-status pending';el.textContent='Testing…';
   try{
     await wkFetch('/api/staging','GET',{status:'pending'});
-    el.className='conn-status ok';el.textContent='â— Connected';
+    el.className='conn-status ok';el.textContent='● Connected';
     showToast('Activity Logger connected.','success');
-  }catch(e){el.className='conn-status err';el.textContent='â— Failed';showToast('Activity Logger: '+e.message,'error');}
+  }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Activity Logger: '+e.message,'error');}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // QC INBOX (Activity Logger feed)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 const QC_ICONS={
   text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
   call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.94a16 16 0 006.15 6.15l1.3-1.3a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
   email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
 };
-function qcSourceLabel(s){return s==='quo'?'Quo':s==='zoho_mail'?'Zoho Mail':(s||'â€”');}
+function qcSourceLabel(s){return s==='quo'?'Quo':s==='zoho_mail'?'Zoho Mail':(s||'—');}
 function qcStatusBadge(status){
   const map={pending:['#fef3c7','#92400e'],assigned:['#dcfce7','#166534'],archived:['#f3f4f6','#6b7280'],posted:['#e0f2fe','#0369a1']};
   const[bg,fg]=map[status]||['#e5e7eb','#374151'];
-  return`<span class="badge" style="background:${bg};color:${fg}">${esc(status||'â€”')}</span>`;
+  return`<span class="badge" style="background:${bg};color:${fg}">${esc(status||'—')}</span>`;
 }
 function qcRelTime(iso){
-  if(!iso)return'â€”';
+  if(!iso)return'—';
   const d=new Date(/[TZ]/.test(iso)?iso:iso.replace(' ','T')+'Z');
   const ms=Date.now()-d.getTime();
   if(isNaN(ms))return iso;
@@ -3865,7 +3865,7 @@ async function refreshQcBadge(){
     const items=await wkFetch('/api/staging','GET',{status:'pending'});
     const list=Array.isArray(items)?items:(items.results||items.events||[]);
     updateBadge('qcinbox',list.length);
-  }catch(e){/* silent â€” Worker may not be deployed/configured yet */}
+  }catch(e){/* silent — Worker may not be deployed/configured yet */}
 }
 
 async function loadQcInbox(){
@@ -3910,7 +3910,7 @@ function renderQcInbox(){
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">
           <strong style="font-size:13.5px">${who}</strong>
-          <span style="font-size:11px;color:var(--text-muted)">${qcSourceLabel(it.source_type)} Â· ${esc(it.direction||'')}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${qcSourceLabel(it.source_type)} · ${esc(it.direction||'')}</span>
           ${owner}${qcStatusBadge(it.status)}
           <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${qcRelTime(it.occurred_at)}</span>
         </div>
@@ -3952,7 +3952,7 @@ async function qcOpenThread(id){
         <div style="max-width:78%;background:${out?'var(--accent)':'var(--bg-main)'};color:${out?'#fff':'var(--text-primary)'};border-radius:12px;padding:8px 13px;font-size:13px;line-height:1.5">
           ${m.event_type==='email'&&m.subject?`<div style="font-weight:700;margin-bottom:3px">${esc(m.subject)}</div>`:''}${esc(m.body||'(no content)')}
         </div>
-        <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} Â· ${esc(m.direction||'')} Â· ${fmtDate(new Date(m.occurred_at).getTime())}</div>
+        <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} · ${esc(m.direction||'')} · ${fmtDate(new Date(m.occurred_at).getTime())}</div>
       </div>`;
     }).join('');
     document.getElementById('qct-assign-btn').style.display=item.status==='pending'?'inline-flex':'none';
@@ -4016,7 +4016,7 @@ function qcMatchEntries(q){
 
 function qcRenderAssignResults(matches){
   const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
-  if(!matches.length)return'<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No matches â€” try a different search</div>';
+  if(!matches.length)return'<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No matches — try a different search</div>';
   return matches.map(m=>`<div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmousedown="qcConfirmAssign('${m.id}','${m.type}','${esc(m.name)}')">${makeSB(typeLabel[m.type])}<span><strong>${esc(m.name)}</strong> <span style="color:var(--text-muted);font-size:11px">${(m.id||'').toUpperCase()}</span></span></div>`).join('');
 }
 
@@ -4047,9 +4047,9 @@ async function qcConfirmAssign(taskId,taskType,name){
   }catch(e){showToast('Assign failed: '+e.message,'error');}
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 // UTILITIES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════
 function getCF(task){
   const cf={};
   (task.custom_fields||[]).forEach(f=>{
@@ -4069,18 +4069,18 @@ function getCF(task){
 }
 
 function fmtDate(val){
-  if(!val)return'â€”';
+  if(!val)return'—';
   const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
-  if(!ms||isNaN(ms))return String(val)||'â€”';
+  if(!ms||isNaN(ms))return String(val)||'—';
   const d=new Date(ms);if(isNaN(d.getTime()))return String(val);
   const mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0'),yr=d.getFullYear();
   const hr=d.getHours(),mn=String(d.getMinutes()).padStart(2,'0'),ampm=hr>=12?'PM':'AM',h12=hr%12||12;
   return`${mo}/${dy}/${yr} | ${h12}:${mn} ${ampm}`;
 }
 function fmtDateShort(val){
-  if(!val)return'â€”';
+  if(!val)return'—';
   const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
-  if(!ms||isNaN(ms))return'â€”';
+  if(!ms||isNaN(ms))return'—';
   const d=new Date(ms);
   return`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
 }
@@ -4090,10 +4090,10 @@ function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/<
 function makeSB(status){
   const key=(status||'').toLowerCase();
   const[bg,fg]=STATUS_COLORS[key]||['#e5e7eb','#374151'];
-  return`<span class="badge" style="background:${bg};color:${fg}">${esc(status||'â€”')}</span>`;
+  return`<span class="badge" style="background:${bg};color:${fg}">${esc(status||'—')}</span>`;
 }
 function makeBB(branch){
-  if(!branch||branch==='â€”')return'';
+  if(!branch||branch==='—')return'';
   const k=(branch||'').toLowerCase().replace(/\s/g,'');
   let bg='#f3f4f6',fg='#374151';
   if(k.includes('jtg')){bg='#dbeafe';fg='#1d4ed8';}
@@ -4103,7 +4103,7 @@ function makeBB(branch){
   return`<span class="badge" style="background:${bg};color:${fg}">${esc(branch)}</span>`;
 }
 function makeTypeBadge(ct){
-  if(!ct||ct==='â€”')return'';
+  if(!ct||ct==='—')return'';
   const[bg,fg]=TYPE_COLORS[(ct||'').toLowerCase()]||['#f1f5f9','#475569'];
   return`<span class="badge" style="background:${bg};color:${fg}">${esc(ct)}</span>`;
 }
@@ -4124,9 +4124,9 @@ function renderPg(type,total){
   let btns='';
   for(let i=1;i<=pages;i++){
     if(i===1||i===pages||Math.abs(i-cur)<=2)btns+=`<button class="page-btn${i===cur?' active':''}" onclick="goPage('${type}',${i})">${i}</button>`;
-    else if(Math.abs(i-cur)===3)btns+=`<span style="padding:0 3px;color:var(--text-muted)">â€¦</span>`;
+    else if(Math.abs(i-cur)===3)btns+=`<span style="padding:0 3px;color:var(--text-muted)">…</span>`;
   }
-  el.innerHTML=`<span>${total} entries Â· Page ${cur}/${pages}</span><div class="pagination-controls"><button class="page-btn" onclick="goPage('${type}',${cur-1})"${cur===1?' disabled':''}>â€¹</button>${btns}<button class="page-btn" onclick="goPage('${type}',${cur+1})"${cur===pages?' disabled':''}>â€º</button></div>`;
+  el.innerHTML=`<span>${total} entries · Page ${cur}/${pages}</span><div class="pagination-controls"><button class="page-btn" onclick="goPage('${type}',${cur-1})"${cur===1?' disabled':''}>‹</button>${btns}<button class="page-btn" onclick="goPage('${type}',${cur+1})"${cur===pages?' disabled':''}>›</button></div>`;
 }
 function goPage(type,p){const max=Math.ceil(S.filtered[type].length/50);S.pages[type]=Math.max(1,Math.min(p,max));renderTable(type);}
 
@@ -4167,7 +4167,7 @@ function showToast(msg,type='info'){
   const c=document.getElementById('toast-container');
   const t=document.createElement('div');
   t.className=`toast toast-${type}`;
-  t.innerHTML=`<span>${{success:'âœ“',error:'âœ•',info:'â„¹'}[type]||'â€¢'}</span><span>${esc(msg)}</span>`;
+  t.innerHTML=`<span>${{success:'✓',error:'✕',info:'ℹ'}[type]||'•'}</span><span>${esc(msg)}</span>`;
   c.appendChild(t);setTimeout(()=>t.remove(),4500);
 }
 </script>
