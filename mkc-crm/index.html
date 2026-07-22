@@ -268,7 +268,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 }
 @media(max-width:480px){
   .summary-grid{grid-template-columns:1fr}
-  .search-bar{display:none}
+  #gsw{display:none}
   .topbar-right .sync-indicator{display:none}
   #content{padding:8px}
   .pf-header{padding:12px 16px 10px}
@@ -527,6 +527,14 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <option value="">All Sources</option>
             <option value="quo">Quo (calls/texts)</option>
             <option value="zoho_mail">Zoho Mail</option>
+          </select>
+          <select class="filter-select" id="qc-direction-filter" onchange="S.qc.directionFilter=this.value;renderQcInbox()">
+            <option value="">Incoming &amp; Outgoing</option>
+            <option value="incoming">Incoming only</option>
+            <option value="outgoing">Outgoing only</option>
+          </select>
+          <select class="filter-select" id="qc-owner-filter" onchange="S.qc.ownerFilter=this.value;renderQcInbox()">
+            <option value="">All Users</option>
           </select>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="loadQcInbox()">
@@ -967,7 +975,7 @@ const S={
   // gsToken/gsTokenExp removed -- were only used to cache the
   // client-side Google JWT access token, which no longer exists.
   fieldCache:{},
-  qc:{items:[],statusFilter:'pending',sourceFilter:'',current:null,assignTarget:null}
+  qc:{items:[],statusFilter:'pending',sourceFilter:'',directionFilter:'',ownerFilter:'',current:null,assignTarget:null}
 };
 
 // getGSToken()/GS_API_KEY removed -- gsFetch/gsWrite go through the
@@ -1417,6 +1425,10 @@ function populateAssigneeFilter(){
 // LOAD ENTRIES
 // ═══════════════════════════════════════════
 async function loadAllEntries(){
+  // Invalidate the Activity Inbox's cached phone/email->name lookup --
+  // see resolveContactName/buildContactLookupMap -- since entries below
+  // are about to change and the old map would otherwise silently go stale.
+  S._contactLookup=null;
   const lists={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts};
   const typeKeys=Object.keys(lists);
   for(const type of typeKeys){
@@ -1969,12 +1981,34 @@ function populateTaskFilters(){
   const leads=new Map(),deals=new Map(),accts=new Map();
   S_masterTasks.forEach(t=>{
     const cf=getCF(t);
-    const rl=cf['related lead/contact id']||cf['related lead']||'';
-    const rd=cf['related deal id']||cf['related deal']||'';
-    const ra=cf['related account id']||cf['related account']||'';
-    if(rl){const entry=lookup[rl];leads.set(rl,entry?.name||rl.toUpperCase());}
-    if(rd){const entry=lookup[rd];deals.set(rd,entry?.name||rd.toUpperCase());}
-    if(ra){const entry=lookup[ra];accts.set(ra,entry?.name||ra.toUpperCase());}
+    // Same "don't trust which field the ID came from" resolution
+    // resolveLinkedEntry() already uses for the task-row display chip
+    // (see its own comment: "not just which field happened to be set").
+    // A task's "related lead/contact id" field can genuinely hold what's
+    // actually a Deal's ID -- workflow reality, not bad data -- so file
+    // it into the dropdown matching its REAL resolved type. Previously
+    // this trusted the field name directly (rl always -> leads Map,
+    // regardless of what type of entry rl actually pointed to), which is
+    // exactly what produced "leads showing up in the Deals dropdown".
+    const{id:linkedId,name:linkedName,type:linkedType}=resolveLinkedEntry(cf,lookup);
+    if(!linkedId)return;
+    const displayName=linkedName||linkedId.toUpperCase();
+    if(linkedType==='Lead/Contact')leads.set(linkedId,displayName);
+    else if(linkedType==='Pipeline')deals.set(linkedId,displayName);
+    else if(linkedType==='Account')accts.set(linkedId,displayName);
+    else{
+      // Unresolved -- no entry found in any of the 4 lists for this ID
+      // (e.g. the linked task was deleted, or hasn't loaded into
+      // S.entries yet). Fall back to whichever raw field had a value,
+      // same as the pre-fix behavior, rather than dropping the task
+      // from every filter dropdown silently.
+      const rl=cf['related lead/contact id']||cf['related lead']||'';
+      const rd=cf['related deal id']||cf['related deal']||'';
+      const ra=cf['related account id']||cf['related account']||'';
+      if(rl)leads.set(rl,rl.toUpperCase());
+      else if(rd)deals.set(rd,rd.toUpperCase());
+      else if(ra)accts.set(ra,ra.toUpperCase());
+    }
   });
   const fillSel=(id,map,label,allLabel)=>{
     const el=document.getElementById(id);if(!el)return;
@@ -2009,18 +2043,21 @@ function renderTasks(){
     const asgn=(t.assignees?.map(a=>a.username||a.email).join(', ')||'');
     if(aFilter&&!asgn.toLowerCase().includes(aFilter))return;
 
-    // Related entry IDs
-    const relLead=cf['related lead/contact id']||cf['related lead']||'';
-    const relDeal=cf['related deal id']||cf['related deal']||'';
-    const relAcct=cf['related account id']||cf['related account']||'';
-
-    // Apply named filters
-    if(relLeadFilter&&relLead!==relLeadFilter)return;
-    if(relDealFilter&&relDeal!==relDealFilter)return;
-    if(relAcctFilter&&relAcct!==relAcctFilter)return;
-
-    // Resolve entry name + correct type label from the ACTUAL linked entry (fixes "Pipeline" mislabel bug)
+    // Resolve entry name + correct type label from the ACTUAL linked
+    // entry (fixes "Pipeline"/mislabel bug) -- moved ABOVE the filter
+    // checks below and reused for them too now, so dropdown selection
+    // matches by the same RESOLVED type/id the dropdown itself was
+    // populated with (see populateTaskFilters), not by which raw field
+    // the ID happened to be read from. Matching those inconsistently
+    // was the direct cause of selecting an entry from, say, the Deal
+    // dropdown silently matching zero tasks -- the id was real, but
+    // stored under a different field name than the filter checked.
     const{name:linkedName,type:linkedType,id:linkedId}=resolveLinkedEntry(cf,lookup);
+
+    // Apply named filters against the RESOLVED type + id, not a raw field
+    if(relLeadFilter&&!(linkedType==='Lead/Contact'&&linkedId===relLeadFilter))return;
+    if(relDealFilter&&!(linkedType==='Pipeline'&&linkedId===relDealFilter))return;
+    if(relAcctFilter&&!(linkedType==='Account'&&linkedId===relAcctFilter))return;
 
     // Hide completed tasks unless Show Completed is ticked
     const taskStatus=(t.status?.status||'').toUpperCase();
@@ -4012,18 +4049,54 @@ async function loadQcInbox(){
   }
 }
 
+/**
+ * Populates the owner/user filter dropdown from the DISTINCT owner_name
+ * values present in the currently-loaded feed (S.qc.items, unfiltered --
+ * NOT the already-filtered list renderQcInbox builds, so selecting one
+ * owner doesn't shrink the dropdown down to just that one option).
+ * Built dynamically rather than from a fixed list since the actual set
+ * of connected Quo/Zoho lines can grow over time (see the Worker's
+ * /admin/sources) without this file needing a code change to know
+ * about them. Preserves whichever option is already selected; falls
+ * back to "All Users" if that owner has no items in the current batch.
+ * @returns {void}
+ */
+function qcPopulateOwnerFilter(){
+  const sel=document.getElementById('qc-owner-filter');
+  if(!sel)return;
+  const current=sel.value;
+  const owners=[...new Set((S.qc.items||[]).map(it=>it.owner_name).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All Users</option>'+owners.map(o=>`<option value="${esc(o)}"${o===current?' selected':''}>${esc(o)}</option>`).join('');
+  if(current&&!owners.includes(current)){sel.value='';S.qc.ownerFilter='';}
+}
+
 function renderQcInbox(){
   const feed=document.getElementById('qc-feed');
   const srcFilter=S.qc.sourceFilter;
-  const items=(S.qc.items||[]).filter(it=>!srcFilter||it.source_type===srcFilter);
+  const dirFilter=S.qc.directionFilter;
+  const ownerFilter=S.qc.ownerFilter;
+  const items=(S.qc.items||[]).filter(it=>
+    (!srcFilter||it.source_type===srcFilter)&&
+    (!dirFilter||it.direction===dirFilter)&&
+    (!ownerFilter||it.owner_name===ownerFilter)
+  );
+  qcPopulateOwnerFilter();
   if(!items.length){
     feed.innerHTML='<div class="empty-state"><p>No activity here right now</p><small>New texts, calls, and emails will show up here as they\'re batched in.</small></div>';
     return;
   }
   feed.innerHTML=items.map(it=>{
     const icon=QC_ICONS[it.event_type]||QC_ICONS.text;
-    const who=esc(it.contact_name||it.contact_identifier||'Unknown contact');
-    const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc((it.body||'').slice(0,140));
+    // Show a name straight from the event if Quo/Zoho ever provides one;
+    // otherwise try to resolve it against loaded CRM entries by phone/
+    // email (see resolveContactName) before falling back to the raw
+    // identifier -- a small "(CRM)" tag distinguishes an auto-matched
+    // name from one that came with the event itself, so nobody mistakes
+    // a guess for confirmed data.
+    const resolvedName=it.contact_name||resolveContactName(it.contact_identifier);
+    const nameIsResolved=!it.contact_name&&resolvedName;
+    const who=esc(resolvedName||it.contact_identifier||'Unknown contact')+(nameIsResolved?' <span style="font-weight:400;color:var(--text-muted);font-size:10.5px">(CRM)</span>':'');
+    const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc(qcParseMessageBody(it.body).main.slice(0,140));
     const owner=it.owner_name?`<span class="badge" style="background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)">${esc(it.owner_name)}</span>`:'';
     return`
     <div class="card qc-item" style="margin-bottom:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="qcOpenThread('${it.id}')">
@@ -4055,6 +4128,53 @@ async function qcArchive(id){
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
+/**
+ * Splits a staged event's body into its main text plus any appended
+ * [Label]-marked sections (AI Summary / Transcript / Recording -- see
+ * mergeCallFollowUp's doc comment in the Worker's db.js for the exact
+ * format this is parsing back apart). Used by qcOpenThread to render
+ * summary/transcript differently rather than dumping one giant blob of
+ * text into a chat bubble.
+ * @param {string} body
+ * @returns {{main:string, sections:{label:string,text:string}[]}}
+ * EDGE CASE: a body with no appended sections (any plain text message,
+ * or a call with no summary/transcript yet) returns {main: <the whole
+ * body>, sections: []} -- callers should always handle an empty
+ * sections array as the common case, not the exception.
+ */
+function qcParseMessageBody(body){
+  if(!body)return{main:'',sections:[]};
+  const parts=body.split(/\n\n\[([^\]]+)\]\n/);
+  const main=parts[0]||'';
+  const sections=[];
+  for(let i=1;i<parts.length;i+=2)sections.push({label:parts[i],text:parts[i+1]||''});
+  return{main,sections};
+}
+
+/**
+ * Downloads a single message's [Transcript] section as a standalone
+ * .md file -- the per-message counterpart to qcExportMarkdown (which
+ * exports the whole thread). Useful when someone wants just the
+ * transcript without the rest of the conversation around it.
+ * @param {string} messageId
+ * @returns {void}
+ */
+function qcDownloadTranscript(messageId){
+  const msg=(S.qc.currentThread||[]).find(m=>m.id===messageId);
+  if(!msg)return;
+  const transcriptSection=qcParseMessageBody(msg.body).sections.find(s=>s.label==='Transcript');
+  if(!transcriptSection)return;
+  const who=msg.contact_name||msg.contact_identifier||'Unknown contact';
+  const when=fmtDate(new Date(msg.occurred_at).getTime());
+  const md=`# Call Transcript — ${who}\n\n${when}\n\n${transcriptSection.text}`;
+  const blob=new Blob([md],{type:'text/markdown'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`transcript-${messageId}.md`;document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Transcript downloaded.','success');
+}
+
 async function qcOpenThread(id){
   S.qc.current=id;
   const modal=document.getElementById('qc-thread-modal');
@@ -4066,12 +4186,28 @@ async function qcOpenThread(id){
     const msgs=Array.isArray(thread)?thread:(thread.results||thread.events||[thread]);
     S.qc.currentThread=msgs;
     const item=msgs[msgs.length-1]||msgs[0]||{};
-    document.getElementById('qct-title').textContent=item.contact_name||item.contact_identifier||'Activity Thread';
+    document.getElementById('qct-title').textContent=item.contact_name||resolveContactName(item.contact_identifier)||item.contact_identifier||'Activity Thread';
     body.innerHTML=msgs.map(m=>{
       const out=m.direction==='outgoing';
+      const parsed=qcParseMessageBody(m.body);
+      // Full transcripts (can run to hundreds of lines for a long call)
+      // stay collapsed by default -- see the AI Summary/Recording
+      // sections rendered plainly above it for the "precise but not
+      // overwhelming" balance; anything genuinely long is one tap away,
+      // not forced into view. Native <details> keeps this working
+      // without extra JS state to track per-message.
+      const transcriptSection=parsed.sections.find(s=>s.label==='Transcript');
+      const otherSections=parsed.sections.filter(s=>s.label!=='Transcript');
+      const sectionsHtml=otherSections.map(s=>`<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,0,0,.08);white-space:pre-wrap"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.7;margin-bottom:2px">${esc(s.label)}</div>${esc(s.text)}</div>`).join('');
+      const transcriptHtml=transcriptSection?`
+        <details style="margin-top:6px">
+          <summary style="cursor:pointer;font-size:11px;font-weight:600;opacity:.85">Show full transcript</summary>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,0,0,.08);white-space:pre-wrap;font-size:12px">${esc(transcriptSection.text)}</div>
+        </details>
+        <button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:10.5px;padding:3px 8px;height:auto" onclick="event.stopPropagation();qcDownloadTranscript('${m.id}')">Download transcript (.md)</button>`:'';
       return`<div style="display:flex;flex-direction:column;align-items:${out?'flex-end':'flex-start'};margin-bottom:10px">
         <div style="max-width:78%;background:${out?'var(--accent)':'var(--bg-main)'};color:${out?'#fff':'var(--text-primary)'};border-radius:12px;padding:8px 13px;font-size:13px;line-height:1.5">
-          ${m.event_type==='email'&&m.subject?`<div style="font-weight:700;margin-bottom:3px">${esc(m.subject)}</div>`:''}${esc(m.body||'(no content)')}
+          ${m.event_type==='email'&&m.subject?`<div style="font-weight:700;margin-bottom:3px">${esc(m.subject)}</div>`:''}${esc(parsed.main||'(no content)')}${sectionsHtml}${transcriptHtml}
         </div>
         <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} · ${esc(m.direction||'')} · ${fmtDate(new Date(m.occurred_at).getTime())}</div>
       </div>`;
@@ -4135,6 +4271,57 @@ function qcMatchEntries(q){
   return matches.slice(0,8);
 }
 
+/**
+ * Builds a phone/email -> name lookup table from every currently-loaded
+ * CRM entry, for the Activity Inbox feed to show a known contact's name
+ * instead of a raw phone number or email address. A dedicated map
+ * (rather than reusing qcMatchEntries' search-as-you-type logic) is
+ * deliberate: qcMatchEntries scans + parses every entry's custom fields
+ * on every call, which is fine for one search-box keystroke but too
+ * slow to re-run once per feed item on every render. This builds that
+ * scan ONCE, cached until entries reload.
+ * @returns {{[key:string]:string}} keys are "phone:<last 10 digits>" or
+ *   "email:<lowercased address>", values are the matching entry's name
+ * EDGE CASE: phone keys use only the last 10 digits specifically so a
+ * number stored as "+1 (770) 555-0134" in the CRM still matches an
+ * incoming contact_identifier formatted as "+17705550134" or
+ * "17705550134" -- comparing full strings would miss these constantly
+ * given how inconsistently phone numbers get formatted across systems.
+ */
+function buildContactLookupMap(){
+  const map={};
+  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+    (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
+      const cf=getCF(t);
+      const phoneDigits=(cf.phone||'').replace(/\D/g,'');
+      const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
+      if(phoneDigits.length>=10)map['phone:'+phoneDigits.slice(-10)]=t.name;
+      if(email)map['email:'+email]=t.name;
+    });
+  });
+  return map;
+}
+
+/**
+ * Resolves a QC Inbox item's contact_identifier (phone or email) to a
+ * known CRM entry's name, using the cached map from
+ * buildContactLookupMap(). Lazily builds/rebuilds S._contactLookup on
+ * first use per QC Inbox load rather than on every keystroke elsewhere
+ * in the app, since this data only needs to be as fresh as the last
+ * loadAllEntries() call.
+ * @param {string} identifier - phone number or email, any formatting
+ * @returns {string|null} the matched name, or null if no match found
+ */
+function resolveContactName(identifier){
+  if(!identifier)return null;
+  if(!S._contactLookup)S._contactLookup=buildContactLookupMap();
+  const trimmed=identifier.trim();
+  if(trimmed.includes('@'))return S._contactLookup['email:'+trimmed.toLowerCase()]||null;
+  const digits=trimmed.replace(/\D/g,'');
+  if(digits.length<10)return null;
+  return S._contactLookup['phone:'+digits.slice(-10)]||null;
+}
+
 function qcRenderAssignResults(matches){
   const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
   if(!matches.length)return'<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No matches — try a different search</div>';
@@ -4182,7 +4369,25 @@ function getCF(task){
       case'labels':{if(Array.isArray(f.value)){const opts=f.type_config?.options||[];val=f.value.map(v=>{const o=opts.find(o=>o.id===v||o.label===v);return o?.label||o?.name||v;}).join(', ');}else val=String(f.value);break;}
       case'date':{val=f.value?String(f.value):'';break;}
       case'users':{if(Array.isArray(f.value))val=f.value.map(u=>u.username||u.email).join(', ');else if(typeof f.value==='object'&&f.value)val=f.value.username||f.value.email||'';else val=String(f.value||'');break;}
-      default:{if(typeof f.value==='object'&&f.value!==null)val=f.value.username||f.value.email||f.value.name||f.value.label||JSON.stringify(f.value);else val=String(f.value);}
+      default:{
+        // ClickUp "relationship" custom fields (used for related lead/
+        // deal/account links -- see populateTaskFilters/resolveLinkedEntry)
+        // return an ARRAY of linked-task summary objects ({id, name,
+        // status, ...}), not a single value. typeof [] === 'object' in
+        // JS, so this used to fall into the object branch below, find no
+        // .username/.email/.name/.label on the ARRAY itself, and land on
+        // JSON.stringify(f.value) as a last resort -- producing a raw
+        // JSON blob as the field's "value", which then showed up
+        // (uppercased, via the .toUpperCase() fallback elsewhere) as
+        // garbled text in the Action Hub's Lead/Deal/Account filter
+        // dropdowns. Every place this app reads a related-entry field
+        // expects a single ID string, so take the first linked item's id.
+        if(Array.isArray(f.value)){
+          val=f.value[0]?.id?String(f.value[0].id):(f.value[0]?.name||'');
+        }else if(typeof f.value==='object'&&f.value!==null){
+          val=f.value.username||f.value.email||f.value.name||f.value.label||JSON.stringify(f.value);
+        }else val=String(f.value);
+      }
     }
     cf[key]=val;
   });
