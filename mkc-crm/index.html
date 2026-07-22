@@ -338,7 +338,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   <div class="sidebar-section">
     <div class="sidebar-section-label">Tools</div>
     <div class="nav-item" data-view="qcinbox">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>QC Inbox <span class="nav-badge" id="badge-qcinbox">0</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>Activity Inbox <span class="nav-badge" id="badge-qcinbox">0</span>
     </div>
     <div class="nav-item" data-view="tasks">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Action Hub <span class="nav-badge" id="badge-tasks">0</span>
@@ -602,19 +602,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <button class="btn btn-primary btn-sm" onclick="saveToken()">Save</button>
           </div>
         </div>
-        <div class="settings-section">
-          <h3>Activity Logger (QC Inbox backend)</h3>
-          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Cloudflare Worker that receives Quo/Zoho activity and feeds the QC Inbox tab. Stored in session only — re-enter after closing the tab. See the Worker's README for the deployed <code>*.workers.dev</code> URL and the <code>ADMIN_TOKEN</code> value set via <code>wrangler secret put</code>.</p>
-          <div class="form-group"><label>Worker Base URL</label>
-            <input type="text" id="s-wk-base" placeholder="https://mkc-activity-logger.….workers.dev" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <div class="form-group" style="flex:1;margin-bottom:0"><label>Admin Token</label>
-              <input type="password" id="s-wk-token" placeholder="Bearer token…" style="width:100%;height:36px;border:1px solid var(--border);border-radius:7px;padding:0 12px;font-size:13px;outline:none">
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="saveWorkerConfig()" style="height:36px">Save</button>
-          </div>
-        </div>
+        <!-- Activity Logger settings-section removed (v1.7.0) -- no longer
+             needed, access is automatic via the existing login session.
+             The "Activity Logger" status pill + Test button under
+             Connection Status above still work unchanged, as a plain
+             connectivity diagnostic. -->
         <div class="settings-section">
           <h3>Workspace Info</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text-secondary)">
@@ -773,9 +765,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 // ═══════════════════════════════════════════
 // CONFIG & CREDENTIALS
 // ═══════════════════════════════════════════
-const SHEETS_ID='1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw';
 const CU_BASE='https://api.clickup.com/api/v2';
-const GS_BASE=`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values`;
+// SHEETS_ID/GS_BASE removed -- were only used by the now-dead
+// getGSToken()/direct-Google-Sheets path, itself removed just below.
+// The Worker already knows the Sheets ID (see its own wrangler.toml
+// SHEETS_ID var) -- nothing here needs it anymore.
 // The Activity Logger Worker's URL -- NOT a secret (it's just an
 // endpoint address, same treatment as CU_BASE/GS_BASE above), so it's
 // safe to hardcode here rather than require Settings configuration.
@@ -789,47 +783,14 @@ const APP_CONFIG={
   listContacts:'901710477009',listAccounts:'901710481777',
   listTasks:'901714539764'  // Master CRM Tasks list
 };
-// Activity Logger (Cloudflare Worker) — QC Inbox reads/writes here.
-// Left blank on purpose: fill in from Settings → Activity Logger once the
-// Worker is deployed (`wrangler deploy`), rather than baking another
-// secret into this public file. Values are kept in sessionStorage only.
-const WORKER_DEFAULT={
-  baseUrl:'',      // e.g. https://mkc-activity-logger.<subdomain>.workers.dev
-  adminToken:''    // matches the ADMIN_TOKEN secret set via `wrangler secret put`
-};
-const SA={
-  clientEmail:'mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com',
-  privateKeyId:'f4b608e4d00c6a6cfdeab722d6a09d911a14e2f0',
-  privateKey:`-----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC82Un2UfqloUNb
-3boJhfSS9M8sf5ZIhyupalS4EUEfTzgUWZN0gSJiW8D5vIK14/CiUi3wEbNc0tEt
-nyZHRmQFHoAoTVA9U2cqdulraBzOugK96OvLgrWLoUMGwUfl2riGIUOMD+i6x7Vx
-RrHWEYaEmF+R8w0B0eTBwQJ8LyvVvwXUOVugyvYHZFKDwl7HtFxwd/yaRZUTAIns
-xaL2EkZW9dd3oKSoFqQDGb+nGlcUHOxSHaWz+8HaCfxNzi+ZgWbj7fj1agTj4OTl
-diCH0sCDftZG7U4j6/5b67WA8NMqLZcgDCAk7Iriu0pcSITBuFgFT6k4w/Ha1fvN
-UXy7dKWRAgMBAAECggEABVg18GduC0l21U7/YJ0eqJkOkvEScP+IVA1bE/GDEQ6G
-JQdK9clgzn1PxxGXdmvax9FBFRH/LEGYI20lYW+DzaRJFrrnajDl0s0WOpCx/gTE
-JplEsRgEKM05zyNhtEbeIYen+HsLyFt2DlxklI0e7Do+vCvvgo1s5rHebuLL4Arx
-K0NhyQgHtWThJNQTlyr8Ry11ONwSKkVye4rU9IFGTtnHL89AXUopwGjKYwtK3dmd
-b2cuyynE7KxdlL8yp0JK06r2dZvdftKeVK+UNoOFhYBmAEoGgLEhzMqUrmGPKHch
-7llNDe5508nfZWn1HKdP6ifhdTuBwKFEo4JdYh0iNQKBgQD1ZRgBGA46jQsfFSLc
-7uhCcRo/+GcWIsiwxr+T3Hg17HxBF00m63gis/7QYZNe3I7uMcPGLicsP7YEh9YY
-Bcst/Zc2F7sjIcodZSK1baV/kNBs0tk6yN0iqMJCHUF8gsNkFBd1wzj7m9MRrz7b
-1YGN3qa3Enm/32BkWLldBRibPQKBgQDFApoVXI9/EYHPKdtROorS27BbqT9ZzBMq
-9rUBN3PJzKH0Shzg75SqSslAqNhhrqMsrCcw8ZV+zWQvYaf7ohLkvsFMU/Wa0oha
-E0PNFiRG+7ugmkXcqw8Q/NlDOWqY3hnrEdvVp5Jl79IlhSJufR18wiwWZlZ7QQ4b
-BeYEzPVo5QKBgQCQokQSqP4B7o2mhUumEj3co1MIbz07I8dLwei6mpBToA3gQ36a
-uOB2+8XtRgWZPMAVjklIbn1yLB747qL2R7voYHYWUMhgvZKl3q0lZ/nKhS0DZwbY
-CfmkavkMBLhLTbsiKmFlbGoSilZOLw8KfP2+A4QZlQ8jUuI6YrzmIZHONQKBgA9T
-Nn026AqwZ/KfhOn6rdXdNQjMT5tCnrMW4dmoYJ9wBaElKr3spRniG2mmOL7QgOz2
-r03FXSWyAHsXE6QlZWbZ19uCJHbYrbakDQAlGslSx7OkjI6v18owgQ4Tp1Eg5c89
-YmZqVJ8NWsGEa7tAjEyqJhfP+iY4V0qO2OfCscxpAoGBAOf75j7ni/BPdQw4cWys
-JXr7Uh1TC6wYuw8/HWiHGRCcwkwbtplqneM8jiEu+IGi3aHLLJtHelJMQz4SkYw/
-hlcCOuqohLn+MzTLRAk/ib+KIX6fPMpFSfG9ic2v4qn2YMAS+kNaiYR1889XuyZ1
-K3zEFgOBo0pY1QY4CTLdcPrW
------END PRIVATE KEY-----
-`
-};
+// WORKER_DEFAULT removed -- the Activity Inbox no longer needs a
+// separately-configured Worker URL/admin token at all (v1.7.0): it
+// authenticates with the same session token login already establishes,
+// via WORKER_BASE (a plain non-secret endpoint, defined above) and
+// authFetch(). See the Worker's own isStagingAuthed() for the
+// server-side half of this change.
+// SA (Google service-account credentials) removed -- no longer used
+// anywhere; see getGSToken removal note below.
 
 // ═══════════════════════════════════════════
 // STATUS / BRANCH / TYPE COLOR MAPS
@@ -982,14 +943,13 @@ const SUB_BRANCHES={
 // STATE
 // ═══════════════════════════════════════════
 const S={
-  creds:{...APP_CONFIG,workerBase:sessionStorage.getItem('mkc_wk_base')||WORKER_DEFAULT.baseUrl,workerToken:sessionStorage.getItem('mkc_wk_tok')||WORKER_DEFAULT.adminToken,
+  creds:{...APP_CONFIG,
     // Session token from POST /auth/login (see attemptLogin below) --
-    // stored the same way/lifecycle as mkc_session (S.user): sessionStorage,
-    // so it lives and dies with the browser tab, same as being logged in
-    // at all. This is DIFFERENT from workerBase/workerToken above (which
-    // are QC Inbox admin settings a person configures once) -- this one
-    // is issued automatically per-login and expires server-side after 8h
-    // regardless of how long the tab stays open.
+    // stored via sessionStorage (lives and dies with the browser tab,
+    // same lifecycle as mkc_session/S.user just below) and expires
+    // server-side after 8h regardless of how long the tab stays open.
+    // This is now the ONLY credential the Activity Inbox needs client-side
+    // (v1.7.0) -- no separate Worker URL/admin token to configure.
     sessionToken:sessionStorage.getItem('mkc_session_token')||''},
   user:null,
   entries:{leads:[],pipeline:[],contacts:[],accounts:[]},
@@ -1004,35 +964,15 @@ const S={
   selectedAction:null,
   isEditMode:false,
   autoTimer:null,
-  gsToken:null,gsTokenExp:0,
+  // gsToken/gsTokenExp removed -- were only used to cache the
+  // client-side Google JWT access token, which no longer exists.
   fieldCache:{},
   qc:{items:[],statusFilter:'pending',sourceFilter:'',current:null,assignTarget:null}
 };
 
-// ═══════════════════════════════════════════
-// GOOGLE AUTH — Service Account JWT
-// ═══════════════════════════════════════════
-const GS_API_KEY='AIzaSyA1-VPKxN1t10C14PtYvR8hw8yKbiKj2cg';
-
-async function getGSToken(){
-  const now=Math.floor(Date.now()/1000);
-  if(S.gsToken&&now<S.gsTokenExp-60)return S.gsToken;
-  const b64u=o=>btoa(JSON.stringify(o)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  const hdr={alg:'RS256',typ:'JWT',kid:SA.privateKeyId};
-  const pay={iss:SA.clientEmail,scope:'https://www.googleapis.com/auth/spreadsheets',aud:'https://oauth2.googleapis.com/token',exp:now+3600,iat:now};
-  const sigIn=`${b64u(hdr)}.${b64u(pay)}`;
-  const kd=SA.privateKey.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\n/g,'');
-  const bk=Uint8Array.from(atob(kd),c=>c.charCodeAt(0));
-  const ck=await crypto.subtle.importKey('pkcs8',bk.buffer,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
-  const sig=await crypto.subtle.sign('RSASSA-PKCS1-v1_5',ck,new TextEncoder().encode(sigIn));
-  const b64sig=btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  const jwt=`${sigIn}.${b64sig}`;
-  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`});
-  if(!r.ok)throw new Error(`Google auth: ${await r.text()}`);
-  const d=await r.json();
-  S.gsToken=d.access_token;S.gsTokenExp=now+(d.expires_in||3600);
-  return S.gsToken;
-}
+// getGSToken()/GS_API_KEY removed -- gsFetch/gsWrite go through the
+// Worker's session-authenticated proxy (see authFetch above) instead
+// of signing a Google JWT client-side; zero callers left.
 
 // READ — uses service account JWT (sheet stays private)
 /**
@@ -1167,27 +1107,10 @@ async function cuFetch(path,method='GET',body=null){
   return authFetch('/api/clickup','POST',{path,method,body});
 }
 
-// ═══════════════════════════════════════════
-// ACTIVITY LOGGER (Cloudflare Worker) API
-// ═══════════════════════════════════════════
-async function wkFetch(path,method='GET',params=null){
-  if(!S.creds.workerBase)throw new Error('Activity Logger URL not set — add it in Settings.');
-  if(!S.creds.workerToken)throw new Error('Activity Logger token not set — add it in Settings.');
-  const base=S.creds.workerBase.replace(/\/$/,'');
-  let url=base+path;
-  const opts={method,headers:{Authorization:`Bearer ${S.creds.workerToken}`}};
-  if(method==='GET'&&params){
-    const qs=new URLSearchParams(params).toString();
-    if(qs)url+=(url.includes('?')?'&':'?')+qs;
-  }else if(params){
-    opts.headers['Content-Type']='application/json';
-    opts.body=JSON.stringify(params);
-  }
-  const r=await fetch(url,opts);
-  if(!r.ok)throw new Error(`Activity Logger ${r.status}: ${await r.text()}`);
-  const ct=r.headers.get('content-type')||'';
-  return ct.includes('application/json')?r.json():r.text();
-}
+// wkFetch (ADMIN_TOKEN-based Worker fetch) removed (v1.7.0) -- QC Inbox
+// now uses authFetch (session-token based, see below) exclusively,
+// since /api/staging/* accepts session tokens as of Worker v1.6. No
+// remaining callers needed the separate admin-token path.
 
 /**
  * Fetch wrapper for the Worker's PER-USER, session-token-authenticated
@@ -1528,7 +1451,7 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const el=document.getElementById(`view-${view}`);
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub',qcinbox:'QC Inbox','search-view':'Search',export:'Export',settings:'Settings'};
+  const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub',qcinbox:'Activity Inbox','search-view':'Search',export:'Export',settings:'Settings'};
   document.getElementById('page-title').textContent=titles[view]||view;
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
@@ -1919,6 +1842,31 @@ async function resolveClickupUserId(){
       sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
     }
   }catch(e){console.warn('resolveClickupUserId failed:',e.message);}
+}
+
+/**
+ * Loads + caches the ClickUp workspace member list (id/username/email),
+ * used to populate the Assignees selector when editing a Master CRM
+ * Task (see the 'master' branch of renderUpdateForm/saveUpdateProfile).
+ * Reuses the same GET /team endpoint resolveClickupUserId already
+ * calls, just for the full member list rather than one email match.
+ * @returns {Promise<{id:string,username:string,email:string}[]>}
+ * Cached in S._teamMembers after the first successful call -- pass
+ * force=true to bypass the cache (e.g. if a new member was just added
+ * to the workspace and someone wants the picker to reflect that
+ * without a full page reload).
+ */
+async function loadTeamMembers(force){
+  if(S._teamMembers&&!force)return S._teamMembers;
+  try{
+    const d=await cuFetch('/team');
+    const team=(d.teams||[]).find(t=>t.id===S.creds.wsId)||(d.teams||[])[0];
+    S._teamMembers=(team?.members||[]).map(m=>({id:String(m.user.id),username:m.user.username||m.user.email||'Unknown',email:m.user.email||''}));
+  }catch(e){
+    console.warn('loadTeamMembers failed:',e.message);
+    S._teamMembers=S._teamMembers||[];
+  }
+  return S._teamMembers;
 }
 
 // Does this task/entry belong to the logged-in user? Prefer matching by ClickUp
@@ -2446,6 +2394,7 @@ function renderPfDetails(task,type,cf,body){
       ['Related Lead/Contact ID',cf['related lead/contact id']||cf['related lead']||'—'],
       ['Related Deal ID',cf['related deal id']||cf['related deal']||'—'],
       ['Related Account ID',cf['related account id']||cf['related account']||'—'],
+      ['Start Date',fmtDate(task.start_date)],
       ['Due Date',fmtDate(task.due_date)],
       ['Notebook Link',cf['notebook link']||'—'],
       ['Assignee(s)',asgn],
@@ -2755,7 +2704,7 @@ async function quickSaveFields(){
   const la=document.getElementById('qf-la')?.value;
   const ls=document.getElementById('qf-ls')?.value;
   if(nal)await sf(F.NEXT_ACTION_LINK,nal,'url');
-  if(nad)await sf(F.NEXT_ACTION_DATE,new Date(nad).getTime(),'date');
+  if(nad)await sf(F.NEXT_ACTION_DATE,parseLocalDate(nad),'date');
   if(optin)await sf(F.RECENT_OPTIN,optin,'short_text');
   if(la){const uuid=LAST_ACTION_UUIDS[la];if(uuid)await sf(F.LAST_ACTION,[uuid],'labels');}
   if(ls){const uuid=LEAD_SOURCE_UUIDS[ls];if(uuid)await sf(F.LEAD_SOURCE,[uuid],'labels');}
@@ -2953,8 +2902,8 @@ async function openUpdateProfile(){
   const lastActions=['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'];
   const currentTypes=(cf['lead/contact type']||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
   const typeOptions=['Potential Client','Resource/Partner','Supporter','High Value','Demo Prospect','Client'];
-  const nadVal=cf['next action date']?new Date(parseInt(cf['next action date'])).toISOString().split('T')[0]:'';
-  const closeDateVal=cf['close date']?new Date(parseInt(cf['close date'])).toISOString().split('T')[0]:'';
+  const nadVal=toDateLocal(cf['next action date']);
+  const closeDateVal=toDateLocal(cf['close date']);
 
   // Collect unique industry values from loaded entries for datalist suggestions
   const allIndustries=[...new Set([
@@ -2966,7 +2915,13 @@ async function openUpdateProfile(){
 
   // Master CRM Task update form
   if(type==='master'){
-    const dueVal=task.due_date?new Date(parseInt(task.due_date)).toISOString().split('T')[0]:'';
+    const dueVal=toDatetimeLocal(task.due_date);
+    const startVal=toDatetimeLocal(task.start_date);
+    const currentAssigneeIds=(task.assignees||[]).map(a=>String(a.id));
+    const members=await loadTeamMembers();
+    const assigneeOptions=members.length
+      ?members.map(m=>`<option value="${esc(m.id)}"${currentAssigneeIds.includes(m.id)?' selected':''}>${esc(m.username)}</option>`).join('')
+      :'';
     document.getElementById('em-body').innerHTML=`
       <div class="form-row">
         <div class="form-group"><label>Task Name</label><input type="text" id="up-name" value="${esc(task.name||'')}"></div>
@@ -2978,7 +2933,17 @@ async function openUpdateProfile(){
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Due Date</label><input type="date" id="up-due-date" value="${dueVal}"></div>
+        <div class="form-group"><label>Start Date &amp; Time</label><input type="datetime-local" id="up-start-date" value="${startVal}"></div>
+        <div class="form-group"><label>Due Date &amp; Time</label><input type="datetime-local" id="up-due-date" value="${dueVal}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Assignees</label>
+          ${members.length
+            ?`<select class="form-select" id="up-assignees" multiple size="4">${assigneeOptions}</select>
+               <small style="color:var(--text-muted);font-size:11px">Ctrl/Cmd-click to select multiple, or click one to select only that person.</small>`
+            :`<div style="font-size:12.5px;color:var(--text-muted)">Couldn't load ClickUp members — assignees unchanged on save.</div>`}
+        </div>
         <div class="form-group"><label>Notebook Link</label><input type="url" id="up-notebook" value="${esc(cf['notebook link']||'')}"></div>
       </div>
       <div class="form-group"><label>Notes (Task Description)</label>
@@ -3136,7 +3101,7 @@ function openActivityModal(){
   document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('act-note').value='';
   // Default activity date to today
-  const today=new Date().toISOString().split('T')[0];
+  const today=toDateLocal(Date.now());
   const dateEl=document.getElementById('act-date');
   if(dateEl)dateEl.value=today;
   // Reset attachment (Section 11-A)
@@ -3481,7 +3446,7 @@ async function submitEntry(){
     if(nfLsNotes)await sfN(F.LEAD_SOURCE_NOTES,nfLsNotes,'text');
     // ── NEXT ACTION DATE ──────────────────────────────────────
     const nfNad=document.getElementById('nf-nad')?.value;
-    if(nfNad)await sfN(F.NEXT_ACTION_DATE,new Date(nfNad).getTime(),'date');
+    if(nfNad)await sfN(F.NEXT_ACTION_DATE,parseLocalDate(nfNad),'date');
     // ── PIPELINE FIELDS ───────────────────────────────────────
     if(type==='Deal'){
       const coName=document.getElementById('nf-acctname')?.value?.trim();
@@ -3520,18 +3485,38 @@ async function saveUpdateProfile(){
     if(newStatus)updateBody.status=newStatus;
     if(newNotes!==undefined)updateBody.description=newNotes;
 
-    // ── MASTER CRM TASKS: Due Date maps to the task's native due_date, NOT the
-    //    "Next Action Date" custom field (Section 11-B). Handle separately and
-    //    skip all the Leads/Pipeline/Accounts-only custom field logic below.
+    // ── MASTER CRM TASKS: start/due dates map to the task's native
+    //    start_date/due_date fields, NOT the "Next Action Date" custom
+    //    field (Section 11-B) -- handle separately and skip all the
+    //    Leads/Pipeline/Accounts-only custom field logic below.
     if(type==='master'){
+      const startValRaw=document.getElementById('up-start-date')?.value;
+      if(startValRaw)updateBody.start_date=new Date(startValRaw).getTime();
+      else if(startValRaw==='')updateBody.start_date=null;
       const dueVal=document.getElementById('up-due-date')?.value;
       if(dueVal)updateBody.due_date=new Date(dueVal).getTime();
       else if(dueVal==='')updateBody.due_date=null;
+
+      // Assignees: diff the multi-select against the task's CURRENT
+      // assignees rather than sending a full replacement list -- ClickUp's
+      // task-update API takes {add:[...], rem:[...]} deltas, not a set.
+      // Skipped entirely (no `assignees` key at all) if the member list
+      // failed to load, so a load failure can't accidentally unassign
+      // everyone by sending an empty selection.
+      const assigneeSelect=document.getElementById('up-assignees');
+      if(assigneeSelect){
+        const selectedIds=[...assigneeSelect.selectedOptions].map(o=>o.value);
+        const currentIds=(task.assignees||[]).map(a=>String(a.id));
+        const toAdd=selectedIds.filter(id=>!currentIds.includes(id)).map(Number);
+        const toRem=currentIds.filter(id=>!selectedIds.includes(id)).map(Number);
+        if(toAdd.length||toRem.length)updateBody.assignees={add:toAdd,rem:toRem};
+      }
+
       await cuFetch(`/task/${task.id}`,'PUT',updateBody);
       const notebookVal=document.getElementById('up-notebook')?.value?.trim();
       await setFieldById(task.id,CU_FIELDS.NOTEBOOK_LINK,notebookVal||'','url');
       await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Task updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
-      const dueStr=dueVal?new Date(dueVal).toLocaleDateString():'';
+      const dueStr=dueVal?new Date(dueVal).toLocaleString():'';
       await syncTaskUpdateToSheets(newName,newStatus||task.status?.status||'','','','',dueStr,S.user?.name||'');
       showToast('Task updated & synced.','success');
       closeModal('entry-modal');
@@ -3588,9 +3573,9 @@ async function saveUpdateProfile(){
     }
     // ── DATES ─────────────────────────────────────────────────
     const nadVal=document.getElementById('up-nad')?.value;
-    if(nadVal)await sf(F.NEXT_ACTION_DATE,new Date(nadVal).getTime(),'date');
+    if(nadVal)await sf(F.NEXT_ACTION_DATE,parseLocalDate(nadVal),'date');
     const closeDateVal=document.getElementById('up-closedate')?.value;
-    if(closeDateVal)await sf(F.CLOSE_DATE,new Date(closeDateVal).getTime(),'date');
+    if(closeDateVal)await sf(F.CLOSE_DATE,parseLocalDate(closeDateVal),'date');
     // ── TEXT / URL FIELDS ─────────────────────────────────────
     await sfClear(F.NEXT_ACTION_LINK,document.getElementById('up-nal')?.value?.trim(),'url');
     await sfClear(F.RECENT_OPTIN,document.getElementById('up-optin')?.value?.trim(),'short_text');
@@ -3949,20 +3934,17 @@ async function testSheets(){
 }
 function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
 
-function saveWorkerConfig(){
-  const base=document.getElementById('s-wk-base').value.trim();
-  const tok=document.getElementById('s-wk-token').value.trim();
-  if(!base||!tok)return showToast('Enter both the Worker URL and admin token.','error');
-  S.creds.workerBase=base;S.creds.workerToken=tok;
-  sessionStorage.setItem('mkc_wk_base',base);sessionStorage.setItem('mkc_wk_tok',tok);
-  showToast('Activity Logger config saved for this session.','success');
-  refreshQcBadge();
-}
+// saveWorkerConfig()/forgetWorkerConfig() removed (v1.7.0) -- Activity
+// Inbox access no longer needs a separately-configured Worker URL/admin
+// token at all; it authenticates with the same session your login
+// already establishes. testWorkerLogger() below still works unchanged
+// as a connectivity diagnostic (it already used authFetch, not the
+// removed config).
 async function testWorkerLogger(){
   const el=document.getElementById('wk-status');
   el.className='conn-status pending';el.textContent='Testing…';
   try{
-    await wkFetch('/api/staging','GET',{status:'pending'});
+    await authFetch('/api/staging','GET',{status:'pending'});
     el.className='conn-status ok';el.textContent='● Connected';
     showToast('Activity Logger connected.','success');
   }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Activity Logger: '+e.message,'error');}
@@ -3997,30 +3979,31 @@ function qcRelTime(iso){
   return fmtDateShort(d.getTime());
 }
 
+/**
+ * Refreshes just the sidebar's Activity Inbox badge count. No longer
+ * checks for a separately-configured Worker URL/token (removed in
+ * v1.7 -- see the ACTIVITY LOGGER header comment) -- being logged in
+ * is the only prerequisite now, and authFetch() itself throws a clear
+ * "Not logged in." error if S.creds.sessionToken is somehow missing,
+ * which the catch below swallows silently since a failed background
+ * badge refresh shouldn't interrupt whatever the person's actually doing.
+ */
 async function refreshQcBadge(){
-  if(!S.creds.workerBase||!S.creds.workerToken)return updateBadge('qcinbox',0);
   try{
-    const items=await wkFetch('/api/staging','GET',{status:'pending'});
+    const items=await authFetch('/api/staging','GET',{status:'pending'});
     const list=Array.isArray(items)?items:(items.results||items.events||[]);
     updateBadge('qcinbox',list.length);
-  }catch(e){/* silent — Worker may not be deployed/configured yet */}
+  }catch(e){/* silent — background refresh; a session hiccup here isn't worth interrupting the user over */}
 }
 
 async function loadQcInbox(){
   const feed=document.getElementById('qc-feed');
   const warn=document.getElementById('qc-conn-warning');
-  if(!S.creds.workerBase||!S.creds.workerToken){
-    warn.style.display='block';
-    warn.innerHTML='Activity Logger isn\'t configured yet. Add the Worker URL and admin token in <a href="#" onclick="switchView(\'settings\');return false" style="color:#dc2626;text-decoration:underline">Settings</a>.';
-    feed.innerHTML='';
-    updateBadge('qcinbox',0);
-    return;
-  }
   warn.style.display='none';
   feed.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
   try{
     const status=S.qc.statusFilter;
-    const items=await wkFetch('/api/staging','GET',status?{status}:null);
+    const items=await authFetch('/api/staging','GET',status?{status}:null);
     S.qc.items=Array.isArray(items)?items:(items.results||items.events||[]);
     renderQcInbox();
     if(status==='pending')updateBadge('qcinbox',S.qc.items.length);else refreshQcBadge();
@@ -4064,7 +4047,7 @@ function renderQcInbox(){
 
 async function qcArchive(id){
   try{
-    await wkFetch(`/api/staging/${id}/archive`,'POST',{});
+    await authFetch(`/api/staging/${id}/archive`,'POST',{});
     showToast('Archived.','success');
     S.qc.items=(S.qc.items||[]).filter(it=>it.id!==id);
     renderQcInbox();
@@ -4079,7 +4062,7 @@ async function qcOpenThread(id){
   modal.style.display='flex';
   body.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
   try{
-    const thread=await wkFetch(`/api/staging/${id}/thread`);
+    const thread=await authFetch(`/api/staging/${id}/thread`);
     const msgs=Array.isArray(thread)?thread:(thread.results||thread.events||[thread]);
     S.qc.currentThread=msgs;
     const item=msgs[msgs.length-1]||msgs[0]||{};
@@ -4103,7 +4086,7 @@ async function qcExportMarkdown(){
   const id=S.qc.current;
   if(!id)return;
   try{
-    const md=await wkFetch(`/api/staging/${id}/thread`,'GET',{format:'markdown'});
+    const md=await authFetch(`/api/staging/${id}/thread`,'GET',{format:'markdown'});
     const text=typeof md==='string'?md:JSON.stringify(md,null,2);
     const blob=new Blob([text],{type:'text/markdown'});
     const url=URL.createObjectURL(blob);
@@ -4169,7 +4152,7 @@ async function qcConfirmAssign(taskId,taskType,name){
   const id=S.qc.assignTarget;
   if(!id)return;
   try{
-    await wkFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
+    await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
     showToast(`Assigned to ${name}.`,'success');
     const it=(S.qc.items||[]).find(i=>i.id===id);
     if(it)it.status='assigned';
@@ -4223,6 +4206,63 @@ function fmtDateShort(val){
   return`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
 }
 function getTS(){return fmtDate(Date.now());}
+/**
+ * Formats a ms timestamp as a value suitable for an <input
+ * type="datetime-local"> element, using LOCAL date/time components
+ * (matching fmtDate's convention above) -- NOT toISOString(), which is
+ * UTC-based and was the root cause of the due-date edit bug: the old
+ * edit-form pre-fill used toISOString().split('T')[0], which can show a
+ * different calendar date than what fmtDate() displays elsewhere on the
+ * same page for users not in UTC, and saving back through a bare
+ * date-only string (new Date('2026-07-25')) has the same UTC-midnight
+ * ambiguity. datetime-local strings WITHOUT a timezone suffix are
+ * parsed as local time by new Date(...), so using local getters here
+ * (and no 'Z'/offset in the saved string) keeps display, edit, and save
+ * all consistent with each other.
+ * @param {number|string|null} val
+ * @returns {string} "" if val is falsy, else "YYYY-MM-DDTHH:mm"
+ */
+function toDatetimeLocal(val){
+  if(!val)return'';
+  const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
+  if(!ms||isNaN(ms))return'';
+  const d=new Date(ms);
+  const p=n=>String(n).padStart(2,'0');
+  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+/**
+ * Formats a ms timestamp as "YYYY-MM-DD" using LOCAL date components --
+ * the plain-date counterpart to toDatetimeLocal above, for fields that
+ * only need a date (Next Action Date, Close Date), not date+time.
+ * Replaces the same toISOString().split('T')[0] anti-pattern found in
+ * three places in this file; see toDatetimeLocal's comment for why that
+ * pattern is wrong.
+ * @param {number|string|null} val
+ * @returns {string}
+ */
+function toDateLocal(val){
+  if(!val)return'';
+  const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
+  if(!ms||isNaN(ms))return'';
+  const d=new Date(ms);
+  const p=n=>String(n).padStart(2,'0');
+  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+/**
+ * Parses a plain "YYYY-MM-DD" string (from a type="date" input) as LOCAL
+ * midnight, not UTC midnight -- new Date("2026-07-25") is UTC-parsed per
+ * spec, which silently shifts the effective local date backward for
+ * anyone west of UTC. Used everywhere a date-only field gets saved back
+ * to ClickUp (Next Action Date, Close Date).
+ * @param {string} dateStr - "YYYY-MM-DD"
+ * @returns {number|null} ms timestamp at local midnight, or null if empty
+ */
+function parseLocalDate(dateStr){
+  if(!dateStr)return null;
+  const parts=dateStr.split('-').map(Number);
+  if(parts.length!==3||parts.some(isNaN))return null;
+  return new Date(parts[0],parts[1]-1,parts[2]).getTime();
+}
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function makeSB(status){
