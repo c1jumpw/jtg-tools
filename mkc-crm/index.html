@@ -1079,7 +1079,14 @@ async function gsWrite(range,values,method='append'){
     // append would end up triple-wrapped. This keeps the final JSON
     // Google receives byte-for-byte identical to the old direct
     // implementation's.
-    const row=method==='append'?(values[0]||[]):[values];
+    // 'append' callers always pass one pre-wrapped row ([[...]]); 'update'
+    // callers pass EITHER a bare scalar (single-cell write, wrap once) OR
+    // an already-flat row array (full-row write, pass through as-is) --
+    // Array.isArray distinguishes the two without needing a third method
+    // value, since no caller ever wants to write a literal array INTO one
+    // cell. See syncToSheets/syncTaskUpdateToSheets below for the
+    // full-row case this was added for.
+    const row=method==='append'?(values[0]||[]):(Array.isArray(values)?values:[values]);
     await authFetch('/api/sheets/write','POST',{range,values:row,method});
   }catch(e){
     console.warn('gsWrite failed (non-critical):',e.message);
@@ -1088,32 +1095,47 @@ async function gsWrite(range,values,method='append'){
 async function gsAppend(range,values){await gsWrite(range,values,'append');}
 async function gsUpdate(range,value){await gsWrite(range,value,'update');}
 
-// Sync entry to Master CRM Entries sheet — find row by task ID or append
+// Sync entry to Master CRM Entries sheet — find row by task ID, then
+// REWRITE THE WHOLE ROW so it reflects current data, not just a
+// last-synced timestamp (previously only column K got touched on an
+// update, so exports could show months-stale name/email/phone/status
+// for anything edited after its first sync -- see v1.3.0 revision notes).
 async function syncToSheets(task,type){
   try{
     const cf=getCF(task);
     const ts=getTS();
-    const rows=await gsFetch('Master CRM Entries!A:A');
+    const name=task.name||'';
+    const parts=name.split(' ');
+    const fn=parts[0]||'',ln=parts.slice(1).join(' ')||'';
+    const rows=await gsFetch('Master CRM Entries!A:K');
     const idx=rows.findIndex(r=>r[0]===task.id);
+    // Column B has always been written blank on creation and its
+    // purpose isn't documented anywhere in this app -- preserve
+    // whatever's currently there on update rather than blanking it,
+    // in case someone's using it for manual notes.
+    const colB=idx>0?(rows[idx][1]||''):'';
+    const row=[task.id,colB,name,type==='pipeline'?name:'',fn,ln,cf['primary contact email']||cf.email||'',cf.phone||'',task.status?.status||'',type,ts];
     if(idx>0){
-      await gsUpdate(`Master CRM Entries!K${idx+1}`,ts);
+      await gsUpdate(`Master CRM Entries!A${idx+1}:K${idx+1}`,row);
     }else{
-      const name=task.name||'';
-      const parts=name.split(' ');
-      const fn=parts[0]||'',ln=parts.slice(1).join(' ')||'';
-      await gsAppend('Master CRM Entries!A:K',[[task.id,'',name,type==='pipeline'?name:'',fn,ln,cf['primary contact email']||cf.email||'',cf.phone||'',task.status?.status||'',type,ts]]);
+      await gsAppend('Master CRM Entries!A:K',[row]);
     }
   }catch(e){console.warn('Sheets sync:',e.message);}
 }
 
-// Sync a Master CRM Task update to the Tasks sheet
+// Sync a Master CRM Task update to the Tasks sheet — same full-row-
+// rewrite fix as syncToSheets above. Most call sites only know/care
+// about ONE field changing (usually just status) and pass '' for the
+// rest -- that's treated as "leave this column as-is", not "blank it",
+// by falling back to the existing row's value for anything not provided.
 async function syncTaskUpdateToSheets(taskName,status,relLead,relDeal,relAcct,dueStr,assignee){
   try{
-    // Find existing row by task name (col A) and update status (col B)
-    const rows=await gsFetch('Master CRM Tasks!A:B');
+    const rows=await gsFetch('Master CRM Tasks!A:H');
     const idx=rows.findIndex((r,i)=>i>0&&r[0]===taskName);
     if(idx>0){
-      await gsUpdate(`Master CRM Tasks!B${idx+1}`,status);
+      const existing=rows[idx];
+      const row=[taskName,status||existing[1]||'',relLead||existing[2]||'',relDeal||existing[3]||'',relAcct||existing[4]||'',dueStr||existing[5]||'',assignee||existing[6]||'',existing[7]||''];
+      await gsUpdate(`Master CRM Tasks!A${idx+1}:H${idx+1}`,row);
     }else{
       await gsAppend('Master CRM Tasks!A:H',[[taskName,status,relLead||'',relDeal||'',relAcct||'',dueStr||'',assignee||'','']]);
     }
