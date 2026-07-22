@@ -776,6 +776,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 const SHEETS_ID='1w1os7t-OOutiZHtt00jtNkJTH-PgJlGVPHISqr0y_Kw';
 const CU_BASE='https://api.clickup.com/api/v2';
 const GS_BASE=`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values`;
+// The Activity Logger Worker's URL -- NOT a secret (it's just an
+// endpoint address, same treatment as CU_BASE/GS_BASE above), so it's
+// safe to hardcode here rather than require Settings configuration.
+// Needed for login itself now (see attemptLogin/showLogin below), which
+// is why this can't wait until after Settings would normally be reachable.
+const WORKER_BASE='https://mkc-activity-logger.c1-jumpw.workers.dev';
 const APP_CONFIG={
   cuToken:'pk_43609696_CJVDEYUOEJMLNPQIZC0NVRX6JPEFE7AK',
   wsId:'90161137399',spaceId:'90176102006',
@@ -976,7 +982,15 @@ const SUB_BRANCHES={
 // STATE
 // ═══════════════════════════════════════════
 const S={
-  creds:{...APP_CONFIG,workerBase:sessionStorage.getItem('mkc_wk_base')||WORKER_DEFAULT.baseUrl,workerToken:sessionStorage.getItem('mkc_wk_tok')||WORKER_DEFAULT.adminToken},
+  creds:{...APP_CONFIG,workerBase:sessionStorage.getItem('mkc_wk_base')||WORKER_DEFAULT.baseUrl,workerToken:sessionStorage.getItem('mkc_wk_tok')||WORKER_DEFAULT.adminToken,
+    // Session token from POST /auth/login (see attemptLogin below) --
+    // stored the same way/lifecycle as mkc_session (S.user): sessionStorage,
+    // so it lives and dies with the browser tab, same as being logged in
+    // at all. This is DIFFERENT from workerBase/workerToken above (which
+    // are QC Inbox admin settings a person configures once) -- this one
+    // is issued automatically per-login and expires server-side after 8h
+    // regardless of how long the tab stays open.
+    sessionToken:sessionStorage.getItem('mkc_session_token')||''},
   user:null,
   entries:{leads:[],pipeline:[],contacts:[],accounts:[]},
   filtered:{leads:[],pipeline:[],contacts:[],accounts:[]},
@@ -1204,9 +1218,15 @@ function getSubBranchOI(branch,sbName){
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   const saved=sessionStorage.getItem('mkc_session');
+  const savedTok=sessionStorage.getItem('mkc_session_token');
   const tok=sessionStorage.getItem('mkc_cu');
   if(tok)S.creds.cuToken=tok;
-  if(saved){try{S.user=JSON.parse(saved);document.getElementById('login-overlay').style.display='none';updateUserUI();init();resolveClickupUserId();}catch(e){showLogin();}}
+  // Both mkc_session (S.user) AND mkc_session_token (the Worker-issued
+  // login token) must be present to restore a session on page load --
+  // a leftover S.user with no valid token would let the UI render as
+  // "logged in" while every Sheets/ClickUp-proxied call fails with 401.
+  // See attemptLogin() below for where both get written together.
+  if(saved&&savedTok){S.creds.sessionToken=savedTok;try{S.user=JSON.parse(saved);document.getElementById('login-overlay').style.display='none';updateUserUI();init();resolveClickupUserId();}catch(e){showLogin();}}
   else showLogin();
   setupSearch();
   initMobileMenu();
@@ -1215,32 +1235,32 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelector('#vt-pipeline .vt-btn:first-child')?.classList.remove('active');
 });
 
+/**
+ * Populates the MKC ID dropdown on the login screen by calling the
+ * Worker's GET /auth/directory (no session needed -- see that route's
+ * doc comment in the Worker's src/index.js). Replaces a previous
+ * version that called gsFetch() directly and pulled every column
+ * (passcodes included) into the browser just to render this list.
+ * @returns {Promise<void>}
+ */
 async function showLogin(){
   document.getElementById('login-overlay').style.display='flex';
   const sel=document.getElementById('login-id');
   sel.innerHTML='<option value="">— Loading… —</option>';
   try{
-    const rows=await gsFetch('MKC Team Member Directory!A:T');
-    S.ref.team=rows.slice(1);
-    const active=S.ref.team.filter(r=>(r[1]||'').toLowerCase()==='active'&&r[0]);
+    const r=await fetch(`${WORKER_BASE}/auth/directory`);
+    if(!r.ok)throw new Error(`Directory ${r.status}: ${await r.text()}`);
+    const active=await r.json(); // [{mkcId, firstName, lastName, branch}, ...]
     S._loginDir=active;
     if(!active.length){
       sel.innerHTML='<option value="">— No active members found —</option>';
-      showLoginErr('Sheet loaded but no active members found. Check that column B contains "Active" for your row.');
+      showLoginErr('Directory loaded but no active members found. Check that column B contains "Active" for your row.');
       return;
     }
-    sel.innerHTML='<option value="">— Select your MKC ID —</option>'+active.map(r=>`<option value="${r[0]}">${r[0].toUpperCase()} — ${r[2]||''} ${r[3]||''}</option>`).join('');
+    sel.innerHTML='<option value="">— Select your MKC ID —</option>'+active.map(m=>`<option value="${esc(m.mkcId)}">${esc(m.mkcId.toUpperCase())} — ${esc(m.firstName)} ${esc(m.lastName)}</option>`).join('');
   }catch(e){
     sel.innerHTML='<option value="">— Error —</option>';
-    let msg=e.message||'Unknown error';
-    if(msg.includes('403')||msg.includes('permission')){
-      msg='Permission denied. Share the Google Sheet with: mkc-crm-reader@abiding-state-496720-i4.iam.gserviceaccount.com';
-    } else if(msg.includes('404')||msg.includes('not found')){
-      msg='Sheet or tab not found. Make sure the tab is named exactly "MKC Team Member Directory".';
-    } else if(msg.includes('Google auth')){
-      msg='Google authentication failed. Check the service account private key.';
-    }
-    showLoginErr('Login error: '+msg);
+    showLoginErr('Login error: '+(e.message||'Unknown error'));
     console.error('showLogin error:',e);
   }
 }
@@ -1249,13 +1269,28 @@ function onLoginChange(){
   const id=document.getElementById('login-id').value;
   const nr=document.getElementById('login-name-row');
   if(!id){nr.style.display='none';return;}
-  const row=(S._loginDir||[]).find(r=>r[0]===id);
-  if(row){document.getElementById('login-name').textContent=`${row[2]||''} ${row[3]||''} · ${row[4]||''}`;nr.style.display='block';}
+  const m=(S._loginDir||[]).find(x=>x.mkcId===id);
+  if(m){document.getElementById('login-name').textContent=`${m.firstName} ${m.lastName} · ${m.branch}`;nr.style.display='block';}
   document.getElementById('login-error').style.display='none';
   document.getElementById('login-pass').focus();
 }
 function showLoginErr(msg){const el=document.getElementById('login-error');el.textContent=msg;el.style.display='block';}
 
+/**
+ * Checks the entered MKC ID + passcode via the Worker's POST /auth/login
+ * (server-side check, see that route's doc comment) instead of the
+ * previous version, which fetched the whole directory client-side and
+ * compared passcodes in the browser.
+ * @returns {Promise<void>}
+ * On success: stores S.user + S.creds.sessionToken from the Worker's
+ * response (note there's no `row` field anymore -- the old S.user
+ * carried the ENTIRE raw sheet row, passcode included, into
+ * sessionStorage; the Worker's response only ever includes the handful
+ * of non-sensitive fields the rest of the app actually uses).
+ * On failure: shows whatever generic message the Worker returned --
+ * see handleLogin's doc comment for why it's deliberately the same
+ * message regardless of which part of the check actually failed.
+ */
 async function attemptLogin(){
   const id=document.getElementById('login-id').value;
   const pass=document.getElementById('login-pass').value.trim();
@@ -1264,22 +1299,19 @@ async function attemptLogin(){
   if(!pass)return showLoginErr('Enter your passcode.');
   btn.disabled=true;btn.innerHTML='<span class="spinner" style="width:16px;height:16px;border-width:2px"></span>';
   try{
-    const rows=await gsFetch('MKC Team Member Directory!A:T');
-    const row=rows.slice(1).find(r=>r[0]===id&&(r[1]||'').toLowerCase()==='active');
-    if(!row){showLoginErr('MKC ID not found or inactive.');btn.disabled=false;btn.textContent='Sign In';return;}
-    const stored=String(row[19]||'').trim();
-    if(!stored){showLoginErr('No passcode set. Contact admin.');btn.disabled=false;btn.textContent='Sign In';return;}
-    if(pass!==stored){
-      showLoginErr('Incorrect passcode.');
+    const r=await fetch(`${WORKER_BASE}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mkcId:id,passcode:pass})});
+    const data=await r.json();
+    if(!r.ok){
+      showLoginErr(data.error||'Login failed.');
       document.getElementById('login-pass').value='';
       document.getElementById('login-pass').style.animation='shake .4s';
       setTimeout(()=>document.getElementById('login-pass').style.animation='',500);
       btn.disabled=false;btn.textContent='Sign In';return;
     }
-    S.user={mkcId:id,name:`${row[2]||''} ${row[3]||''}`.trim(),knownAs:row[7]||row[2]||'',
-      branch:row[4]||'',role:row[14]||'',wsEmail:row[15]||'',quoId:row[17]||'',row};
-    S.ref.team=rows.slice(1);
+    S.user=data.user;
+    S.creds.sessionToken=data.token;
     sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
+    sessionStorage.setItem('mkc_session_token',data.token);
     document.getElementById('login-overlay').style.display='none';
     updateUserUI();init();
     resolveClickupUserId(); // fire-and-forget: needed for "My Work" assignee matching (Section 11-H)
