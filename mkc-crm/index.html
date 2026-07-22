@@ -498,13 +498,13 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </div>
       <!-- Filters -->
       <div class="list-toolbar" style="margin-bottom:12px">
-        <select class="filter-select" id="tf-assignee" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">Assignee</option></select>
+        <select class="filter-select" id="tf-assignee" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="" style="color:var(--text-muted)">Assignee</option></select>
         <select class="filter-select" id="tf-urgency" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()">
           <option value="">Due Date</option><option value="overdue">Overdue</option><option value="today">Due Today</option><option value="week">This Week</option>
         </select>
-        <select class="filter-select" id="tf-rel-lead" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">Lead/Contact</option></select>
-        <select class="filter-select" id="tf-rel-deal" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">Deal</option></select>
-        <select class="filter-select" id="tf-rel-acct" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="">Account</option></select>
+        <select class="filter-select" id="tf-rel-lead" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="" style="color:var(--text-muted)">Lead/Contact</option></select>
+        <select class="filter-select" id="tf-rel-deal" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="" style="color:var(--text-muted)">Deal</option></select>
+        <select class="filter-select" id="tf-rel-acct" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"><option value="" style="color:var(--text-muted)">Account</option></select>
         <label style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;margin-left:auto">
           <input type="checkbox" id="tf-show-completed" onchange="renderTasks();if(S_tasksView==='kanban')renderTasksKanban()"> Show Completed
         </label>
@@ -535,6 +535,10 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </select>
           <select class="filter-select" id="qc-owner-filter" onchange="S.qc.ownerFilter=this.value;renderQcInbox()">
             <option value="">All Users</option>
+          </select>
+          <select class="filter-select" id="qc-contact-filter" onchange="S.qc.contactFilter=this.value;renderQcInbox()">
+            <option value="">All Contacts</option>
+            <option value="__unknown__">❓ Unknown / Not in CRM</option>
           </select>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="loadQcInbox()">
@@ -744,6 +748,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Markdown
       </button>
       <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" id="qct-create-btn" style="display:none" onclick="qcCreateContactFromThread()">+ New Lead…</button>
         <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
         <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assign…</button>
       </div>
@@ -975,7 +980,7 @@ const S={
   // gsToken/gsTokenExp removed -- were only used to cache the
   // client-side Google JWT access token, which no longer exists.
   fieldCache:{},
-  qc:{items:[],statusFilter:'pending',sourceFilter:'',directionFilter:'',ownerFilter:'',current:null,assignTarget:null}
+  qc:{items:[],statusFilter:'pending',sourceFilter:'',directionFilter:'',ownerFilter:'',contactFilter:'',current:null,assignTarget:null}
 };
 
 // getGSToken()/GS_API_KEY removed -- gsFetch/gsWrite go through the
@@ -1977,7 +1982,7 @@ function populateTaskFilters(){
   const assignees=new Set();
   S_masterTasks.forEach(t=>t.assignees?.forEach(a=>{const n=a.username||a.email;if(n)assignees.add(n);}));
   const aEl=document.getElementById('tf-assignee');
-  if(aEl){const cur=aEl.value;aEl.innerHTML='<option value="">Assignee</option><option value="">All Assignees</option>'+[...assignees].sort().map(a=>`<option value="${esc(a)}"${a===cur?' selected':''}>${esc(a)}</option>`).join('');}
+  if(aEl){const cur=aEl.value;aEl.innerHTML='<option value="" style="color:var(--text-muted)">Assignee</option><option value="">All Assignees</option>'+[...assignees].sort().map(a=>`<option value="${esc(a)}"${a===cur?' selected':''}>${esc(a)}</option>`).join('');}
   const leads=new Map(),deals=new Map(),accts=new Map();
   S_masterTasks.forEach(t=>{
     const cf=getCF(t);
@@ -2013,7 +2018,12 @@ function populateTaskFilters(){
   const fillSel=(id,map,label,allLabel)=>{
     const el=document.getElementById(id);if(!el)return;
     const cur=el.value;
-    el.innerHTML=`<option value="">${label}</option><option value="">${allLabel}</option>`+[...map.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${esc(id)}"${id===cur?' selected':''}>${esc(name)}</option>`).join('');
+    // The first option is a non-functional field-name LABEL ("Deal"),
+    // the second is the actual "clear this filter" option ("All
+    // Deals") -- styling only the first one in a lighter/muted color
+    // makes that distinction visually obvious instead of both looking
+    // like equally-selectable options.
+    el.innerHTML=`<option value="" style="color:var(--text-muted)">${label}</option><option value="">${allLabel}</option>`+[...map.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${esc(id)}"${id===cur?' selected':''}>${esc(name)}</option>`).join('');
   };
   fillSel('tf-rel-lead',leads,'Lead/Contact','All Lead/Contacts');
   fillSel('tf-rel-deal',deals,'Deal','All Deals');
@@ -2425,12 +2435,26 @@ function renderPfDetails(task,type,cf,body){
   const subBranch=cf['sub-branch']||cf['sub-branch (jtg)']||cf['sub-branch (mco)']||'—';
   let pairs=[];
   if(type==='master'){
+    // One dynamic row instead of three hardcoded ones (Related Lead/
+    // Contact ID / Related Deal ID / Related Account ID) -- the old
+    // version always showed all three, even for tasks only linked to
+    // one thing, which is confusing ("why does this contact-only task
+    // say Related Deal ID?"). Reuses resolveLinkedEntry's type
+    // resolution (same fix as the Action Hub filters) so the label
+    // matches what the task is ACTUALLY linked to, and shows the
+    // resolved name in a lighter font next to the raw ID for quick
+    // reference (raw=true -- see renderPfDetails' pairs.map above for
+    // what that flag does).
+    const lookup=buildEntryLookup();
+    const{id:linkedId,name:linkedName,type:linkedType}=resolveLinkedEntry(cf,lookup);
+    const relatedLabel=linkedType?`Related ${linkedType}`:'Related Entry';
+    const relatedVal=linkedId
+      ?`${esc(linkedId.toUpperCase())}${linkedName?` <span style="color:var(--text-muted);font-weight:400">— ${esc(linkedName)}</span>`:''}`
+      :'—';
     // Master CRM Tasks custom fields
     pairs=[
       ['MKC ID',cf['mkc id']||cf['mkcid']||'—'],
-      ['Related Lead/Contact ID',cf['related lead/contact id']||cf['related lead']||'—'],
-      ['Related Deal ID',cf['related deal id']||cf['related deal']||'—'],
-      ['Related Account ID',cf['related account id']||cf['related account']||'—'],
+      [relatedLabel,relatedVal,true],
       ['Start Date',fmtDate(task.start_date)],
       ['Due Date',fmtDate(task.due_date)],
       ['Notebook Link',cf['notebook link']||'—'],
@@ -2490,10 +2514,16 @@ function renderPfDetails(task,type,cf,body){
   const descHtml=task.description?`<div class="pf-section"><h4>Notes / Description</h4><div style="font-size:13px;color:var(--text-secondary);line-height:1.6;white-space:pre-wrap">${esc(task.description)}</div></div>`:'';
 
   body.innerHTML=`<div class="pf-section"><h4>Fields</h4>
-    <div class="field-grid">${pairs.map(([l,v])=>{
+    <div class="field-grid">${pairs.map(([l,v,raw])=>{
       const empty=!v||v==='—'||v==='undefined'||v==='null';
       const isLink=l.toLowerCase().includes('link')&&(v||'').startsWith('http');
-      return `<div class="field-item"><label>${l}</label><div class="field-val${empty?' empty':''}${isLink?' link':''}"${isLink?` onclick="window.open('${esc(v)}','_blank')"`:''}>${esc(empty?'—':v)}</div></div>`;
+      // `raw` (optional 3rd tuple element): true means v is already
+      // safe, pre-built HTML (e.g. a name in a lighter-font <span> --
+      // see the master-task "Related Entry" row below) and should NOT
+      // be re-escaped. Every other field keeps the existing esc()
+      // behavior unchanged -- this is purely additive.
+      const displayVal=raw?(empty?'—':v):esc(empty?'—':v);
+      return `<div class="field-item"><label>${l}</label><div class="field-val${empty?' empty':''}${isLink?' link':''}"${isLink?` onclick="window.open('${esc(v)}','_blank')"`:''}>${displayVal}</div></div>`;
     }).join('')}</div>
   </div>${descHtml}${subHtml}`;
 }
@@ -2952,8 +2982,22 @@ async function openUpdateProfile(){
 
   // Master CRM Task update form
   if(type==='master'){
-    const dueVal=toDatetimeLocal(task.due_date);
-    const startVal=toDatetimeLocal(task.start_date);
+    // ClickUp's own documented behavior: a start/due date set WITHOUT an
+    // explicit time defaults to 4am in the setter's local timezone --
+    // that's a platform placeholder, not a real chosen time (confirmed
+    // against ClickUp's own docs: "Date fields without specific times
+    // are set to 4am"). task.due_date_time/start_date_time (booleans)
+    // are how ClickUp distinguishes "a real time was set" from "just a
+    // date". Previously this always showed the raw timestamp's time
+    // component, which meant EVERY task that had ever been set without
+    // an explicit time displayed as 4am here -- looked like a bug, but
+    // was actually accurately displaying ClickUp's own placeholder.
+    // Fix: when no real time was set, default the picker's time to 9am
+    // (a plain, unmisleading default) instead of surfacing the 4am
+    // artifact; once someone saves through this form, a real time gets
+    // recorded going forward (see saveUpdateProfile's master branch).
+    const dueVal=task.due_date?(task.due_date_time?toDatetimeLocal(task.due_date):toDateLocal(task.due_date)+'T09:00'):'';
+    const startVal=task.start_date?(task.start_date_time?toDatetimeLocal(task.start_date):toDateLocal(task.start_date)+'T09:00'):'';
     const currentAssigneeIds=(task.assignees||[]).map(a=>String(a.id));
     const members=await loadTeamMembers();
     const assigneeOptions=members.length
@@ -2970,8 +3014,12 @@ async function openUpdateProfile(){
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Start Date &amp; Time</label><input type="datetime-local" id="up-start-date" value="${startVal}"></div>
-        <div class="form-group"><label>Due Date &amp; Time</label><input type="datetime-local" id="up-due-date" value="${dueVal}"></div>
+        <div class="form-group"><label>Start Date &amp; Time</label>
+          <div style="display:flex;gap:6px"><input type="datetime-local" id="up-start-date" value="${startVal}" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-start-date').value=''">✕</button></div>
+        </div>
+        <div class="form-group"><label>Due Date &amp; Time</label>
+          <div style="display:flex;gap:6px"><input type="datetime-local" id="up-due-date" value="${dueVal}" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-due-date').value=''">✕</button></div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -3528,11 +3576,19 @@ async function saveUpdateProfile(){
     //    Leads/Pipeline/Accounts-only custom field logic below.
     if(type==='master'){
       const startValRaw=document.getElementById('up-start-date')?.value;
-      if(startValRaw)updateBody.start_date=new Date(startValRaw).getTime();
-      else if(startValRaw==='')updateBody.start_date=null;
+      if(startValRaw){
+        updateBody.start_date=new Date(startValRaw).getTime();
+        // Recording a real time through this form -- tell ClickUp so it
+        // stops treating this as a "date only, defaults to 4am" value
+        // (see the ClickUp docs note in openUpdateProfile's form-render
+        // code, right above where dueVal/startVal get built).
+        updateBody.start_date_time=true;
+      }else if(startValRaw==='')updateBody.start_date=null;
       const dueVal=document.getElementById('up-due-date')?.value;
-      if(dueVal)updateBody.due_date=new Date(dueVal).getTime();
-      else if(dueVal==='')updateBody.due_date=null;
+      if(dueVal){
+        updateBody.due_date=new Date(dueVal).getTime();
+        updateBody.due_date_time=true;
+      }else if(dueVal==='')updateBody.due_date=null;
 
       // Assignees: diff the multi-select against the task's CURRENT
       // assignees rather than sending a full replacement list -- ClickUp's
@@ -4070,17 +4126,46 @@ function qcPopulateOwnerFilter(){
   if(current&&!owners.includes(current)){sel.value='';S.qc.ownerFilter='';}
 }
 
+/**
+ * Populates the Lead/Contact filter dropdown from the DISTINCT resolved
+ * contact names present in the current feed (S.qc.items, unfiltered --
+ * same reasoning as qcPopulateOwnerFilter). Always includes a
+ * "❓ Unknown / Not in CRM" option with the sentinel value "__unknown__",
+ * which renderQcInbox treats specially: it matches items where NEITHER
+ * the event itself nor a phone/email lookup could resolve a name --
+ * exactly the "who is this, they're not in our system yet" triage view
+ * this filter exists for.
+ * @returns {void}
+ */
+function qcPopulateContactFilter(){
+  const sel=document.getElementById('qc-contact-filter');
+  if(!sel)return;
+  const current=sel.value;
+  const names=[...new Set((S.qc.items||[]).map(it=>it.contact_name||resolveContactName(it.contact_identifier)).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All Contacts</option><option value="__unknown__"'+(current==='__unknown__'?' selected':'')+'>❓ Unknown / Not in CRM</option>'
+    +names.map(n=>`<option value="${esc(n)}"${n===current?' selected':''}>${esc(n)}</option>`).join('');
+  if(current&&current!=='__unknown__'&&!names.includes(current)){sel.value='';S.qc.contactFilter='';}
+}
+
 function renderQcInbox(){
   const feed=document.getElementById('qc-feed');
   const srcFilter=S.qc.sourceFilter;
   const dirFilter=S.qc.directionFilter;
   const ownerFilter=S.qc.ownerFilter;
-  const items=(S.qc.items||[]).filter(it=>
+  const contactFilter=S.qc.contactFilter;
+  // Resolve each item's contact name ONCE, up front -- both the contact
+  // filter and the per-item display below need it, and resolveContactName
+  // is a cheap cached-map lookup (see buildContactLookupMap), but there's
+  // no reason to compute it twice per item across two separate passes.
+  const withNames=(S.qc.items||[]).map(it=>({...it,_resolvedName:it.contact_name||resolveContactName(it.contact_identifier)}));
+  const items=withNames.filter(it=>
     (!srcFilter||it.source_type===srcFilter)&&
     (!dirFilter||it.direction===dirFilter)&&
-    (!ownerFilter||it.owner_name===ownerFilter)
+    (!ownerFilter||it.owner_name===ownerFilter)&&
+    (!contactFilter||(contactFilter==='__unknown__'?!it._resolvedName:it._resolvedName===contactFilter))
   );
   qcPopulateOwnerFilter();
+  qcPopulateContactFilter();
   if(!items.length){
     feed.innerHTML='<div class="empty-state"><p>No activity here right now</p><small>New texts, calls, and emails will show up here as they\'re batched in.</small></div>';
     return;
@@ -4093,7 +4178,7 @@ function renderQcInbox(){
     // identifier -- a small "(CRM)" tag distinguishes an auto-matched
     // name from one that came with the event itself, so nobody mistakes
     // a guess for confirmed data.
-    const resolvedName=it.contact_name||resolveContactName(it.contact_identifier);
+    const resolvedName=it._resolvedName;
     const nameIsResolved=!it.contact_name&&resolvedName;
     const who=esc(resolvedName||it.contact_identifier||'Unknown contact')+(nameIsResolved?' <span style="font-weight:400;color:var(--text-muted);font-size:10.5px">(CRM)</span>':'');
     const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc(qcParseMessageBody(it.body).main.slice(0,140));
@@ -4206,16 +4291,50 @@ async function qcOpenThread(id){
         </details>
         <button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:10.5px;padding:3px 8px;height:auto" onclick="event.stopPropagation();qcDownloadTranscript('${m.id}')">Download transcript (.md)</button>`:'';
       return`<div style="display:flex;flex-direction:column;align-items:${out?'flex-end':'flex-start'};margin-bottom:10px">
-        <div style="max-width:78%;background:${out?'var(--accent)':'var(--bg-main)'};color:${out?'#fff':'var(--text-primary)'};border-radius:12px;padding:8px 13px;font-size:13px;line-height:1.5">
+        <div style="max-width:78%;background:${out?'var(--accent)':'var(--bg-main)'};color:${out?'#fff':'var(--text-primary)'};border-radius:12px;padding:8px 13px;font-size:13px;line-height:1.5;overflow-wrap:break-word;word-break:break-word">
           ${m.event_type==='email'&&m.subject?`<div style="font-weight:700;margin-bottom:3px">${esc(m.subject)}</div>`:''}${esc(parsed.main||'(no content)')}${sectionsHtml}${transcriptHtml}
         </div>
         <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} · ${esc(m.direction||'')} · ${fmtDate(new Date(m.occurred_at).getTime())}</div>
       </div>`;
     }).join('');
     document.getElementById('qct-assign-btn').style.display=item.status==='pending'?'inline-flex':'none';
+    // Only offer "create a new Lead" when there's genuinely no known
+    // contact -- i.e. exactly the case the qc-contact-filter's "❓
+    // Unknown / Not in CRM" option surfaces (see resolveContactName).
+    const knownName=item.contact_name||resolveContactName(item.contact_identifier);
+    document.getElementById('qct-create-btn').style.display=knownName?'none':'inline-flex';
   }catch(e){
     body.innerHTML=`<div class="empty-state"><p>Couldn't load thread</p><small>${esc(e.message)}</small></div>`;
   }
+}
+
+/**
+ * Opens the New Entry form pre-filled with an unknown QC Inbox contact's
+ * phone or email, for the common "this is someone new, not in the CRM
+ * yet" case -- see qcOpenThread's #qct-create-btn visibility toggle,
+ * which only shows this option when resolveContactName found no match.
+ * Defaults to creating a Lead (the most common case for an unknown
+ * inbound contact); the person can still switch the Entry Type
+ * dropdown to Contact/Deal/Account before saving if that fits better.
+ * @returns {void}
+ * EDGE CASE: does nothing if the thread has no messages loaded (should
+ * be unreachable in practice -- the button that calls this only shows
+ * once a thread has already loaded successfully).
+ */
+function qcCreateContactFromThread(){
+  const msg=(S.qc.currentThread||[])[0];
+  if(!msg)return;
+  const identifier=(msg.contact_identifier||'').trim();
+  closeModal('qc-thread-modal');
+  openNewEntryModal('Lead');
+  // openNewEntryModal + updateNFFields render synchronously, so these
+  // fields already exist in the DOM by the time execution reaches here.
+  const isEmail=identifier.includes('@');
+  const emailEl=document.getElementById('nf-email');
+  const phoneEl=document.getElementById('nf-phone');
+  if(isEmail&&emailEl)emailEl.value=identifier;
+  else if(!isEmail&&phoneEl)phoneEl.value=identifier;
+  showToast('Pre-filled from Activity Inbox — review and save.','success');
 }
 
 async function qcExportMarkdown(){
