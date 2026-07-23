@@ -518,7 +518,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div class="list-toolbar" style="margin-bottom:0">
           <select class="filter-select" id="qc-status-filter" onchange="S.qc.statusFilter=this.value;loadQcInbox()">
-            <option value="pending">Pending</option>
+            <option value="pending">Needs Review</option>
             <option value="assigned">Assigned</option>
             <option value="archived">Archived</option>
             <option value="">All (except archived)</option>
@@ -4088,13 +4088,42 @@ function qcRelTime(iso){
  * which the catch below swallows silently since a failed background
  * badge refresh shouldn't interrupt whatever the person's actually doing.
  */
+/**
+ * Refreshes just the sidebar's Activity Inbox badge count -- counts
+ * items still needing QC attention (pending OR posted; see the big
+ * comment on qcNeedsReview below for why 'posted' counts too), not a
+ * literal database status match. Previously counted status==='pending'
+ * only, which meant the badge silently under-counted the moment the
+ * digest cron (every 30 min) flipped items to 'posted' -- the badge
+ * would show 0 even with real unreviewed activity sitting there.
+ */
 async function refreshQcBadge(){
   try{
-    const items=await authFetch('/api/staging','GET',{status:'pending'});
-    const list=Array.isArray(items)?items:(items.results||items.events||[]);
+    const items=await authFetch('/api/staging','GET',null);
+    const list=(Array.isArray(items)?items:(items.results||items.events||[])).filter(qcNeedsReview);
     updateBadge('qcinbox',list.length);
   }catch(e){/* silent — background refresh; a session hiccup here isn't worth interrupting the user over */}
 }
+
+/**
+ * True if a staged event still needs a QC person's attention -- i.e.
+ * hasn't been explicitly assigned or archived by a human yet.
+ *
+ * Deliberately treats 'posted' the same as 'pending' here: 'posted'
+ * only means "this got mentioned in a ClickUp Chat digest" (internal
+ * bookkeeping in the Worker's batch.js, set every 30 minutes on a cron
+ * regardless of whether anyone's looked at it) -- it was never meant to
+ * signal "no longer needs review", but the original Assign-button
+ * visibility check (status==='pending' literally) accidentally treated
+ * it that way, so the Assign button would silently vanish ~30 minutes
+ * after an item arrived even though nobody had actioned it. This
+ * function is the single place that "needs review" is now defined, so
+ * the feed filter, the Assign button, and the badge count can't drift
+ * out of sync with each other again.
+ * @param {object} it - an events row (or QC Inbox feed item)
+ * @returns {boolean}
+ */
+function qcNeedsReview(it){return it.status==='pending'||it.status==='posted';}
 
 async function loadQcInbox(){
   const feed=document.getElementById('qc-feed');
@@ -4102,11 +4131,19 @@ async function loadQcInbox(){
   warn.style.display='none';
   feed.innerHTML='<div style="padding:40px;text-align:center"><div class="spinner"></div></div>';
   try{
-    const status=S.qc.statusFilter;
-    const items=await authFetch('/api/staging','GET',status?{status}:null);
+    // Only ask the server to filter by status for "Archived" -- that's
+    // the one status filter that maps cleanly to a literal DB value AND
+    // can be a large, rarely-needed dataset (every dismissed item ever),
+    // worth not fetching by default. Every other filter option (Pending,
+    // Assigned, All) now gets applied CLIENT-SIDE in renderQcInbox,
+    // consistent with how source/direction/owner/contact already work --
+    // see qcNeedsReview above for why "Pending" specifically can't just
+    // mean status==='pending' anymore.
+    const serverStatus=S.qc.statusFilter==='archived'?'archived':null;
+    const items=await authFetch('/api/staging','GET',serverStatus?{status:serverStatus}:null);
     S.qc.items=Array.isArray(items)?items:(items.results||items.events||[]);
     renderQcInbox();
-    if(status==='pending')updateBadge('qcinbox',S.qc.items.length);else refreshQcBadge();
+    refreshQcBadge();
   }catch(e){
     feed.innerHTML=`<div class="empty-state"><p>Couldn't load the activity feed</p><small>${esc(e.message)}</small></div>`;
   }
@@ -4160,6 +4197,7 @@ function renderQcInbox(){
   const dirFilter=S.qc.directionFilter;
   const ownerFilter=S.qc.ownerFilter;
   const contactFilter=S.qc.contactFilter;
+  const statusFilter=S.qc.statusFilter;
   // Resolve each item's contact name ONCE, up front -- both the contact
   // filter and the per-item display below need it, and resolveContactName
   // is a cheap cached-map lookup (see buildContactLookupMap), but there's
@@ -4169,7 +4207,13 @@ function renderQcInbox(){
     (!srcFilter||it.source_type===srcFilter)&&
     (!dirFilter||it.direction===dirFilter)&&
     (!ownerFilter||it.owner_name===ownerFilter)&&
-    (!contactFilter||(contactFilter==='__unknown__'?!it._resolvedName:it._resolvedName===contactFilter))
+    (!contactFilter||(contactFilter==='__unknown__'?!it._resolvedName:it._resolvedName===contactFilter))&&
+    // "Pending" means "still needs review" (qcNeedsReview: pending OR
+    // posted -- see that function's doc comment), NOT a literal
+    // status==='pending' match. "Assigned"/"Archived" ARE literal
+    // matches since those are genuinely final, human-driven states.
+    // Blank (All) passes everything already fetched.
+    (!statusFilter||(statusFilter==='pending'?qcNeedsReview(it):it.status===statusFilter))
   );
   qcPopulateOwnerFilter();
   qcPopulateContactFilter();
@@ -4204,7 +4248,7 @@ function renderQcInbox(){
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
         ${it.status!=='archived'?`<button class="btn btn-ghost btn-sm" title="Archive" onclick="qcArchive('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></button>`:''}
-        ${it.status==='pending'?`<button class="btn btn-secondary btn-sm" onclick="qcOpenAssign('${it.id}')">Assign</button>`:''}
+        ${qcNeedsReview(it)?`<button class="btn btn-secondary btn-sm" onclick="qcOpenAssign('${it.id}')">Assign</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -4304,7 +4348,13 @@ async function qcOpenThread(id){
         <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px">${qcSourceLabel(m.source_type)} · ${esc(m.direction||'')} · ${fmtDate(new Date(m.occurred_at).getTime())}</div>
       </div>`;
     }).join('');
-    document.getElementById('qct-assign-btn').style.display=item.status==='pending'?'inline-flex':'none';
+    // Same "needs review" definition as the feed list -- see
+    // qcNeedsReview's doc comment for why this isn't a literal
+    // status==='pending' check (that was the actual bug: this button
+    // was silently vanishing ~30 minutes after an item arrived, once
+    // the digest cron's bookkeeping flipped it to 'posted', even though
+    // nobody had actually reviewed it yet).
+    document.getElementById('qct-assign-btn').style.display=qcNeedsReview(item)?'inline-flex':'none';
     // Only offer "create a new Lead" when there's genuinely no known
     // contact -- i.e. exactly the case the qc-contact-filter's "❓
     // Unknown / Not in CRM" option surfaces (see resolveContactName).
