@@ -350,7 +350,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
     </div>
   </div>
-  <div class="sidebar-section">
+  <div class="sidebar-section" id="admin-sidebar-section">
     <div class="sidebar-section-label">Admin</div>
     <div class="nav-item" data-view="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
@@ -1463,6 +1463,13 @@ document.querySelectorAll('.nav-item[data-view]').forEach(el=>{
 });
 
 function switchView(view){
+  // Blocks direct navigation to Settings for non-admin sessions (e.g.
+  // typing switchView('settings') in the console, or a stale bookmark)
+  // -- the hidden nav link (see updateUserUI) only stops the normal
+  // click path, not this. Silently redirects to Dashboard rather than
+  // showing an error, since this is an appropriate-scope boundary, not
+  // an attempted-breach scenario worth alarming someone over.
+  if(view==='settings'&&!isAdmin())view='dashboard';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -4458,14 +4465,21 @@ async function qcConfirmAssign(taskId,taskType,name){
   const id=S.qc.assignTarget;
   if(!id)return;
   try{
-    await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
-    showToast(`Assigned to ${name}.`,'success');
-    const it=(S.qc.items||[]).find(i=>i.id===id);
-    if(it)it.status='assigned';
-    renderQcInbox();
-    refreshQcBadge();
+    // As of Worker v1.7, one assign call can mark MULTIPLE events
+    // assigned at once ("assign recent thread" -- consolidates the
+    // last 24h of a conversation into one CRM comment instead of
+    // requiring one Assign click per message). Since more than just
+    // this one item may have changed server-side, reload the whole
+    // feed afterward (loadQcInbox) rather than only patching this
+    // single item's status locally -- a local-only patch would leave
+    // the OTHER now-assigned items in this thread still showing as
+    // "pending" until the next manual refresh.
+    const result=await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
+    const count=result?.assignedCount||1;
+    showToast(count>1?`Assigned to ${name} (${count} recent messages logged together).`:`Assigned to ${name}.`,'success');
+    await loadQcInbox();
     document.getElementById('qc-assign-body').innerHTML=`
-      <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment.</p>
+      <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment${count>1?` covering the last 24 hours (${count} messages)`:''}.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openNewTaskModal('${taskId}','${esc(name)}')">Create Related Task</button>
         <button class="btn btn-secondary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openProfile('${taskId}','${taskType}')">Open Record</button>
@@ -4634,12 +4648,34 @@ function goPage(type,p){const max=Math.ceil(S.filtered[type].length/50);S.pages[
 
 function closeModal(id){document.getElementById(id).style.display='none';S.isEditMode=false;}
 
+/**
+ * @returns {boolean} true if the logged-in user's session has admin
+ *   access (see the Worker's handleLogin -- accessLevel is read from a
+ *   dedicated column in the Team Directory sheet, fails closed to
+ *   'standard' for anything blank/unrecognized). Used to gate the
+ *   Settings/Admin sidebar section -- see updateUserUI and
+ *   switchView's guard below.
+ */
+function isAdmin(){return S.user?.accessLevel==='admin';}
+
 function updateUserUI(){
   const n=S.user?.name||'';
   const init=n.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()||'?';
   document.getElementById('sidebar-avatar').textContent=init;
   document.getElementById('sidebar-name').textContent=n||'Not signed in';
   document.getElementById('sidebar-role').textContent=S.user?.role||'';
+  // Hide the whole Admin sidebar section (currently just Settings) for
+  // non-admin sessions. Honest framing for anyone reading this later:
+  // this is a real access-level check (accessLevel comes from the
+  // signed session token, not something a user can edit client-side),
+  // but what it's protecting is UI clutter/appropriate scope more than
+  // deep secrets at this point -- the genuinely sensitive credentials
+  // (Google key, ClickUp token) were already removed from this file
+  // entirely in an earlier revision. See switchView's matching guard,
+  // which blocks direct navigation to Settings too (not just the nav
+  // link), so this can't be bypassed by typing a view name into the console.
+  const adminSection=document.getElementById('admin-sidebar-section');
+  if(adminSection)adminSection.style.display=isAdmin()?'':'none';
 }
 
 function toggleMobileMenu(){
