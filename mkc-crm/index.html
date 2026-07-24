@@ -717,7 +717,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-body">
       <div class="form-group"><label>Task Name <span class="req">*</span></label><input type="text" id="nt-name" placeholder="e.g. Follow up call with Nina"></div>
       <div class="form-row">
-        <div class="form-group"><label>Due Date</label><input type="date" id="nt-due"></div>
+        <div class="form-group"><label>Due Date &amp; Time</label><input type="datetime-local" id="nt-due"></div>
         <div class="form-group"><label>Status</label>
           <select class="form-select" id="nt-status">
             <option value="TO DO">To Do</option>
@@ -726,6 +726,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <option value="COMPLETED/APPROVED">Completed/Approved</option>
           </select>
         </div>
+      </div>
+      <div class="form-group" id="nt-assignee-group">
+        <label>Assignees</label>
+        <select class="form-select" id="nt-assignees" multiple size="4"></select>
+        <small style="color:var(--text-muted);font-size:11px">Ctrl/Cmd-click to select multiple. Defaults to you.</small>
       </div>
       <div class="form-group"><label>Link to CRM Entry (search by name or ID)</label>
         <input type="text" id="nt-search" placeholder="Type name to search…" oninput="searchForTaskLink(this.value)" autocomplete="off">
@@ -2226,7 +2231,18 @@ async function openTaskProfile(taskId){
 }
 
 // New Task modal
-function openNewTaskModal(prelinkedId='',prelinkedName=''){
+/**
+ * Opens the New Task modal. Made async (was sync before) specifically
+ * to load + populate the Assignees select before the modal appears --
+ * see loadTeamMembers (already built for the task-edit form; reused
+ * here rather than duplicated). Defaults to pre-selecting the current
+ * logged-in user, matching what the Sheet sync already assumed before
+ * this fix (see submitNewTask's updated comment on the assignee column).
+ * @param {string} [prelinkedId]
+ * @param {string} [prelinkedName]
+ * @returns {Promise<void>}
+ */
+async function openNewTaskModal(prelinkedId='',prelinkedName=''){
   S._taskLinks=prelinkedId?[{id:prelinkedId,name:prelinkedName}]:[];
   document.getElementById('nt-name').value='';
   document.getElementById('nt-due').value='';
@@ -2234,6 +2250,16 @@ function openNewTaskModal(prelinkedId='',prelinkedName=''){
   document.getElementById('nt-search').value='';
   document.getElementById('nt-results').style.display='none';
   renderTaskLinks();
+  const members=await loadTeamMembers();
+  const assigneeSel=document.getElementById('nt-assignees');
+  if(assigneeSel){
+    if(members.length){
+      assigneeSel.innerHTML=members.map(m=>`<option value="${esc(m.id)}"${m.id===String(S.user?.clickupId||'')?' selected':''}>${esc(m.username)}</option>`).join('');
+    }else{
+      assigneeSel.innerHTML='';
+      assigneeSel.disabled=true;
+    }
+  }
   document.getElementById('task-modal').style.display='flex';
   document.getElementById('nt-name').focus();
 }
@@ -2284,8 +2310,21 @@ async function submitNewTask(){
     const due=document.getElementById('nt-due')?.value;
     const notes=document.getElementById('nt-notes')?.value?.trim()||'';
     const status=document.getElementById('nt-status')?.value||'TO DO';
+    // Assignees: ClickUp's CREATE-task API takes a plain array of user
+    // IDs (unlike the UPDATE API's {add,rem} diff shape used in
+    // saveUpdateProfile -- there's nothing to diff against yet on a
+    // brand-new task). Falls back to just the current user if nobody
+    // touched the select (nt-assignees is pre-populated with the
+    // logged-in user selected by default -- see openNewTaskModal).
+    const assigneeSel=document.getElementById('nt-assignees');
+    const assigneeIds=assigneeSel?[...assigneeSel.selectedOptions].map(o=>Number(o.value)):[];
+    const assigneeNames=assigneeSel?[...assigneeSel.selectedOptions].map(o=>o.textContent):[];
     const body={name,description:notes,status};
-    if(due)body.due_date=new Date(due).getTime();
+    if(due){
+      body.due_date=new Date(due).getTime();
+      body.due_date_time=true; // a real time was set through this form, not ClickUp's date-only 4am placeholder -- see toDatetimeLocal's comment for why this matters
+    }
+    if(assigneeIds.length)body.assignees=assigneeIds;
     const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
     // Set linked entry IDs as custom fields
     if(S._taskLinks?.length){
@@ -2304,11 +2343,14 @@ async function submitNewTask(){
     // Sync to Master CRM Tasks Google Sheet
     // Columns: A=Task Name, B=Status, C=Related Lead/Contact ID, D=Related Deal ID, E=Related Account ID, F=Next Action Date, G=Assignee, H=Notebook Link
     try{
-      const assignee=S.user?.name||'';
+      // Was always S.user?.name (whoever CREATED the task) regardless of
+      // who it was actually assigned to -- now reflects the real
+      // selection, joined for the (rare) multi-assignee case.
+      const assignee=assigneeNames.length?assigneeNames.join(', '):(S.user?.name||'');
       const linkedLead=S._taskLinks?.find(l=>!l.type||l.type==='Lead'||l.type==='Contact')?.[`id`]||'';
       const linkedDeal=S._taskLinks?.find(l=>l.type==='Deal'||l.type==='Pipeline')?.[`id`]||'';
       const linkedAcct=S._taskLinks?.find(l=>l.type==='Account')?.[`id`]||'';
-      const dueStr=due?new Date(due).toLocaleDateString():'';
+      const dueStr=due?new Date(due).toLocaleString():'';
       await gsAppend('Master CRM Tasks!A:H',[[name,status,linkedLead,linkedDeal,linkedAcct,dueStr,assignee,'']]);
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
