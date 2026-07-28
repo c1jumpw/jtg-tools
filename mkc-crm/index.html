@@ -717,15 +717,26 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-body">
       <div class="form-group"><label>Task Name <span class="req">*</span></label><input type="text" id="nt-name" placeholder="e.g. Follow up call with Nina"></div>
       <div class="form-row">
-        <div class="form-group"><label>Due Date &amp; Time</label><input type="datetime-local" id="nt-due"></div>
-        <div class="form-group"><label>Status</label>
-          <select class="form-select" id="nt-status">
-            <option value="TO DO">To Do</option>
-            <option value="IN PROGRESS">In Progress</option>
-            <option value="FOR REVIEW">For Review</option>
-            <option value="COMPLETED/APPROVED">Completed/Approved</option>
-          </select>
+        <div class="form-group"><label>Start Date <small style="color:var(--text-muted);font-weight:400">(time optional)</small></label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="nt-start" style="flex:1.3">
+            <input type="time" id="nt-start-time" style="flex:1">
+          </div>
         </div>
+        <div class="form-group"><label>Due Date <small style="color:var(--text-muted);font-weight:400">(time optional)</small></label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="nt-due" style="flex:1.3">
+            <input type="time" id="nt-due-time" style="flex:1">
+          </div>
+        </div>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select class="form-select" id="nt-status">
+          <option value="TO DO">To Do</option>
+          <option value="IN PROGRESS">In Progress</option>
+          <option value="FOR REVIEW">For Review</option>
+          <option value="COMPLETED/APPROVED">Completed/Approved</option>
+        </select>
       </div>
       <div class="form-group" id="nt-assignee-group">
         <label>Assignees</label>
@@ -879,6 +890,23 @@ const CU_FIELDS={
   INDUSTRY:         '74beabf9-8f07-4a9d-908e-4c382b2e6c98',  // type: drop_down
   PRIMARY_EMAIL:    '7e3e1cac-80c3-4424-988c-e66c89b44fe5',  // type: email
   PHONE:            'd41f3e8a-c719-4de5-b5d6-00ac496a5e60',  // type: phone
+  // Social fields -- confirmed shared across all 4 lists (Leads,
+  // Pipeline, Contacts, Accounts) via ClickUp's "Add existing" field
+  // reuse, same mechanism INSTAGRAM/TIKTOK already used -- one ID each,
+  // works everywhere. IDs confirmed directly via GET /list/{id}/field
+  // (see the CRM Space field audit), not guessed. Field names in
+  // ClickUp have emoji prefixes ("📱 Facebook", etc.) -- irrelevant for
+  // writing (ID-based) or reading (use cf._byId[...], not cf['facebook'],
+  // since getCF()'s name-based keys only lowercase, they don't strip
+  // emoji -- see getCF's own doc comment).
+  FACEBOOK:         '199510c9-56ac-43e3-8657-34d71cc95b47',  // type: short_text
+  OTHER_SOCIAL:     'f367ef68-a8b9-40f0-99d5-c4a11d869ca1',  // type: short_text
+  // "Main Contact" -- the field this app previously assumed was named
+  // "Primary Contact" (cf['primary contact']), which never matched
+  // anything since that's not this field's real name in ClickUp.
+  // Accounts-only currently (see renderPfDetails); confirmed via the
+  // same field audit as the social fields above.
+  MAIN_CONTACT:     '713872a4-68d9-4aa9-b7f4-99cfc19c746b',  // type: short_text
   // Leads + Contacts
   RECENT_OPTIN:     '038eb48b-ffec-49ca-8a16-f5beecd19bff',  // type: short_text
   LEAD_CRM_ACTION:  '15bdd4e2-13dd-41a5-b833-d0aa456dacc2',  // type: drop_down
@@ -1422,13 +1450,16 @@ async function loadRef(){
     try{const r=await gsFetch(range);S.ref[key]=r.slice(1);}
     catch(e){console.warn('Ref:',range,e.message);}
   }
-  populateAssigneeFilter();
-}
-
-function populateAssigneeFilter(){
-  const active=(S.ref.team||[]).filter(r=>(r[1]||'').toLowerCase()==='active');
-  const sel=document.getElementById('tf-assignee');
-  if(sel)sel.innerHTML='<option value="">All Assignees</option>'+active.map(r=>`<option value="${(r[2]||'')+' '+(r[3]||'')}">${r[2]||''} ${r[3]||''}</option>`).join('');
+  // populateAssigneeFilter() removed -- it populated #tf-assignee from
+  // the Team Directory SHEET, which directly conflicted with
+  // populateTaskFilters() (in the Action Hub code) populating the SAME
+  // element from real ClickUp task assignee data. Whichever ran more
+  // recently silently won, so the Assignee filter could show sheet-
+  // derived names instead of actual ClickUp workspace members depending
+  // on navigation order -- reported as "assignee needs to be based on
+  // ClickUp space members, not just the sheet". populateTaskFilters is
+  // the correct, ClickUp-sourced one; this was legacy/redundant code
+  // from before that function existed.
 }
 
 // ═══════════════════════════════════════════
@@ -1563,7 +1594,7 @@ function renderTable(type){
       </tr>`;
     }
     if(type==='accounts'){
-      const pc=cf['primary contact']||'—';
+      const pc=cf._byId[CU_FIELDS.MAIN_CONTACT]||'—';
       const as=cf['account status']||'—';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
@@ -1832,8 +1863,25 @@ function calNav(type,d){
 // PENDING TASKS
 // ═══════════════════════════════════════════
 // ── ACTION HUB STATE ──────────────────────────────
-let S_tasksView='list';
+// Kanban reads better on a narrow phone screen than the List view's
+// table-like rows (matches the 768px breakpoint already used
+// throughout this file's mobile CSS). Desktop still defaults to List,
+// unchanged. Also syncs the toggle button's active class and the
+// underlying view containers right away, so the very first visit to
+// Action Hub is already consistent -- not just the internal state
+// variable, which alone wouldn't move the visible "List" button
+// highlight or actually show the Kanban board.
+let S_tasksView=window.innerWidth<=768?'kanban':'list';
 let S_masterTasks=[];
+if(S_tasksView==='kanban'){
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('vt-tasks')?.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('vt-tasks')?.querySelector('.vt-btn:nth-child(2)')?.classList.add('active');
+    const listEl=document.getElementById('tasks-list-view'),kanbanEl=document.getElementById('tasks-kanban-view');
+    if(listEl)listEl.style.display='none';
+    if(kanbanEl)kanbanEl.style.display='block';
+  });
+}
 
 function setTasksView(mode,btn){
   S_tasksView=mode;
@@ -2245,7 +2293,10 @@ async function openTaskProfile(taskId){
 async function openNewTaskModal(prelinkedId='',prelinkedName=''){
   S._taskLinks=prelinkedId?[{id:prelinkedId,name:prelinkedName}]:[];
   document.getElementById('nt-name').value='';
+  document.getElementById('nt-start').value='';
+  document.getElementById('nt-start-time').value='';
   document.getElementById('nt-due').value='';
+  document.getElementById('nt-due-time').value='';
   document.getElementById('nt-notes').value='';
   document.getElementById('nt-search').value='';
   document.getElementById('nt-results').style.display='none';
@@ -2307,9 +2358,20 @@ async function submitNewTask(){
   const btn=document.querySelector('#task-modal .btn-primary');
   if(btn){btn.disabled=true;btn.textContent='Creating…';}
   try{
-    const due=document.getElementById('nt-due')?.value;
     const notes=document.getElementById('nt-notes')?.value?.trim()||'';
     const status=document.getElementById('nt-status')?.value||'TO DO';
+    // Combines a date input's value with its OPTIONAL time sibling --
+    // same helper/reasoning as saveUpdateProfile's master branch (see
+    // that function's comment for the full explanation). Time left
+    // blank -> date-only (due_date_time:false); time filled in -> a
+    // real, meaningful moment (due_date_time:true).
+    const combineDateTime=(dateVal,timeVal)=>{
+      if(!dateVal)return null;
+      const dt=timeVal?new Date(`${dateVal}T${timeVal}`):new Date(`${dateVal}T00:00`);
+      return{ms:dt.getTime(),hasTime:!!timeVal};
+    };
+    const startCombined=combineDateTime(document.getElementById('nt-start')?.value,document.getElementById('nt-start-time')?.value);
+    const dueCombined=combineDateTime(document.getElementById('nt-due')?.value,document.getElementById('nt-due-time')?.value);
     // Assignees: ClickUp's CREATE-task API takes a plain array of user
     // IDs (unlike the UPDATE API's {add,rem} diff shape used in
     // saveUpdateProfile -- there's nothing to diff against yet on a
@@ -2320,10 +2382,8 @@ async function submitNewTask(){
     const assigneeIds=assigneeSel?[...assigneeSel.selectedOptions].map(o=>Number(o.value)):[];
     const assigneeNames=assigneeSel?[...assigneeSel.selectedOptions].map(o=>o.textContent):[];
     const body={name,description:notes,status};
-    if(due){
-      body.due_date=new Date(due).getTime();
-      body.due_date_time=true; // a real time was set through this form, not ClickUp's date-only 4am placeholder -- see toDatetimeLocal's comment for why this matters
-    }
+    if(startCombined){body.start_date=startCombined.ms;body.start_date_time=startCombined.hasTime;}
+    if(dueCombined){body.due_date=dueCombined.ms;body.due_date_time=dueCombined.hasTime;}
     if(assigneeIds.length)body.assignees=assigneeIds;
     const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
     // Set linked entry IDs as custom fields
@@ -2350,7 +2410,7 @@ async function submitNewTask(){
       const linkedLead=S._taskLinks?.find(l=>!l.type||l.type==='Lead'||l.type==='Contact')?.[`id`]||'';
       const linkedDeal=S._taskLinks?.find(l=>l.type==='Deal'||l.type==='Pipeline')?.[`id`]||'';
       const linkedAcct=S._taskLinks?.find(l=>l.type==='Account')?.[`id`]||'';
-      const dueStr=due?new Date(due).toLocaleString():'';
+      const dueStr=dueCombined?new Date(dueCombined.ms).toLocaleString():'';
       await gsAppend('Master CRM Tasks!A:H',[[name,status,linkedLead,linkedDeal,linkedAcct,dueStr,assignee,'']]);
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
@@ -2427,6 +2487,17 @@ async function quickUpdateEntryStatus(newStatus){
   const{task,type}=S.currentEntry;
   try{
     await cuFetch(`/task/${task.id}`,'PUT',{status:newStatus});
+    // Attribution for QC purposes: ClickUp's own "updated by" always
+    // shows whichever ClickUp identity the shared API token belongs to
+    // (not the real logged-in person -- an unavoidable limitation of
+    // one shared token, see the CRM's ClickUp OAuth migration notes),
+    // so this app has to be the source of truth for "who actually did
+    // this" itself. The full edit form (saveUpdateProfile) already
+    // posts a comment like this on every save; this quick-status
+    // shortcut previously did NOT, meaning a status change made through
+    // here specifically -- including marking something complete --
+    // left no record anywhere of who did it. Closing that gap.
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Status → ${newStatus} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     // Update in-memory and re-render header
     task.status={status:newStatus};
     S.currentEntry.task=task;
@@ -2517,6 +2588,7 @@ function renderPfDetails(task,type,cf,body){
       ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
       ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
       ['Location',cf.location],['Industry',cf.industry],
+      ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
       ['Last Action',cf['last action']],['CRM Action',cf['lead crm action']||cf['crm action']],
       ['Recent Opt-In Action',cf['recent opt-in action']],['Assignee(s)',asgn],
@@ -2528,6 +2600,7 @@ function renderPfDetails(task,type,cf,body){
       ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
       ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
       ['Industry',cf.industry],
+      ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
       ['Last Action',cf['last action']],['CRM Action',cf['lead crm action']||cf['crm action']],
       ['Recent Opt-In Action',cf['recent opt-in action']],['Assignee(s)',asgn],
@@ -2540,13 +2613,19 @@ function renderPfDetails(task,type,cf,body){
       ['Next Action',cf['next action']],['Next Action Link',cf['next action link']],['Next Action Date',fmtDate(cf['next action date'])],
       ['Last Action',cf['last action']],['Deal Status Label',cf['deal status label']],['Deal Action',cf['deal action']],
       ['Opportunity',cf.opportunity],['Plan',cf.plan],
-      ['Primary Contact Email',cf['primary contact email']],['Primary Contact Phone',cf['primary contact phone']],
+      ['Main Contact',cf._byId[CU_FIELDS.MAIN_CONTACT]],['Primary Contact Email',cf['primary contact email']],['Primary Contact Phone',cf['primary contact phone']],
+      ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Assignee(s)',asgn],['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]];
   }else{
     pairs=[['Branch',cf.branch],['Sub-Branch',subBranch],
       ['Account Status',cf['account status']],['Industry',cf.industry],
-      ['Primary Contact',cf['primary contact']],['Primary Contact Email',cf['primary contact email']],
+      // Was cf['primary contact'] -- that name never matched anything;
+      // the field is actually called "Main Contact" in ClickUp (see
+      // CU_FIELDS.MAIN_CONTACT's doc comment for the full story). Now
+      // reads by ID, immune to this class of mismatch happening again.
+      ['Main Contact',cf._byId[CU_FIELDS.MAIN_CONTACT]],['Primary Contact Email',cf['primary contact email']],
       ['Primary Contact Phone',cf['primary contact phone']],
+      ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Next Action Date',fmtDate(cf['next action date'])],['Notebook Link',cf['notebook link']],
       ['Assignee(s)',asgn],['Last Updated',fmtDate(task.date_updated)]];
   }
@@ -3041,12 +3120,19 @@ async function openUpdateProfile(){
     // component, which meant EVERY task that had ever been set without
     // an explicit time displayed as 4am here -- looked like a bug, but
     // was actually accurately displaying ClickUp's own placeholder.
-    // Fix: when no real time was set, default the picker's time to 9am
-    // (a plain, unmisleading default) instead of surfacing the 4am
-    // artifact; once someone saves through this form, a real time gets
-    // recorded going forward (see saveUpdateProfile's master branch).
-    const dueVal=task.due_date?(task.due_date_time?toDatetimeLocal(task.due_date):toDateLocal(task.due_date)+'T09:00'):'';
-    const startVal=task.start_date?(task.start_date_time?toDatetimeLocal(task.start_date):toDateLocal(task.start_date)+'T09:00'):'';
+    //
+    // Date and time are now SEPARATE inputs, with time OPTIONAL --
+    // matching ClickUp's own due_date_time/start_date_time concept
+    // properly instead of the earlier version, which forced a 9am
+    // default time onto every save (better than the misleading 4am
+    // artifact, but still took away the ability to log just a date with
+    // no meaningful time at all, which is a real, common need). The
+    // time field is left BLANK when task.due_date_time is false --
+    // that's what tells saveUpdateProfile below this is a date-only value.
+    const dueDateVal=toDateLocal(task.due_date);
+    const dueTimeVal=task.due_date_time?toTimeLocal(task.due_date):'';
+    const startDateVal=toDateLocal(task.start_date);
+    const startTimeVal=task.start_date_time?toTimeLocal(task.start_date):'';
     const currentAssigneeIds=(task.assignees||[]).map(a=>String(a.id));
     const members=await loadTeamMembers();
     const assigneeOptions=members.length
@@ -3063,11 +3149,19 @@ async function openUpdateProfile(){
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Start Date &amp; Time</label>
-          <div style="display:flex;gap:6px"><input type="datetime-local" id="up-start-date" value="${startVal}" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-start-date').value=''">✕</button></div>
+        <div class="form-group"><label>Start Date <small style="color:var(--text-muted);font-weight:400">(time optional)</small></label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="up-start-date" value="${startDateVal}" style="flex:1.3">
+            <input type="time" id="up-start-time" value="${startTimeVal}" style="flex:1">
+            <button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-start-date').value='';document.getElementById('up-start-time').value=''">✕</button>
+          </div>
         </div>
-        <div class="form-group"><label>Due Date &amp; Time</label>
-          <div style="display:flex;gap:6px"><input type="datetime-local" id="up-due-date" value="${dueVal}" style="flex:1"><button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-due-date').value=''">✕</button></div>
+        <div class="form-group"><label>Due Date <small style="color:var(--text-muted);font-weight:400">(time optional)</small></label>
+          <div style="display:flex;gap:6px">
+            <input type="date" id="up-due-date" value="${dueDateVal}" style="flex:1.3">
+            <input type="time" id="up-due-time" value="${dueTimeVal}" style="flex:1">
+            <button type="button" class="btn btn-ghost btn-sm" title="Clear" onclick="document.getElementById('up-due-date').value='';document.getElementById('up-due-time').value=''">✕</button>
+          </div>
         </div>
       </div>
       <div class="form-row">
@@ -3150,6 +3244,20 @@ async function openUpdateProfile(){
       <div class="form-group"><label>Phone</label><input type="tel" id="up-phone-num" value="${esc(cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
     </div>`;
 
+  // Shared across all 4 entry types (Leads/Contacts/Pipeline/Accounts) --
+  // reads via cf._byId (see CU_FIELDS.FACEBOOK's doc comment for why:
+  // these fields have emoji-prefixed names in ClickUp, which the
+  // name-based cf['facebook'] lookup can't match).
+  const socialFieldsRow=`
+    <div class="form-row">
+      <div class="form-group"><label>Instagram</label><input type="text" id="up-instagram" value="${esc(cf._byId[CU_FIELDS.INSTAGRAM]||'')}" placeholder="@handle or URL"></div>
+      <div class="form-group"><label>Facebook</label><input type="text" id="up-facebook" value="${esc(cf._byId[CU_FIELDS.FACEBOOK]||'')}" placeholder="@handle or URL"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>TikTok</label><input type="text" id="up-tiktok" value="${esc(cf._byId[CU_FIELDS.TIKTOK]||'')}" placeholder="@handle or URL"></div>
+      <div class="form-group"><label>Other Social</label><input type="text" id="up-other-social" value="${esc(cf._byId[CU_FIELDS.OTHER_SOCIAL]||'')}" placeholder="Any other platform"></div>
+    </div>`;
+
   const notesRow=`
     <div class="form-row">
       <div class="form-group"><label>Notebook Link</label><input type="url" id="up-notebook" value="${esc(cf['notebook link']||'')}"></div>
@@ -3160,10 +3268,10 @@ async function openUpdateProfile(){
 
   let body='';
   if(type==='leads'){
-    body=statusRow+branchRow+contactTypeRow+basicContactFields+sourceRow+crmFields;
+    body=statusRow+branchRow+contactTypeRow+basicContactFields+socialFieldsRow+sourceRow+crmFields;
   } else if(type==='contacts'){
     // Contacts: no Branch/Sub-Branch (different ClickUp list, those fields may not exist)
-    body=statusRow+contactTypeRow+basicContactFields+sourceRow+`
+    body=statusRow+contactTypeRow+basicContactFields+socialFieldsRow+sourceRow+`
     <div class="form-row">
       <div class="form-group"><label>Industry</label>
         ${industryDatalist}
@@ -3192,7 +3300,11 @@ async function openUpdateProfile(){
     <div class="form-row">
       <div class="form-group"><label>Next Action Link</label><input type="url" id="up-nal" value="${esc(cf['next action link']||'')}"></div>
       <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
-    </div>`;
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Main Contact (name)</label><input type="text" id="up-main-contact" value="${esc(cf._byId[CU_FIELDS.MAIN_CONTACT]||'')}"></div>
+      <div class="form-group"><label>Primary Contact Phone</label><input type="tel" id="up-primary-phone" value="${esc(cf['primary contact phone']||'')}" placeholder="+1 470 222 6558"></div>
+    </div>`+socialFieldsRow;
   } else if(type==='accounts'){
     body=statusRow+branchRow+`
     <div class="form-row">
@@ -3205,13 +3317,13 @@ async function openUpdateProfile(){
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Primary Contact</label><input type="text" id="up-primary-contact" value="${esc(cf['primary contact']||'')}"></div>
+      <div class="form-group"><label>Main Contact (name)</label><input type="text" id="up-main-contact" value="${esc(cf._byId[CU_FIELDS.MAIN_CONTACT]||'')}"></div>
       <div class="form-group"><label>Primary Contact Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||'')}"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Phone</label><input type="tel" id="up-phone-num" value="${esc(cf['primary contact phone']||cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
       <div class="form-group"><label>Next Action Date</label><input type="date" id="up-nad" value="${nadVal}"></div>
-    </div>`;
+    </div>`+socialFieldsRow;
   }
 
   document.getElementById('em-body').innerHTML=body+notesRow;
@@ -3624,20 +3736,32 @@ async function saveUpdateProfile(){
     //    field (Section 11-B) -- handle separately and skip all the
     //    Leads/Pipeline/Accounts-only custom field logic below.
     if(type==='master'){
-      const startValRaw=document.getElementById('up-start-date')?.value;
-      if(startValRaw){
-        updateBody.start_date=new Date(startValRaw).getTime();
-        // Recording a real time through this form -- tell ClickUp so it
-        // stops treating this as a "date only, defaults to 4am" value
-        // (see the ClickUp docs note in openUpdateProfile's form-render
-        // code, right above where dueVal/startVal get built).
-        updateBody.start_date_time=true;
-      }else if(startValRaw==='')updateBody.start_date=null;
-      const dueVal=document.getElementById('up-due-date')?.value;
-      if(dueVal){
-        updateBody.due_date=new Date(dueVal).getTime();
-        updateBody.due_date_time=true;
-      }else if(dueVal==='')updateBody.due_date=null;
+      // Combines a date input's value with its OPTIONAL time sibling.
+      // Time left blank -> local midnight + due_date_time:false (a
+      // genuine "date only" value, matching ClickUp's own concept);
+      // time filled in -> that exact moment + due_date_time:true (a
+      // real, meaningful time, not ClickUp's 4am date-only placeholder).
+      const combineDateTime=(dateVal,timeVal)=>{
+        if(!dateVal)return null;
+        const dt=timeVal?new Date(`${dateVal}T${timeVal}`):new Date(`${dateVal}T00:00`);
+        return{ms:dt.getTime(),hasTime:!!timeVal};
+      };
+      const startDateVal=document.getElementById('up-start-date')?.value;
+      const startTimeVal=document.getElementById('up-start-time')?.value;
+      if(startDateVal){
+        const combined=combineDateTime(startDateVal,startTimeVal);
+        updateBody.start_date=combined.ms;
+        updateBody.start_date_time=combined.hasTime;
+      }else if(startDateVal==='')updateBody.start_date=null;
+
+      const dueDateVal=document.getElementById('up-due-date')?.value;
+      const dueTimeVal=document.getElementById('up-due-time')?.value;
+      let dueCombined=null;
+      if(dueDateVal){
+        dueCombined=combineDateTime(dueDateVal,dueTimeVal);
+        updateBody.due_date=dueCombined.ms;
+        updateBody.due_date_time=dueCombined.hasTime;
+      }else if(dueDateVal==='')updateBody.due_date=null;
 
       // Assignees: diff the multi-select against the task's CURRENT
       // assignees rather than sending a full replacement list -- ClickUp's
@@ -3658,7 +3782,7 @@ async function saveUpdateProfile(){
       const notebookVal=document.getElementById('up-notebook')?.value?.trim();
       await setFieldById(task.id,CU_FIELDS.NOTEBOOK_LINK,notebookVal||'','url');
       await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Task updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
-      const dueStr=dueVal?new Date(dueVal).toLocaleString():'';
+      const dueStr=dueCombined?new Date(dueCombined.ms).toLocaleString():'';
       await syncTaskUpdateToSheets(newName,newStatus||task.status?.status||'','','','',dueStr,S.user?.name||'');
       showToast('Task updated & synced.','success');
       closeModal('entry-modal');
@@ -3729,6 +3853,12 @@ async function saveUpdateProfile(){
     const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
     const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
     await sfClear(F.PHONE,cleanPhone,'phone');
+    // ── SOCIAL FIELDS (shared field, same ID across all 4 entry
+    //    types -- see CU_FIELDS.FACEBOOK's doc comment) ──────────
+    await sfClear(F.INSTAGRAM,document.getElementById('up-instagram')?.value?.trim(),'short_text');
+    await sfClear(F.FACEBOOK,document.getElementById('up-facebook')?.value?.trim(),'short_text');
+    await sfClear(F.TIKTOK,document.getElementById('up-tiktok')?.value?.trim(),'short_text');
+    await sfClear(F.OTHER_SOCIAL,document.getElementById('up-other-social')?.value?.trim(),'short_text');
     // ── PIPELINE FIELDS ───────────────────────────────────────
     if(type==='pipeline'){
       await sfClear(F.COMPANY_NAME,document.getElementById('up-company')?.value?.trim(),'short_text');
@@ -3743,6 +3873,7 @@ async function saveUpdateProfile(){
       const phoneRawP=(document.getElementById('up-phone-num')?.value||'').trim();
       const cleanPhoneP=phoneRawP?(phoneRawP.startsWith('+')?phoneRawP:'+1 '+phoneRawP):'';
       await sfClear(F.PRIMARY_PHONE_P,cleanPhoneP,'phone');
+      await sfClear(F.MAIN_CONTACT,document.getElementById('up-main-contact')?.value?.trim(),'short_text');
     }
     // ── ACCOUNT FIELDS ────────────────────────────────────────
     if(type==='accounts'){
@@ -3753,6 +3884,11 @@ async function saveUpdateProfile(){
       const acctStatOpts=['Active','Inactive','Under Review','Pre-Deal','Onboarding Cue'];
       const acctStat=document.getElementById('up-acct-status')?.value;
       if(acctStat){const oi=acctStatOpts.indexOf(acctStat);if(oi>=0)await sf(F.ACCOUNT_STATUS,oi,'drop_down');}
+      // Was up-primary-contact / cf['primary contact'] -- never
+      // actually saved (no corresponding write existed at all,
+      // separately from the wrong-name read bug) AND read the wrong
+      // field name. Both fixed together -- see CU_FIELDS.MAIN_CONTACT.
+      await sfClear(F.MAIN_CONTACT,document.getElementById('up-main-contact')?.value?.trim(),'short_text');
     }
     // ── FIRST/LAST NAME (Leads+Contacts) ─────────────────────
     if(type==='leads'||type==='contacts'){
@@ -4022,7 +4158,7 @@ function getFieldVal(task,fieldId){
     close_date:cf['close date']?fmtDate(cf['close date']):'',
     deal_status_label:cf['deal status label']||'',
     account_status:cf['account status']||'',
-    primary_contact:cf['primary contact']||'',
+    primary_contact:cf._byId[CU_FIELDS.MAIN_CONTACT]||'',
     assignee:asgn,
     notebook_link:cf['notebook link']||'',
     date_updated:fmtDate(task.date_updated),
@@ -4583,12 +4719,37 @@ async function qcConfirmAssign(taskId,taskType,name){
 // ═══════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════
+/**
+ * Normalizes a task's custom fields into a flat, lowercase-name-keyed
+ * object (cf['facebook'], cf['notebook link'], etc.) for convenient
+ * reading throughout this file.
+ *
+ * ALSO builds a non-enumerable `cf._byId` map, keyed by field UUID
+ * (cf._byId[CU_FIELDS.FACEBOOK]) -- added because name-based lookup is
+ * genuinely unreliable for some fields: (1) several fields have emoji
+ * prefixes in ClickUp ("📱 Facebook", "📱 Instagram", etc.) -- this
+ * function only lowercases the name, it doesn't strip emoji, so
+ * cf['facebook'] would never match a field actually named "📱
+ * Facebook"; (2) field names can just change over time in ClickUp
+ * without this file being updated to match -- e.g. what this app
+ * assumed was called "Primary Contact" turned out to actually be named
+ * "Main Contact", so cf['primary contact'] was silently always empty,
+ * no error, just missing data. ID-based lookup sidesteps both problems
+ * entirely, since a field's ID never changes even if its name does.
+ * Prefer cf._byId[CU_FIELDS.X] over cf['field name'] for any NEW code;
+ * existing name-based lookups aren't being mass-migrated since most of
+ * them ARE working correctly, just the newly-added social fields and
+ * Main Contact needed this.
+ * @param {object} task - raw ClickUp task object (with .custom_fields)
+ * @returns {object} cf, with cf._byId as described above
+ */
 function getCF(task){
   const cf={};
+  const byId={};
   (task.custom_fields||[]).forEach(f=>{
     const key=(f.name||'').toLowerCase();
     let val='';
-    if(f.value===undefined||f.value===null||f.value===''){cf[key]='';return;}
+    if(f.value===undefined||f.value===null||f.value===''){cf[key]='';byId[f.id]='';return;}
     switch(f.type){
       case'drop_down':{const o=(f.type_config?.options||[]).find(o=>String(o.orderindex)===String(f.value)||o.id===f.value);val=o?.name||String(f.value);break;}
       case'labels':{if(Array.isArray(f.value)){const opts=f.type_config?.options||[];val=f.value.map(v=>{const o=opts.find(o=>o.id===v||o.label===v);return o?.label||o?.name||v;}).join(', ');}else val=String(f.value);break;}
@@ -4615,7 +4776,9 @@ function getCF(task){
       }
     }
     cf[key]=val;
+    byId[f.id]=val;
   });
+  Object.defineProperty(cf,'_byId',{value:byId,enumerable:false});
   return cf;
 }
 
@@ -4636,30 +4799,9 @@ function fmtDateShort(val){
   return`${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
 }
 function getTS(){return fmtDate(Date.now());}
-/**
- * Formats a ms timestamp as a value suitable for an <input
- * type="datetime-local"> element, using LOCAL date/time components
- * (matching fmtDate's convention above) -- NOT toISOString(), which is
- * UTC-based and was the root cause of the due-date edit bug: the old
- * edit-form pre-fill used toISOString().split('T')[0], which can show a
- * different calendar date than what fmtDate() displays elsewhere on the
- * same page for users not in UTC, and saving back through a bare
- * date-only string (new Date('2026-07-25')) has the same UTC-midnight
- * ambiguity. datetime-local strings WITHOUT a timezone suffix are
- * parsed as local time by new Date(...), so using local getters here
- * (and no 'Z'/offset in the saved string) keeps display, edit, and save
- * all consistent with each other.
- * @param {number|string|null} val
- * @returns {string} "" if val is falsy, else "YYYY-MM-DDTHH:mm"
- */
-function toDatetimeLocal(val){
-  if(!val)return'';
-  const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
-  if(!ms||isNaN(ms))return'';
-  const d=new Date(ms);
-  const p=n=>String(n).padStart(2,'0');
-  return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
+// toDatetimeLocal removed -- the Start/Due Date fields it powered moved
+// to split date + optional-time inputs (see toDateLocal/toTimeLocal
+// below), so nothing needs a combined datetime-local string anymore.
 /**
  * Formats a ms timestamp as "YYYY-MM-DD" using LOCAL date components --
  * the plain-date counterpart to toDatetimeLocal above, for fields that
@@ -4677,6 +4819,27 @@ function toDateLocal(val){
   const d=new Date(ms);
   const p=n=>String(n).padStart(2,'0');
   return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+/**
+ * Formats a ms timestamp as "HH:mm" (24h) using LOCAL time -- the
+ * companion to toDateLocal above, for the Start/Due Date fields' now-
+ * separate, OPTIONAL time input. Deliberately returns '' (not
+ * "00:00") when there's no value, so a task that only ever had a date
+ * set (task.due_date_time===false, ClickUp's own "date only" concept)
+ * pre-fills with an EMPTY time field rather than a fabricated midnight
+ * -- an empty time field is what tells the save logic "this is a
+ * date-only value, don't mark due_date_time true" (see
+ * saveUpdateProfile/submitNewTask).
+ * @param {number|string|null} val
+ * @returns {string}
+ */
+function toTimeLocal(val){
+  if(!val)return'';
+  const ms=typeof val==='string'&&!isNaN(val)?parseInt(val):typeof val==='number'?val:new Date(val).getTime();
+  if(!ms||isNaN(ms))return'';
+  const d=new Date(ms);
+  const p=n=>String(n).padStart(2,'0');
+  return`${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 /**
  * Parses a plain "YYYY-MM-DD" string (from a type="date" input) as LOCAL
