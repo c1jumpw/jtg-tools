@@ -4,6 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Logo Kit Generator</title>
+<!--
+  ============================================================================
+  LOGO KIT GENERATOR — v2
+  ============================================================================
+  PURPOSE
+    A single-file, client-side tool that turns one uploaded logo into a
+    ready-to-ship asset kit:
+      - apple-touch-icon.png   180x180, transparent
+      - favicon.png             32x32,  transparent
+      - social-logo.jpg        400x400, solid background (user-selectable color)
+      - color-palette.txt       hex codes extracted from the logo's dominant colors
+
+  KEY RESPONSIBILITIES / DATA FLOW
+    1. INPUT   — user provides a source image via click-to-browse, drag & drop,
+                 or clipboard paste (Ctrl+V / Cmd+V).
+    2. EDIT    — user squares off the image with a crop tool and, optionally,
+                 removes a solid background color (color-distance "chroma key").
+                 This step produces a single "working image" (an in-memory
+                 <canvas> converted to an <img>) that every export is derived from.
+    3. EXPORT  — the working image is drawn into three fixed-size square
+                 canvases (with format-appropriate padding/background), each
+                 exported as a downloadable Blob. A dominant-color palette is
+                 extracted from the same working image.
+
+  ASSUMPTIONS / CONSTRAINTS
+    - Everything runs in the browser. No network calls are made with the
+      user's image data — privacy-friendly by construction.
+    - Background removal is COLOR-DISTANCE based (chroma key), not an ML
+      segmentation model. It works well for flat/solid background colors
+      (the common case for logo assets) but will not cleanly remove complex
+      photographic backgrounds. This is a deliberate scope decision — see
+      the TODO near applyChromaKey() for a possible future upgrade path.
+    - The crop tool is square-only (1:1), because every exported asset is
+      square. Default crop is the largest centered square that fits inside
+      the source image ("cover" framing) — matches common avatar-cropper
+      conventions. Users can drag/resize the crop box to reframe.
+    - External dependency: JSZip (loaded from cdnjs) is used only for the
+      "Download all as .zip" convenience button; individual downloads do not
+      require it.
+
+  ============================================================================
+  REVISION HISTORY
+  ============================================================================
+  v1 (logo-kit-generator.html)
+    - Initial release: upload -> generate 180x180 / 32x32 / 400x400 assets.
+    - Added dominant-color palette extraction with click-to-copy swatches.
+
+  v2 (this file, logo-kit-generator-v2.html)
+    - NEW: clipboard paste support (paste an image directly, no file dialog).
+    - NEW: interactive square crop step before export.
+    - NEW: color-based background removal (chroma key) with an eyedropper,
+           tolerance slider, and a small live preview.
+    - CHANGED: restructured the UI into an explicit 3-step wizard
+           (Upload -> Edit -> Export) with back/start-over navigation, since
+           the added editing controls made the old single-screen layout
+           feel cluttered. This is the main "UX cleanup" pass requested.
+    - CHANGED: file is now versioned (v1, v2, ...) instead of overwritten in
+           place, so previous behavior stays reproducible/comparable.
+  ============================================================================
+-->
 <style>
   :root{
     --paper:#EEF0F3;
@@ -13,8 +73,14 @@
     --line:#D6D9E0;
     --accent:#3B4A7A;
     --accent-soft:#E7EAF3;
+    --danger:#B23A3A;
     --mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    --checker:
+      linear-gradient(45deg,#e4e6ea 25%,transparent 25%),
+      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#e4e6ea 75%),
+      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%);
   }
   *{box-sizing:border-box;}
   body{
@@ -33,260 +99,322 @@
     color:var(--ink-soft);
     margin:0 0 6px;
   }
-  h1{
-    font-size:26px;
-    font-weight:700;
-    margin:0 0 6px;
-    letter-spacing:-0.01em;
-  }
-  .sub{
-    color:var(--ink-soft);
-    font-size:14px;
-    margin:0 0 28px;
-    max-width:560px;
-    line-height:1.5;
-  }
+  h1{font-size:26px;font-weight:700;margin:0 0 6px;letter-spacing:-0.01em;}
+  .sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;max-width:560px;line-height:1.5;}
 
+  /* ---------------- step indicator ---------------- */
+  .steps{display:flex;gap:8px;margin-bottom:24px;}
+  .step-pill{
+    display:flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11.5px;font-weight:600;
+    color:var(--ink-soft);
+    padding:7px 12px 7px 8px;
+    border-radius:999px;border:1px solid var(--line);
+    background:var(--card);
+  }
+  .step-pill .num{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--line);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;
+  }
+  .step-pill.done{color:var(--accent);border-color:var(--accent);}
+  .step-pill.done .num{background:var(--accent);}
+  .step-pill.active{color:var(--ink);border-color:var(--ink);background:var(--accent-soft);}
+  .step-pill.active .num{background:var(--ink);}
+
+  /* ---------------- generic panel ---------------- */
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;}
+
+  /* ---------------- step 1: upload ---------------- */
   .dropzone{
     background:var(--card);
     border:1.5px dashed var(--line);
     border-radius:14px;
-    padding:40px 24px;
+    padding:44px 24px;
     text-align:center;
     cursor:pointer;
     transition:border-color .15s ease, background .15s ease;
-    position:relative;
   }
   .dropzone.drag{border-color:var(--accent); background:var(--accent-soft);}
   .dropzone input{display:none;}
   .dz-icon{
     width:40px;height:40px;margin:0 auto 14px;
-    border:1.5px solid var(--line);
-    border-radius:10px;
-    display:flex;align-items:center;justify-content:center;
-    color:var(--ink-soft);
+    border:1.5px solid var(--line);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);
   }
   .dz-title{font-weight:600;font-size:15px;margin:0 0 4px;}
   .dz-sub{font-size:13px;color:var(--ink-soft);margin:0;}
+  .dz-sub b{color:var(--ink);font-weight:600;}
 
-  .workspace{display:none;}
-  .workspace.active{display:block;}
+  /* ---------------- step 2: edit (crop + bg removal) ---------------- */
+  .edit-grid{display:grid;grid-template-columns:1fr 260px;gap:20px;}
+  @media (max-width:680px){.edit-grid{grid-template-columns:1fr;}}
 
+  .crop-stage{
+    position:relative;
+    display:inline-block;
+    max-width:100%;
+    background-image:var(--checker);
+    background-size:16px 16px;
+    background-position:0 0,0 0,0 0,0 0;
+    border-radius:10px;
+    overflow:hidden;
+    line-height:0; /* remove inline-image baseline gap so overlay math is exact */
+    touch-action:none; /* let pointer events drive dragging, not the browser */
+  }
+  .crop-stage img{display:block;max-width:100%;height:auto;user-select:none;-webkit-user-drag:none;}
+  .crop-box{
+    position:absolute;
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--accent), 0 0 0 2000px rgba(10,14,26,.45);
+    cursor:move;
+  }
+  .crop-box .handle{
+    position:absolute;right:-7px;bottom:-7px;
+    width:14px;height:14px;border-radius:50%;
+    background:#fff;border:2px solid var(--accent);
+    cursor:nwse-resize;
+  }
+  .crop-actions{display:flex;gap:8px;margin-top:12px;}
+
+  .field-label{font-size:12.5px;font-weight:600;margin:0 0 8px;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .switch{position:relative;width:36px;height:20px;flex-shrink:0;}
+  .switch input{opacity:0;width:100%;height:100%;margin:0;cursor:pointer;position:absolute;z-index:1;}
+  .switch .track{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:background .15s;}
+  .switch .thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .switch input:checked ~ .track{background:var(--accent);}
+  .switch input:checked ~ .thumb{transform:translateX(16px);}
+
+  .bg-controls{display:none;}
+  .bg-controls.active{display:block;}
+  .eyedrop-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .eyedrop-btn{
+    flex:1;font-family:var(--sans);font-size:12.5px;font-weight:600;
+    background:none;border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center;
+  }
+  .eyedrop-btn.picking{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+  .target-swatch{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0;}
+  .slider-row{margin-bottom:14px;}
+  .slider-row .row-top{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  input[type=range]{width:100%;}
+
+  .bg-preview{
+    width:100%;aspect-ratio:1/1;border-radius:10px;overflow:hidden;
+    background-image:var(--checker);background-size:14px 14px;
+    display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  }
+  .bg-preview canvas{max-width:82%;max-height:82%;}
+
+  .edit-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;}
+
+  /* ---------------- shared buttons ---------------- */
+  .btn{
+    font-family:var(--sans);font-size:13px;font-weight:600;
+    border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);
+  }
+  .btn:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .btn.primary:hover{background:#000;}
+  .btn.ghost{background:none;}
+  .btn:disabled{opacity:.4;cursor:default;pointer-events:none;}
+
+  /* ---------------- step 3: export ---------------- */
   .source-row{
     display:flex;align-items:center;gap:14px;
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px 16px;
-    margin:24px 0 28px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;margin-bottom:24px;
   }
   .source-thumb{
     width:44px;height:44px;border-radius:8px;
-    background:
-      linear-gradient(45deg,#e4e6ea 25%,transparent 25%) -6px 0/12px 12px,
-      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%) -6px 0/12px 12px,
-      linear-gradient(45deg,transparent 75%,#e4e6ea 75%) -6px 0/12px 12px,
-      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%) -6px 0/12px 12px,
-      #f6f7f9;
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0;
-    overflow:hidden;
+    background-image:var(--checker);background-size:12px 12px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;
   }
   .source-thumb img{max-width:100%;max-height:100%;}
   .source-name{font-size:13px;font-weight:600;margin:0;}
   .source-meta{font-size:12px;color:var(--ink-soft);margin:2px 0 0;font-family:var(--mono);}
-  .replace-btn{
-    margin-left:auto;
-    font-family:var(--sans);
-    font-size:12.5px;
-    font-weight:600;
-    color:var(--accent);
-    background:none;border:1px solid var(--line);
-    border-radius:8px;padding:7px 12px;cursor:pointer;
-  }
-  .replace-btn:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .source-actions{margin-left:auto;display:flex;gap:8px;}
 
   .section-label{
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:.1em;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-    margin:0 0 12px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);margin:0 0 12px;
   }
 
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:16px;
-    margin-bottom:20px;
-  }
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
   @media (max-width:720px){.grid{grid-template-columns:1fr;}}
 
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:18px;
-    position:relative;
-  }
-  .crop{
-    position:absolute;width:10px;height:10px;
-    border-color:var(--line);
-  }
-  .crop.tl{top:8px;left:8px;border-top:1.5px solid;border-left:1.5px solid;}
-  .crop.tr{top:8px;right:8px;border-top:1.5px solid;border-right:1.5px solid;}
-  .crop.bl{bottom:8px;left:8px;border-bottom:1.5px solid;border-left:1.5px solid;}
-  .crop.br{bottom:8px;right:8px;border-bottom:1.5px solid;border-right:1.5px solid;}
+  .asset-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;position:relative;}
+  .crop-mark{position:absolute;width:10px;height:10px;border-color:var(--line);}
+  .crop-mark.tl{top:8px;left:8px;border-top:1.5px solid;border-left:1.5px solid;}
+  .crop-mark.tr{top:8px;right:8px;border-top:1.5px solid;border-right:1.5px solid;}
+  .crop-mark.bl{bottom:8px;left:8px;border-bottom:1.5px solid;border-left:1.5px solid;}
+  .crop-mark.br{bottom:8px;right:8px;border-bottom:1.5px solid;border-right:1.5px solid;}
 
   .card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
   .card-title{font-size:13.5px;font-weight:700;margin:0;}
   .card-dims{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
 
   .preview-stage{
-    width:100%;
-    aspect-ratio:1/1;
-    border-radius:10px;
-    display:flex;align-items:center;justify-content:center;
-    margin-bottom:14px;
-    overflow:hidden;
-    background:
-      linear-gradient(45deg,#e4e6ea 25%,transparent 25%) 0 0/16px 16px,
-      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%) 0 0/16px 16px,
-      linear-gradient(45deg,transparent 75%,#e4e6ea 75%) 0 0/16px 16px,
-      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%) 0 0/16px 16px,
-      #f6f7f9;
+    width:100%;aspect-ratio:1/1;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;margin-bottom:14px;overflow:hidden;
+    background-image:var(--checker);background-size:16px 16px;background-color:#f6f7f9;
   }
-  .preview-stage canvas{max-width:80%;max-height:80%;image-rendering:auto;border-radius:6px;}
-  .preview-stage.solid{background:var(--stage-bg,#fff);}
+  .preview-stage canvas{max-width:80%;max-height:80%;border-radius:6px;}
+  .preview-stage.solid{background-image:none;background-color:var(--stage-bg,#fff);}
 
   .card-foot{font-size:11.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.4;}
 
   .color-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-  .swatch{
-    width:22px;height:22px;border-radius:50%;
-    border:1.5px solid var(--line);
-    cursor:pointer;padding:0;
-  }
+  .swatch{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);cursor:pointer;padding:0;}
   .swatch.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
-  input[type=color]{
-    width:26px;height:26px;border:1.5px solid var(--line);border-radius:50%;
-    padding:0;overflow:hidden;cursor:pointer;background:none;
-  }
+  input[type=color]{width:26px;height:26px;border:1.5px solid var(--line);border-radius:50%;padding:0;overflow:hidden;cursor:pointer;background:none;}
   input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
   input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
 
   .dl-btn{
-    width:100%;
-    font-family:var(--sans);
-    font-size:13px;font-weight:600;
-    background:var(--ink);color:#fff;
-    border:none;border-radius:8px;
-    padding:10px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;font-family:var(--sans);font-size:13px;font-weight:600;
+    background:var(--ink);color:#fff;border:none;border-radius:8px;padding:10px;cursor:pointer;
   }
   .dl-btn:hover{background:#000;}
   .dl-btn:disabled{opacity:.4;cursor:default;}
 
-  .all-btn{
-    width:100%;
-    font-family:var(--sans);
-    font-size:14px;font-weight:600;
-    background:var(--accent);color:#fff;
-    border:none;border-radius:10px;
-    padding:14px;cursor:pointer;
-    margin-top:6px;
-  }
+  .palette-grid{display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-bottom:8px;}
+  .palette-swatch{flex:1;height:64px;position:relative;cursor:pointer;border:none;padding:0;display:flex;align-items:flex-end;}
+  .palette-hex{font-family:var(--mono);font-size:10.5px;font-weight:600;margin:6px;padding:2px 5px;border-radius:4px;background:rgba(255,255,255,.85);color:#1c2333;}
+  .palette-copied{position:absolute;top:6px;right:6px;font-family:var(--mono);font-size:10px;background:rgba(0,0,0,.7);color:#fff;padding:2px 5px;border-radius:4px;opacity:0;transition:opacity .15s;}
+  .palette-swatch.copied .palette-copied{opacity:1;}
+  .palette-empty{font-size:12.5px;color:var(--ink-soft);padding:20px;margin:0;}
+
+  .all-btn{width:100%;font-family:var(--sans);font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px;cursor:pointer;margin-top:6px;}
   .all-btn:hover{background:#2e3a63;}
   .all-btn:disabled{opacity:.4;cursor:default;}
 
   .hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px;}
-
-  .palette-grid{
-    display:flex;gap:0;
-    border-radius:12px;overflow:hidden;
-    border:1px solid var(--line);
-    margin-bottom:8px;
-  }
-  .palette-swatch{
-    flex:1;height:64px;position:relative;
-    cursor:pointer;border:none;padding:0;
-    display:flex;align-items:flex-end;justify-content:flex-start;
-  }
-  .palette-hex{
-    font-family:var(--mono);font-size:10.5px;font-weight:600;
-    margin:6px;padding:2px 5px;border-radius:4px;
-    background:rgba(255,255,255,.85);color:#1c2333;
-  }
-  .palette-copied{
-    position:absolute;top:6px;right:6px;
-    font-family:var(--mono);font-size:10px;
-    background:rgba(0,0,0,.7);color:#fff;
-    padding:2px 5px;border-radius:4px;
-    opacity:0;transition:opacity .15s;
-  }
-  .palette-swatch.copied .palette-copied{opacity:1;}
-  .palette-empty{font-size:12.5px;color:var(--ink-soft);padding:20px;margin:0;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <p class="eyebrow">Asset export</p>
   <h1>Logo kit generator</h1>
-  <p class="sub">Upload a logo once. Get an apple touch icon, a favicon, and a social square — sized and background-ready.</p>
+  <p class="sub">Upload a logo once. Crop it, optionally strip the background, then export an apple touch icon, favicon, social square, and color palette.</p>
 
-  <div class="dropzone" id="dropzone">
-    <input type="file" id="fileInput" accept="image/*">
-    <div class="dz-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-    </div>
-    <p class="dz-title">Drop your logo here, or click to browse</p>
-    <p class="dz-sub">PNG, JPG, or SVG · works best with a square or transparent source</p>
+  <!-- Step indicator: purely visual, driven by goToStep() toggling .active/.done -->
+  <div class="steps">
+    <div class="step-pill active" id="pill1"><span class="num">1</span>Upload</div>
+    <div class="step-pill" id="pill2"><span class="num">2</span>Edit</div>
+    <div class="step-pill" id="pill3"><span class="num">3</span>Export</div>
   </div>
 
-  <div class="workspace" id="workspace">
+  <!-- ======================= STEP 1: UPLOAD ======================= -->
+  <div class="panel active" id="panel1">
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="dz-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      </div>
+      <p class="dz-title">Drop your logo here, or click to browse</p>
+      <p class="dz-sub">PNG, JPG, or SVG &middot; or just <b>paste</b> an image with Ctrl+V / Cmd+V</p>
+    </div>
+  </div>
+
+  <!-- ======================= STEP 2: EDIT (crop + background removal) ======================= -->
+  <div class="panel" id="panel2">
+    <div class="card">
+      <div class="edit-grid">
+        <div>
+          <p class="field-label">Crop to square</p>
+          <div class="crop-stage" id="cropStage">
+            <img id="editImg" alt="Uploaded logo">
+            <div class="crop-box" id="cropBox">
+              <div class="handle" id="cropHandle"></div>
+            </div>
+          </div>
+          <div class="crop-actions">
+            <button class="btn ghost" id="resetCropBtn" type="button">Reset crop</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="toggle-row">
+            <p class="field-label" style="margin:0;">Remove background</p>
+            <label class="switch">
+              <input type="checkbox" id="bgToggle">
+              <span class="track"></span><span class="thumb"></span>
+            </label>
+          </div>
+
+          <div class="bg-controls" id="bgControls">
+            <div class="bg-preview" id="bgPreviewStage">
+              <canvas id="bgPreviewCanvas" width="160" height="160"></canvas>
+            </div>
+
+            <div class="eyedrop-row">
+              <div class="target-swatch" id="targetSwatch"></div>
+              <button class="eyedrop-btn" id="eyedropBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 7l6 6M4 20l1-4 10-10 3 3-10 10-4 1z"/></svg>
+                Pick color
+              </button>
+            </div>
+
+            <div class="slider-row">
+              <div class="row-top"><span>Tolerance</span><span id="toleranceOut">30</span></div>
+              <input type="range" id="toleranceSlider" min="0" max="100" value="30" step="1">
+            </div>
+            <p class="hint" style="margin:0;text-align:left;">Best for logos on a flat, solid-color background. Click "Pick color" then click the background in the image to target it.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-footer">
+        <button class="btn ghost" id="startOverFromEdit" type="button">Start over</button>
+        <button class="btn primary" id="applyBtn" type="button">Apply &amp; continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= STEP 3: EXPORT ======================= -->
+  <div class="panel" id="panel3">
     <div class="source-row">
       <div class="source-thumb"><img id="sourceThumb" alt=""></div>
       <div>
-        <p class="source-name" id="sourceName">—</p>
-        <p class="source-meta" id="sourceMeta">—</p>
+        <p class="source-name" id="sourceName">&mdash;</p>
+        <p class="source-meta" id="sourceMeta">&mdash;</p>
       </div>
-      <button class="replace-btn" id="replaceBtn">Replace file</button>
+      <div class="source-actions">
+        <button class="btn ghost" id="backToEditBtn" type="button">Edit</button>
+        <button class="btn ghost" id="startOverBtn" type="button">Start over</button>
+      </div>
     </div>
 
     <p class="section-label">Generated assets</p>
     <div class="grid">
 
-      <div class="card">
-        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
-        <div class="card-head">
-          <p class="card-title">Apple touch icon</p>
-          <span class="card-dims">180×180</span>
-        </div>
+      <div class="asset-card">
+        <span class="crop-mark tl"></span><span class="crop-mark tr"></span><span class="crop-mark bl"></span><span class="crop-mark br"></span>
+        <div class="card-head"><p class="card-title">Apple touch icon</p><span class="card-dims">180&times;180</span></div>
         <div class="preview-stage"><canvas id="canvasApple" width="180" height="180"></canvas></div>
         <p class="card-foot">Transparent PNG. Used when saved to an iOS home screen.</p>
         <button class="dl-btn" id="dlApple" disabled>Download PNG</button>
       </div>
 
-      <div class="card">
-        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
-        <div class="card-head">
-          <p class="card-title">Favicon</p>
-          <span class="card-dims">32×32</span>
-        </div>
+      <div class="asset-card">
+        <span class="crop-mark tl"></span><span class="crop-mark tr"></span><span class="crop-mark bl"></span><span class="crop-mark br"></span>
+        <div class="card-head"><p class="card-title">Favicon</p><span class="card-dims">32&times;32</span></div>
         <div class="preview-stage"><canvas id="canvasFavicon" width="32" height="32"></canvas></div>
         <p class="card-foot">Transparent PNG. Browser tab and bookmark icon.</p>
         <button class="dl-btn" id="dlFavicon" disabled>Download PNG</button>
       </div>
 
-      <div class="card">
-        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
-        <div class="card-head">
-          <p class="card-title">Social square</p>
-          <span class="card-dims">400×400</span>
-        </div>
+      <div class="asset-card">
+        <span class="crop-mark tl"></span><span class="crop-mark tr"></span><span class="crop-mark bl"></span><span class="crop-mark br"></span>
+        <div class="card-head"><p class="card-title">Social square</p><span class="card-dims">400&times;400</span></div>
         <div class="preview-stage solid" id="socialStage"><canvas id="canvasSocial" width="400" height="400"></canvas></div>
-        <p class="card-foot">JPG with a solid background — pick a color below.</p>
+        <p class="card-foot">JPG with a solid background &mdash; pick a color below.</p>
         <div class="color-row" id="swatchRow">
           <input type="color" id="colorPicker" value="#ffffff" title="Custom color">
         </div>
@@ -296,224 +424,745 @@
     </div>
 
     <p class="section-label">Color palette</p>
-    <div class="palette-grid" id="paletteGrid"><p class="palette-empty">Analyzing image…</p></div>
+    <div class="palette-grid" id="paletteGrid"><p class="palette-empty">Analyzing image&hellip;</p></div>
     <p class="hint" style="margin:-2px 0 22px;">Click a swatch to copy its hex code.</p>
 
     <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
-    <p class="hint">Everything runs in your browser — the image is never uploaded anywhere.</p>
+    <p class="hint">Everything runs in your browser &mdash; the image is never uploaded anywhere.</p>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('fileInput');
-  const workspace = document.getElementById('workspace');
-  const replaceBtn = document.getElementById('replaceBtn');
-  const sourceThumb = document.getElementById('sourceThumb');
-  const sourceName = document.getElementById('sourceName');
-  const sourceMeta = document.getElementById('sourceMeta');
-  const colorPicker = document.getElementById('colorPicker');
-  const socialStage = document.getElementById('socialStage');
-  const swatchRow = document.getElementById('swatchRow');
+/*
+ * ============================================================================
+ * STATE
+ * ============================================================================
+ * originalImg   - the untouched <img> the user uploaded/pasted. Never mutated.
+ *                 Re-used whenever the user goes "back to edit" so re-cropping
+ *                 always starts from the real source, not a lossy re-encode.
+ * rawCanvas     - an offscreen canvas holding originalImg's pixels at natural
+ *                 resolution. Used for pixel sampling (eyedropper) and as the
+ *                 draw source for cropping, so we don't re-decode the <img>
+ *                 repeatedly.
+ * cropState     - { x, y, size } in NATURAL image pixel coordinates (not
+ *                 on-screen/display pixels). Kept resolution-independent so
+ *                 the crop box position survives window resizes.
+ * bgRemoval     - { enabled, target:{r,g,b}, tolerance } chroma-key settings.
+ * currentImg    - the WORKING image: originalImg after crop + optional
+ *                 background removal have been baked in. This is what every
+ *                 exported asset and the palette extractor read from.
+ * currentPalette- array of hex strings from the last extractPalette() call,
+ *                 bundled into the zip export.
+ * blobs         - the three exported Blobs, populated by renderAll() and
+ *                 consumed by the individual/"download all" buttons.
+ */
+let originalImg = null;
+let rawCanvas = null;
+let rawCtx = null;
 
-  let currentImg = null;
-  let currentPalette = [];
-  let blobs = { apple: null, favicon: null, social: null };
-  const presets = ['#ffffff', '#1c2333', '#3b4a7a', '#e24b4a'];
+let cropState = null;              // {x, y, size} in natural px
+let cropDrag = null;                // active pointer-drag info, or null when idle
 
-  presets.forEach(hex => {
-    const b = document.createElement('button');
-    b.className = 'swatch';
-    b.style.background = hex;
-    b.dataset.hex = hex;
-    b.title = hex;
-    b.addEventListener('click', () => setSocialColor(hex));
-    swatchRow.insertBefore(b, colorPicker);
+let bgRemoval = { enabled: false, target: null, tolerance: 30 };
+let eyedropperActive = false;
+
+let currentImg = null;              // working image used for export + palette
+let currentPalette = [];
+let blobs = { apple: null, favicon: null, social: null };
+
+// ----------------------------------------------------------------------------
+// Element references (grabbed once; the DOM structure above is static)
+// ----------------------------------------------------------------------------
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+const panel1 = document.getElementById('panel1');
+const panel2 = document.getElementById('panel2');
+const panel3 = document.getElementById('panel3');
+const pill1 = document.getElementById('pill1');
+const pill2 = document.getElementById('pill2');
+const pill3 = document.getElementById('pill3');
+
+const editImg = document.getElementById('editImg');
+const cropStage = document.getElementById('cropStage');
+const cropBox = document.getElementById('cropBox');
+const cropHandle = document.getElementById('cropHandle');
+const resetCropBtn = document.getElementById('resetCropBtn');
+
+const bgToggle = document.getElementById('bgToggle');
+const bgControls = document.getElementById('bgControls');
+const eyedropBtn = document.getElementById('eyedropBtn');
+const targetSwatch = document.getElementById('targetSwatch');
+const toleranceSlider = document.getElementById('toleranceSlider');
+const toleranceOut = document.getElementById('toleranceOut');
+const bgPreviewCanvas = document.getElementById('bgPreviewCanvas');
+
+const applyBtn = document.getElementById('applyBtn');
+const startOverFromEdit = document.getElementById('startOverFromEdit');
+
+const sourceThumb = document.getElementById('sourceThumb');
+const sourceName = document.getElementById('sourceName');
+const sourceMeta = document.getElementById('sourceMeta');
+const backToEditBtn = document.getElementById('backToEditBtn');
+const startOverBtn = document.getElementById('startOverBtn');
+
+const colorPicker = document.getElementById('colorPicker');
+const socialStage = document.getElementById('socialStage');
+const swatchRow = document.getElementById('swatchRow');
+
+// Preset background colors offered as quick-pick swatches for the social JPG.
+const presets = ['#ffffff', '#1c2333', '#3b4a7a', '#e24b4a'];
+presets.forEach(hex => {
+  const b = document.createElement('button');
+  b.className = 'swatch';
+  b.style.background = hex;
+  b.dataset.hex = hex;
+  b.title = hex;
+  b.addEventListener('click', () => setSocialColor(hex));
+  swatchRow.insertBefore(b, colorPicker);
+});
+
+/*
+ * ============================================================================
+ * STEP NAVIGATION
+ * ============================================================================
+ * Simple 3-panel wizard. goToStep() is the single source of truth for which
+ * panel is visible and how the step pills are styled, so every "back" /
+ * "continue" / "start over" action just calls this instead of touching
+ * classList directly in five places.
+ */
+function goToStep(n){
+  [panel1, panel2, panel3].forEach((p, i) => p.classList.toggle('active', i === n - 1));
+  [pill1, pill2, pill3].forEach((p, i) => {
+    p.classList.toggle('active', i === n - 1);
+    p.classList.toggle('done', i < n - 1);
   });
+}
 
-  function setSocialColor(hex){
-    colorPicker.value = hex;
-    document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.hex === hex));
-    socialStage.style.setProperty('--stage-bg', hex);
-    if(currentImg) renderAll();
-  }
+/*
+ * Fully resets the tool back to the upload screen: clears every piece of
+ * state and re-enables inputs so a brand-new image can be loaded. Called by
+ * both "Start over" buttons.
+ */
+function resetAll(){
+  originalImg = null;
+  rawCanvas = null;
+  rawCtx = null;
+  cropState = null;
+  bgRemoval = { enabled: false, target: null, tolerance: 30 };
+  eyedropperActive = false;
+  currentImg = null;
+  currentPalette = [];
+  blobs = { apple: null, favicon: null, social: null };
 
-  ['dragenter','dragover'].forEach(evt =>
-    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
-  );
-  ['dragleave','drop'].forEach(evt =>
-    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
-  );
-  dropzone.addEventListener('drop', e => {
-    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-  });
-  dropzone.addEventListener('click', () => fileInput.click());
-  replaceBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', e => {
-    if(e.target.files.length) handleFile(e.target.files[0]);
-  });
+  bgToggle.checked = false;
+  bgControls.classList.remove('active');
+  toleranceSlider.value = 30;
+  toleranceOut.textContent = '30';
+  fileInput.value = '';
 
-  function handleFile(file){
-    if(!file.type.startsWith('image/')){
-      alert('Please choose an image file.');
-      return;
+  document.getElementById('dlApple').disabled = true;
+  document.getElementById('dlFavicon').disabled = true;
+  document.getElementById('dlSocial').disabled = true;
+  document.getElementById('dlAll').disabled = true;
+
+  goToStep(1);
+}
+
+startOverBtn.addEventListener('click', resetAll);
+startOverFromEdit.addEventListener('click', resetAll);
+backToEditBtn.addEventListener('click', () => goToStep(2));
+
+/*
+ * ============================================================================
+ * STEP 1 — UPLOAD (file picker, drag & drop, clipboard paste)
+ * ============================================================================
+ */
+
+// --- Drag & drop -------------------------------------------------------
+['dragenter', 'dragover'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
+);
+['dragleave', 'drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
+);
+dropzone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+// --- Clipboard paste -----------------------------------------------------
+// Listens globally (not just while the dropzone is focused) so "paste an
+// image" works the instant the page is open. If multiple items are on the
+// clipboard (e.g. copied text + an image), we take the first image item and
+// ignore the rest.
+document.addEventListener('paste', e => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type && item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        e.preventDefault();
+        handleFile(file);
+      }
+      break;
     }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      currentImg = img;
-      sourceThumb.querySelector('img') ? null : null;
-      sourceThumb.innerHTML = '';
-      const t = document.createElement('img');
-      t.src = url;
-      sourceThumb.appendChild(t);
-      sourceName.textContent = file.name;
-      sourceMeta.textContent = `${img.naturalWidth}×${img.naturalHeight}px · ${(file.size/1024).toFixed(0)} KB`;
-      workspace.classList.add('active');
-      setSocialColor(colorPicker.value);
-      renderAll();
-      renderPalette(extractPalette(img, 6));
+  }
+});
+
+/*
+ * Loads a File (from input, drop, or paste) into the editor.
+ * - Validates it's actually an image; alerts and bails otherwise.
+ * - Builds `rawCanvas`, an offscreen full-resolution copy of the pixels,
+ *   used later for cropping and eyedropper sampling without re-decoding.
+ * - Computes the default crop (largest centered square) and jumps to Step 2.
+ * @param {File} file
+ */
+function handleFile(file){
+  if (!file.type || !file.type.startsWith('image/')) {
+    alert('Please choose an image file.');
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    originalImg = img;
+
+    // Build the offscreen raw canvas once per upload. Kept at natural
+    // resolution so crop/export quality isn't limited by on-screen display size.
+    rawCanvas = document.createElement('canvas');
+    rawCanvas.width = img.naturalWidth;
+    rawCanvas.height = img.naturalHeight;
+    rawCtx = rawCanvas.getContext('2d');
+    rawCtx.drawImage(img, 0, 0);
+
+    // Default crop: largest centered square ("cover" framing). If the logo
+    // is already square this crop is a no-op (matches v1 behavior).
+    const size = Math.min(img.naturalWidth, img.naturalHeight);
+    cropState = {
+      x: (img.naturalWidth - size) / 2,
+      y: (img.naturalHeight - size) / 2,
+      size
     };
-    img.onerror = () => alert('Could not read that image. Try a different file.');
-    img.src = url;
+
+    editImg.src = url;
+    // Layout of editImg isn't final until the browser paints it, so position
+    // the crop overlay on the next frame once clientWidth is reliable.
+    requestAnimationFrame(renderCropBox);
+
+    bgRemoval = { enabled: false, target: null, tolerance: Number(toleranceSlider.value) };
+    bgToggle.checked = false;
+    bgControls.classList.remove('active');
+    updateBgPreview();
+
+    goToStep(2);
+  };
+  img.onerror = () => alert('Could not read that image. Try a different file.');
+  img.src = url;
+}
+
+/*
+ * ============================================================================
+ * STEP 2A — CROP TOOL
+ * ============================================================================
+ * The crop box is a square, always. State (`cropState`) is stored in NATURAL
+ * image pixel coordinates; this function converts it to on-screen pixels for
+ * rendering. Keeping the source of truth in natural coordinates means resizing
+ * the browser window doesn't desync the box from the image.
+ */
+function renderCropBox(){
+  if (!cropState || !editImg.clientWidth) return;
+  const scale = editImg.clientWidth / editImg.naturalWidth; // display px per natural px
+  cropBox.style.left = (cropState.x * scale) + 'px';
+  cropBox.style.top = (cropState.y * scale) + 'px';
+  cropBox.style.width = (cropState.size * scale) + 'px';
+  cropBox.style.height = (cropState.size * scale) + 'px';
+}
+
+/** Clamp a value into [min, max]. Small helper reused by drag/resize math. */
+function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+
+/*
+ * Pointer-driven move: dragging anywhere inside the crop box (but not the
+ * resize handle) translates the box, clamped so it can't leave the image.
+ * Uses Pointer Events (not mouse/touch separately) so this works uniformly
+ * with mouse, touch, and pen input, including on mobile.
+ */
+cropBox.addEventListener('pointerdown', e => {
+  if (e.target === cropHandle) return; // handle has its own listener below
+  cropBox.setPointerCapture(e.pointerId);
+  cropDrag = { mode: 'move', startX: e.clientX, startY: e.clientY, orig: { ...cropState } };
+});
+
+cropHandle.addEventListener('pointerdown', e => {
+  e.stopPropagation(); // don't also trigger the box's own 'move' handler
+  cropHandle.setPointerCapture(e.pointerId);
+  cropDrag = { mode: 'resize', startX: e.clientX, startY: e.clientY, orig: { ...cropState } };
+});
+
+window.addEventListener('pointermove', e => {
+  if (!cropDrag || !cropState) return;
+  const scale = editImg.clientWidth / editImg.naturalWidth;
+  // Convert the on-screen drag delta into natural-image pixels once, up front,
+  // so the move/resize math below never has to think about display scale again.
+  const dxNatural = (e.clientX - cropDrag.startX) / scale;
+  const dyNatural = (e.clientY - cropDrag.startY) / scale;
+
+  if (cropDrag.mode === 'move') {
+    const maxX = editImg.naturalWidth - cropDrag.orig.size;
+    const maxY = editImg.naturalHeight - cropDrag.orig.size;
+    cropState.x = clamp(cropDrag.orig.x + dxNatural, 0, Math.max(0, maxX));
+    cropState.y = clamp(cropDrag.orig.y + dyNatural, 0, Math.max(0, maxY));
+  } else {
+    // Resize: grow/shrink from the top-left corner, keep it square, and never
+    // let the box exceed whichever image edge (right or bottom) is closer.
+    const maxSize = Math.min(
+      editImg.naturalWidth - cropDrag.orig.x,
+      editImg.naturalHeight - cropDrag.orig.y
+    );
+    const minSize = Math.max(20, Math.min(editImg.naturalWidth, editImg.naturalHeight) * 0.08);
+    const delta = (dxNatural + dyNatural) / 2; // average both axes for smoother diagonal drag
+    cropState.size = clamp(cropDrag.orig.size + delta, minSize, maxSize);
+  }
+  renderCropBox();
+});
+
+window.addEventListener('pointerup', () => { cropDrag = null; });
+
+resetCropBtn.addEventListener('click', () => {
+  if (!originalImg) return;
+  const size = Math.min(originalImg.naturalWidth, originalImg.naturalHeight);
+  cropState = {
+    x: (originalImg.naturalWidth - size) / 2,
+    y: (originalImg.naturalHeight - size) / 2,
+    size
+  };
+  renderCropBox();
+});
+
+// Keep the crop overlay aligned if the window/viewport is resized, since
+// editImg's rendered width (and therefore the display scale) can change.
+window.addEventListener('resize', renderCropBox);
+
+/*
+ * ============================================================================
+ * STEP 2B — BACKGROUND REMOVAL (color-distance "chroma key")
+ * ============================================================================
+ * Approach: pick a target RGB color (defaults to the pixel at the image's
+ * top-left corner, since that's very often background), then make any pixel
+ * within `tolerance` of that color transparent, with a soft feather band at
+ * the edge of the tolerance range to avoid a hard, jagged cutout edge.
+ *
+ * TODO: this will not separate a logo from a busy/photographic background,
+ * since it only reasons about color distance, not shape or semantics. A
+ * future version could swap this for an in-browser ML matting model (e.g.
+ * ONNX Runtime Web + a pretrained background-removal network), but that adds
+ * a multi-MB model download and real inference latency, which felt like the
+ * wrong tradeoff for a "logo on a solid background" tool. Safe to defer.
+ */
+
+bgToggle.addEventListener('change', () => {
+  bgRemoval.enabled = bgToggle.checked;
+  bgControls.classList.toggle('active', bgRemoval.enabled);
+  // First time the toggle is turned on with no manual pick yet, sample the
+  // corner pixel as a reasonable default target color.
+  if (bgRemoval.enabled && !bgRemoval.target && rawCtx) {
+    const p = rawCtx.getImageData(0, 0, 1, 1).data;
+    bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
+    updateTargetSwatch();
+  }
+  updateBgPreview();
+});
+
+toleranceSlider.addEventListener('input', () => {
+  bgRemoval.tolerance = Number(toleranceSlider.value);
+  toleranceOut.textContent = toleranceSlider.value;
+  updateBgPreview();
+});
+
+eyedropBtn.addEventListener('click', () => {
+  eyedropperActive = !eyedropperActive;
+  eyedropBtn.classList.toggle('picking', eyedropperActive);
+  cropStage.style.cursor = eyedropperActive ? 'crosshair' : '';
+});
+
+// Sampling click is bound on the whole crop stage so it works regardless of
+// whether the click lands on the <img> or the crop-box overlay sitting on
+// top of it; we always sample from rawCanvas using the click position mapped
+// back into natural-image coordinates.
+cropStage.addEventListener('click', e => {
+  if (!eyedropperActive || !rawCtx) return;
+  const rect = editImg.getBoundingClientRect();
+  const scale = editImg.naturalWidth / rect.width;
+  const nx = clamp(Math.round((e.clientX - rect.left) * scale), 0, rawCanvas.width - 1);
+  const ny = clamp(Math.round((e.clientY - rect.top) * scale), 0, rawCanvas.height - 1);
+  const p = rawCtx.getImageData(nx, ny, 1, 1).data;
+  bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
+  updateTargetSwatch();
+  updateBgPreview();
+
+  // Auto turn off eyedropper mode after one pick — feels more predictable
+  // than requiring a second click on the button to exit picking mode.
+  eyedropperActive = false;
+  eyedropBtn.classList.remove('picking');
+  cropStage.style.cursor = '';
+});
+
+function updateTargetSwatch(){
+  if (bgRemoval.target) {
+    const { r, g, b } = bgRemoval.target;
+    targetSwatch.style.background = rgbToHex(r, g, b);
+  }
+}
+
+/**
+ * Mutates an ImageData object in place, zeroing (or feathering) alpha for
+ * pixels close to `target`. Called on a copy obtained via getImageData, so
+ * mutating it directly is safe and avoids an extra allocation.
+ * @param {ImageData} imageData
+ * @param {{r:number,g:number,b:number}} target
+ * @param {number} tolerance 0-100 from the UI slider
+ */
+function applyChromaKey(imageData, target, tolerance){
+  const data = imageData.data;
+  // Convert the 0-100 UI tolerance into an RGB Euclidean-distance threshold.
+  // `inner`: fully transparent below this distance. `outer`: fully opaque at
+  // or above this distance. Between the two, alpha is linearly feathered so
+  // cutout edges don't look jagged/aliased.
+  const inner = tolerance * 2.2;
+  const outer = inner + 40;
+  for (let i = 0; i < data.length; i += 4) {
+    const dr = data[i] - target.r;
+    const dg = data[i + 1] - target.g;
+    const db = data[i + 2] - target.b;
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+    if (dist <= inner) {
+      data[i + 3] = 0;
+    } else if (dist < outer) {
+      const t = (dist - inner) / (outer - inner); // 0 at inner edge, 1 at outer edge
+      data[i + 3] = Math.round(data[i + 3] * t);
+    }
+    // dist >= outer: leave alpha untouched (fully opaque / already transparent)
+  }
+  return imageData;
+}
+
+/**
+ * Redraws the small "before you commit" preview canvas: downsamples the
+ * cropped region into a 160x160 canvas and, if background removal is on,
+ * runs the same chroma-key logic used at export time. Kept cheap (small
+ * fixed canvas size) so it can run on every slider tick without lag.
+ */
+function updateBgPreview(){
+  const ctx = bgPreviewCanvas.getContext('2d');
+  ctx.clearRect(0, 0, 160, 160);
+  if (!rawCanvas || !cropState) return;
+
+  ctx.drawImage(
+    rawCanvas,
+    cropState.x, cropState.y, cropState.size, cropState.size,
+    0, 0, 160, 160
+  );
+
+  if (bgRemoval.enabled && bgRemoval.target) {
+    const imageData = ctx.getImageData(0, 0, 160, 160);
+    applyChromaKey(imageData, bgRemoval.target, bgRemoval.tolerance);
+    ctx.putImageData(imageData, 0, 0);
+  }
+}
+
+/*
+ * ============================================================================
+ * STEP 2 -> 3 — "APPLY & CONTINUE"
+ * ============================================================================
+ * Bakes the crop + optional background removal into a single working image
+ * (`currentImg`), then moves to the export step and kicks off asset
+ * generation + palette extraction against that working image.
+ */
+applyBtn.addEventListener('click', async () => {
+  if (!rawCanvas || !cropState) return;
+
+  const size = Math.round(cropState.size);
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = size;
+  outCanvas.height = size;
+  const outCtx = outCanvas.getContext('2d');
+  outCtx.drawImage(
+    rawCanvas,
+    cropState.x, cropState.y, cropState.size, cropState.size,
+    0, 0, size, size
+  );
+
+  if (bgRemoval.enabled && bgRemoval.target) {
+    const imageData = outCtx.getImageData(0, 0, size, size);
+    applyChromaKey(imageData, bgRemoval.target, bgRemoval.tolerance);
+    outCtx.putImageData(imageData, 0, 0);
   }
 
-  colorPicker.addEventListener('input', () => {
-    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
-    socialStage.style.setProperty('--stage-bg', colorPicker.value);
-    if(currentImg) renderAll();
+  // Round-trip through a data URL to get a real <img> (rather than reusing
+  // the canvas directly) so every downstream function can keep assuming
+  // `.naturalWidth` / `.naturalHeight`, matching how originalImg is read.
+  currentImg = await canvasToImage(outCanvas);
+
+  sourceThumb.innerHTML = '';
+  const t = document.createElement('img');
+  t.src = outCanvas.toDataURL('image/png');
+  sourceThumb.appendChild(t);
+  sourceName.textContent = 'Working image';
+  sourceMeta.textContent = `${size}\u00d7${size}px${bgRemoval.enabled ? ' \u00b7 background removed' : ''}`;
+
+  goToStep(3);
+  setSocialColor(colorPicker.value);
+  renderAll();
+  renderPalette(extractPalette(currentImg, 6));
+});
+
+/**
+ * Wraps the canvas -> Image conversion in a Promise so callers can `await`
+ * it. toDataURL() is synchronous but Image decoding is not, hence the
+ * load-event wrapper.
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Promise<HTMLImageElement>}
+ */
+function canvasToImage(canvas){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.src = canvas.toDataURL('image/png');
   });
+}
 
-  function drawContain(ctx, img, size, paddingRatio, bgColor){
-    ctx.clearRect(0,0,size,size);
-    if(bgColor){
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0,0,size,size);
-    }
-    const usable = size * (1 - paddingRatio);
-    const scale = Math.min(usable / img.naturalWidth, usable / img.naturalHeight);
-    const w = img.naturalWidth * scale;
-    const h = img.naturalHeight * scale;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+/*
+ * ============================================================================
+ * STEP 3 — ASSET RENDERING (apple / favicon / social)
+ * ============================================================================
+ * Unchanged in spirit from v1: draw `currentImg` "contain"-fit into a square
+ * canvas of the target size, with per-asset padding and background rules.
+ */
+
+function setSocialColor(hex){
+  colorPicker.value = hex;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.hex === hex));
+  socialStage.style.setProperty('--stage-bg', hex);
+  if (currentImg) renderAll();
+}
+
+colorPicker.addEventListener('input', () => {
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  socialStage.style.setProperty('--stage-bg', colorPicker.value);
+  if (currentImg) renderAll();
+});
+
+/**
+ * Draws `img` centered and scaled to fit ("contain", never cropped) into a
+ * size x size square on the given context.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLImageElement} img
+ * @param {number} size target canvas width/height in px
+ * @param {number} paddingRatio 0-1, fraction of the canvas kept empty around the image
+ * @param {string|null} bgColor fill color, or null to leave transparent
+ */
+function drawContain(ctx, img, size, paddingRatio, bgColor){
+  ctx.clearRect(0, 0, size, size);
+  if (bgColor) {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+  }
+  const usable = size * (1 - paddingRatio);
+  const scale = Math.min(usable / img.naturalWidth, usable / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+}
+
+/**
+ * Re-renders all three export canvases from `currentImg` and refreshes their
+ * downloadable Blobs. Called after crop/bg-removal is applied and again any
+ * time the social-square background color changes.
+ */
+function renderAll(){
+  if (!currentImg) return;
+  const cApple = document.getElementById('canvasApple');
+  const cFavicon = document.getElementById('canvasFavicon');
+  const cSocial = document.getElementById('canvasSocial');
+
+  // Padding ratios are a deliberate per-format choice, not arbitrary:
+  // - favicon: 0 padding, every pixel counts at 32x32.
+  // - apple touch icon: slight padding (iOS masks/insets these anyway).
+  // - social square: more padding so the logo doesn't touch the card edge.
+  drawContain(cApple.getContext('2d'), currentImg, 180, 0.08, null);
+  drawContain(cFavicon.getContext('2d'), currentImg, 32, 0, null);
+  drawContain(cSocial.getContext('2d'), currentImg, 400, 0.16, colorPicker.value);
+
+  cApple.toBlob(b => {
+    blobs.apple = b;
+    document.getElementById('dlApple').disabled = false;
+    document.getElementById('dlAll').disabled = false;
+  }, 'image/png');
+  cFavicon.toBlob(b => {
+    blobs.favicon = b;
+    document.getElementById('dlFavicon').disabled = false;
+  }, 'image/png');
+  cSocial.toBlob(b => {
+    blobs.social = b;
+    document.getElementById('dlSocial').disabled = false;
+  }, 'image/jpeg', 0.92);
+}
+
+/*
+ * ============================================================================
+ * PALETTE EXTRACTION
+ * ============================================================================
+ * A lightweight dominant-color extractor: quantize pixels into coarse RGB
+ * buckets, average each bucket's true color, sort by frequency, then greedily
+ * pick the top N colors that are perceptually distinct from ones already
+ * chosen (so we don't return 6 near-identical shades of the same blue).
+ */
+
+/** @param {number} r @param {number} g @param {number} b @returns {string} e.g. "#3b4a7a" */
+function rgbToHex(r, g, b){
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * @param {HTMLImageElement} img source image (expected to have already been
+ *   cropped/bg-processed upstream — this function doesn't crop)
+ * @param {number} maxColors how many swatches to return, at most
+ * @returns {string[]} hex color strings, most dominant first
+ */
+function extractPalette(img, maxColors){
+  // Downsample before sampling: we only need approximate color statistics,
+  // and a small canvas keeps the pixel loop below fast regardless of how
+  // large the original upload was.
+  const sample = 120;
+  const canvas = document.createElement('canvas');
+  canvas.width = sample;
+  canvas.height = sample;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.min(sample / img.naturalWidth, sample / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.clearRect(0, 0, sample, sample);
+  ctx.drawImage(img, (sample - w) / 2, (sample - h) / 2, w, h);
+
+  const data = ctx.getImageData(0, 0, sample, sample).data;
+  const step = 24; // bucket width per channel; smaller = more, finer buckets
+  const buckets = new Map();
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (a < 80) continue; // skip (near-)transparent pixels, e.g. removed backgrounds
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const key = [Math.round(r / step), Math.round(g / step), Math.round(b / step)].join(',');
+    let bucket = buckets.get(key);
+    if (!bucket) { bucket = { r: 0, g: 0, b: 0, count: 0 }; buckets.set(key, bucket); }
+    bucket.r += r; bucket.g += g; bucket.b += b; bucket.count++;
   }
 
-  function renderAll(){
-    const cApple = document.getElementById('canvasApple');
-    const cFavicon = document.getElementById('canvasFavicon');
-    const cSocial = document.getElementById('canvasSocial');
+  let candidates = Array.from(buckets.values()).map(b => ({
+    r: Math.round(b.r / b.count), g: Math.round(b.g / b.count), b: Math.round(b.b / b.count), count: b.count
+  }));
+  candidates.sort((x, y) => y.count - x.count);
+  if (candidates.length === 0) return [];
 
-    drawContain(cApple.getContext('2d'), currentImg, 180, 0.08, null);
-    drawContain(cFavicon.getContext('2d'), currentImg, 32, 0, null);
-    drawContain(cSocial.getContext('2d'), currentImg, 400, 0.16, colorPicker.value);
-
-    cApple.toBlob(b => { blobs.apple = b; document.getElementById('dlApple').disabled = false; document.getElementById('dlAll').disabled = false; }, 'image/png');
-    cFavicon.toBlob(b => { blobs.favicon = b; document.getElementById('dlFavicon').disabled = false; }, 'image/png');
-    cSocial.toBlob(b => { blobs.social = b; document.getElementById('dlSocial').disabled = false; }, 'image/jpeg', 0.92);
-  }
-
-  function rgbToHex(r,g,b){
-    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
-  }
-
-  function extractPalette(img, maxColors){
-    const sample = 120;
-    const canvas = document.createElement('canvas');
-    canvas.width = sample; canvas.height = sample;
-    const ctx = canvas.getContext('2d');
-    const scale = Math.min(sample / img.naturalWidth, sample / img.naturalHeight);
-    const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
-    ctx.clearRect(0, 0, sample, sample);
-    ctx.drawImage(img, (sample - w) / 2, (sample - h) / 2, w, h);
-
-    const data = ctx.getImageData(0, 0, sample, sample).data;
-    const step = 24;
-    const buckets = new Map();
-    for(let i = 0; i < data.length; i += 4){
-      const a = data[i + 3];
-      if(a < 80) continue;
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      const key = [Math.round(r / step), Math.round(g / step), Math.round(b / step)].join(',');
-      let bucket = buckets.get(key);
-      if(!bucket){ bucket = { r: 0, g: 0, b: 0, count: 0 }; buckets.set(key, bucket); }
-      bucket.r += r; bucket.g += g; bucket.b += b; bucket.count++;
-    }
-
-    let candidates = Array.from(buckets.values()).map(b => ({
-      r: Math.round(b.r / b.count), g: Math.round(b.g / b.count), b: Math.round(b.b / b.count), count: b.count
-    }));
-    candidates.sort((x, y) => y.count - x.count);
-
-    if(candidates.length === 0) return [];
-
-    const selected = [];
-    const minDist = 42;
-    for(const c of candidates){
-      if(selected.length >= maxColors) break;
-      const tooClose = selected.some(s => {
-        const dr = s.r - c.r, dg = s.g - c.g, db = s.b - c.b;
-        return Math.sqrt(dr * dr + dg * dg + db * db) < minDist;
-      });
-      if(!tooClose) selected.push(c);
-    }
-    for(const c of candidates){
-      if(selected.length >= Math.min(maxColors, candidates.length)) break;
-      if(!selected.includes(c)) selected.push(c);
-    }
-
-    return selected.slice(0, maxColors).map(c => rgbToHex(c.r, c.g, c.b));
-  }
-
-  function renderPalette(hexes){
-    currentPalette = hexes;
-    const grid = document.getElementById('paletteGrid');
-    grid.innerHTML = '';
-    if(hexes.length === 0){
-      grid.innerHTML = '<p class="palette-empty">No solid colors detected in this image.</p>';
-      return;
-    }
-    hexes.forEach(hex => {
-      const btn = document.createElement('button');
-      btn.className = 'palette-swatch';
-      btn.style.background = hex;
-      btn.title = 'Copy ' + hex;
-      btn.innerHTML = `<span class="palette-hex">${hex}</span><span class="palette-copied">Copied</span>`;
-      btn.addEventListener('click', () => {
-        navigator.clipboard.writeText(hex).catch(() => {});
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 1200);
-      });
-      grid.appendChild(btn);
+  // Greedy distinct-color selection: skip any candidate too close (in RGB
+  // distance) to a color we've already picked, so the final palette isn't
+  // dominated by 6 shades of the same hue.
+  const selected = [];
+  const minDist = 42;
+  for (const c of candidates) {
+    if (selected.length >= maxColors) break;
+    const tooClose = selected.some(s => {
+      const dr = s.r - c.r, dg = s.g - c.g, db = s.b - c.b;
+      return Math.sqrt(dr * dr + dg * dg + db * db) < minDist;
     });
+    if (!tooClose) selected.push(c);
+  }
+  // Fallback: if the distinctness filter left us with fewer than maxColors
+  // (e.g. a near-monochrome logo), top up with the remaining most-frequent
+  // buckets anyway rather than showing an incomplete palette.
+  for (const c of candidates) {
+    if (selected.length >= Math.min(maxColors, candidates.length)) break;
+    if (!selected.includes(c)) selected.push(c);
   }
 
-  function download(blob, filename){
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  return selected.slice(0, maxColors).map(c => rgbToHex(c.r, c.g, c.b));
+}
+
+/**
+ * Renders palette hex strings as clickable swatches; clicking copies the hex
+ * to the clipboard and shows a brief "Copied" confirmation.
+ * @param {string[]} hexes
+ */
+function renderPalette(hexes){
+  currentPalette = hexes;
+  const grid = document.getElementById('paletteGrid');
+  grid.innerHTML = '';
+  if (hexes.length === 0) {
+    grid.innerHTML = '<p class="palette-empty">No solid colors detected in this image.</p>';
+    return;
   }
-
-  document.getElementById('dlApple').addEventListener('click', () => blobs.apple && download(blobs.apple, 'apple-touch-icon-180x180.png'));
-  document.getElementById('dlFavicon').addEventListener('click', () => blobs.favicon && download(blobs.favicon, 'favicon-32x32.png'));
-  document.getElementById('dlSocial').addEventListener('click', () => blobs.social && download(blobs.social, 'social-logo-400x400.jpg'));
-
-  document.getElementById('dlAll').addEventListener('click', async () => {
-    if(!blobs.apple || !blobs.favicon || !blobs.social) return;
-    const zip = new JSZip();
-    zip.file('apple-touch-icon-180x180.png', blobs.apple);
-    zip.file('favicon-32x32.png', blobs.favicon);
-    zip.file('social-logo-400x400.jpg', blobs.social);
-    if(currentPalette.length){
-      zip.file('color-palette.txt', currentPalette.join('\n'));
-    }
-    const content = await zip.generateAsync({ type: 'blob' });
-    download(content, 'logo-kit.zip');
+  hexes.forEach(hex => {
+    const btn = document.createElement('button');
+    btn.className = 'palette-swatch';
+    btn.style.background = hex;
+    btn.title = 'Copy ' + hex;
+    btn.innerHTML = `<span class="palette-hex">${hex}</span><span class="palette-copied">Copied</span>`;
+    btn.addEventListener('click', () => {
+      // Clipboard API can reject (e.g. insecure context); a failed copy is
+      // non-fatal, so we swallow the error rather than surface it to the user.
+      navigator.clipboard.writeText(hex).catch(() => {});
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1200);
+    });
+    grid.appendChild(btn);
   });
+}
+
+/*
+ * ============================================================================
+ * DOWNLOAD HELPERS
+ * ============================================================================
+ */
+
+/**
+ * Triggers a browser download of `blob` as `filename` via a throwaway
+ * anchor element. This pattern (create -> click -> remove) is the standard
+ * way to force a client-side download without navigating the page.
+ * @param {Blob} blob
+ * @param {string} filename
+ */
+function download(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+document.getElementById('dlApple').addEventListener('click', () => blobs.apple && download(blobs.apple, 'apple-touch-icon-180x180.png'));
+document.getElementById('dlFavicon').addEventListener('click', () => blobs.favicon && download(blobs.favicon, 'favicon-32x32.png'));
+document.getElementById('dlSocial').addEventListener('click', () => blobs.social && download(blobs.social, 'social-logo-400x400.jpg'));
+
+document.getElementById('dlAll').addEventListener('click', async () => {
+  if (!blobs.apple || !blobs.favicon || !blobs.social) return;
+  const zip = new JSZip();
+  zip.file('apple-touch-icon-180x180.png', blobs.apple);
+  zip.file('favicon-32x32.png', blobs.favicon);
+  zip.file('social-logo-400x400.jpg', blobs.social);
+  if (currentPalette.length) {
+    zip.file('color-palette.txt', currentPalette.join('\n'));
+  }
+  const content = await zip.generateAsync({ type: 'blob' });
+  download(content, 'logo-kit.zip');
+});
 </script>
 </body>
 </html>
