@@ -201,6 +201,32 @@
   .all-btn:disabled{opacity:.4;cursor:default;}
 
   .hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px;}
+
+  .palette-grid{
+    display:flex;gap:0;
+    border-radius:12px;overflow:hidden;
+    border:1px solid var(--line);
+    margin-bottom:8px;
+  }
+  .palette-swatch{
+    flex:1;height:64px;position:relative;
+    cursor:pointer;border:none;padding:0;
+    display:flex;align-items:flex-end;justify-content:flex-start;
+  }
+  .palette-hex{
+    font-family:var(--mono);font-size:10.5px;font-weight:600;
+    margin:6px;padding:2px 5px;border-radius:4px;
+    background:rgba(255,255,255,.85);color:#1c2333;
+  }
+  .palette-copied{
+    position:absolute;top:6px;right:6px;
+    font-family:var(--mono);font-size:10px;
+    background:rgba(0,0,0,.7);color:#fff;
+    padding:2px 5px;border-radius:4px;
+    opacity:0;transition:opacity .15s;
+  }
+  .palette-swatch.copied .palette-copied{opacity:1;}
+  .palette-empty{font-size:12.5px;color:var(--ink-soft);padding:20px;margin:0;}
 </style>
 </head>
 <body>
@@ -269,6 +295,10 @@
 
     </div>
 
+    <p class="section-label">Color palette</p>
+    <div class="palette-grid" id="paletteGrid"><p class="palette-empty">Analyzing image…</p></div>
+    <p class="hint" style="margin:-2px 0 22px;">Click a swatch to copy its hex code.</p>
+
     <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
     <p class="hint">Everything runs in your browser — the image is never uploaded anywhere.</p>
   </div>
@@ -288,6 +318,7 @@
   const swatchRow = document.getElementById('swatchRow');
 
   let currentImg = null;
+  let currentPalette = [];
   let blobs = { apple: null, favicon: null, social: null };
   const presets = ['#ffffff', '#1c2333', '#3b4a7a', '#e24b4a'];
 
@@ -342,6 +373,7 @@
       workspace.classList.add('active');
       setSocialColor(colorPicker.value);
       renderAll();
+      renderPalette(extractPalette(img, 6));
     };
     img.onerror = () => alert('Could not read that image. Try a different file.');
     img.src = url;
@@ -382,6 +414,81 @@
     cSocial.toBlob(b => { blobs.social = b; document.getElementById('dlSocial').disabled = false; }, 'image/jpeg', 0.92);
   }
 
+  function rgbToHex(r,g,b){
+    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+  }
+
+  function extractPalette(img, maxColors){
+    const sample = 120;
+    const canvas = document.createElement('canvas');
+    canvas.width = sample; canvas.height = sample;
+    const ctx = canvas.getContext('2d');
+    const scale = Math.min(sample / img.naturalWidth, sample / img.naturalHeight);
+    const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+    ctx.clearRect(0, 0, sample, sample);
+    ctx.drawImage(img, (sample - w) / 2, (sample - h) / 2, w, h);
+
+    const data = ctx.getImageData(0, 0, sample, sample).data;
+    const step = 24;
+    const buckets = new Map();
+    for(let i = 0; i < data.length; i += 4){
+      const a = data[i + 3];
+      if(a < 80) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const key = [Math.round(r / step), Math.round(g / step), Math.round(b / step)].join(',');
+      let bucket = buckets.get(key);
+      if(!bucket){ bucket = { r: 0, g: 0, b: 0, count: 0 }; buckets.set(key, bucket); }
+      bucket.r += r; bucket.g += g; bucket.b += b; bucket.count++;
+    }
+
+    let candidates = Array.from(buckets.values()).map(b => ({
+      r: Math.round(b.r / b.count), g: Math.round(b.g / b.count), b: Math.round(b.b / b.count), count: b.count
+    }));
+    candidates.sort((x, y) => y.count - x.count);
+
+    if(candidates.length === 0) return [];
+
+    const selected = [];
+    const minDist = 42;
+    for(const c of candidates){
+      if(selected.length >= maxColors) break;
+      const tooClose = selected.some(s => {
+        const dr = s.r - c.r, dg = s.g - c.g, db = s.b - c.b;
+        return Math.sqrt(dr * dr + dg * dg + db * db) < minDist;
+      });
+      if(!tooClose) selected.push(c);
+    }
+    for(const c of candidates){
+      if(selected.length >= Math.min(maxColors, candidates.length)) break;
+      if(!selected.includes(c)) selected.push(c);
+    }
+
+    return selected.slice(0, maxColors).map(c => rgbToHex(c.r, c.g, c.b));
+  }
+
+  function renderPalette(hexes){
+    currentPalette = hexes;
+    const grid = document.getElementById('paletteGrid');
+    grid.innerHTML = '';
+    if(hexes.length === 0){
+      grid.innerHTML = '<p class="palette-empty">No solid colors detected in this image.</p>';
+      return;
+    }
+    hexes.forEach(hex => {
+      const btn = document.createElement('button');
+      btn.className = 'palette-swatch';
+      btn.style.background = hex;
+      btn.title = 'Copy ' + hex;
+      btn.innerHTML = `<span class="palette-hex">${hex}</span><span class="palette-copied">Copied</span>`;
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(hex).catch(() => {});
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1200);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
   function download(blob, filename){
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -401,6 +508,9 @@
     zip.file('apple-touch-icon-180x180.png', blobs.apple);
     zip.file('favicon-32x32.png', blobs.favicon);
     zip.file('social-logo-400x400.jpg', blobs.social);
+    if(currentPalette.length){
+      zip.file('color-palette.txt', currentPalette.join('\n'));
+    }
     const content = await zip.generateAsync({ type: 'blob' });
     download(content, 'logo-kit.zip');
   });
