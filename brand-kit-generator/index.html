@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logo Kit Generator</title>
+<style>
+  :root{
+    --paper:#EEF0F3;
+    --card:#FFFFFF;
+    --ink:#1C2333;
+    --ink-soft:#5B6478;
+    --line:#D6D9E0;
+    --accent:#3B4A7A;
+    --accent-soft:#E7EAF3;
+    --mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:920px;margin:0 auto;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 6px;
+  }
+  h1{
+    font-size:26px;
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 28px;
+    max-width:560px;
+    line-height:1.5;
+  }
+
+  .dropzone{
+    background:var(--card);
+    border:1.5px dashed var(--line);
+    border-radius:14px;
+    padding:40px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    position:relative;
+  }
+  .dropzone.drag{border-color:var(--accent); background:var(--accent-soft);}
+  .dropzone input{display:none;}
+  .dz-icon{
+    width:40px;height:40px;margin:0 auto 14px;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink-soft);
+  }
+  .dz-title{font-weight:600;font-size:15px;margin:0 0 4px;}
+  .dz-sub{font-size:13px;color:var(--ink-soft);margin:0;}
+
+  .workspace{display:none;}
+  .workspace.active{display:block;}
+
+  .source-row{
+    display:flex;align-items:center;gap:14px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 16px;
+    margin:24px 0 28px;
+  }
+  .source-thumb{
+    width:44px;height:44px;border-radius:8px;
+    background:
+      linear-gradient(45deg,#e4e6ea 25%,transparent 25%) -6px 0/12px 12px,
+      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%) -6px 0/12px 12px,
+      linear-gradient(45deg,transparent 75%,#e4e6ea 75%) -6px 0/12px 12px,
+      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%) -6px 0/12px 12px,
+      #f6f7f9;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    overflow:hidden;
+  }
+  .source-thumb img{max-width:100%;max-height:100%;}
+  .source-name{font-size:13px;font-weight:600;margin:0;}
+  .source-meta{font-size:12px;color:var(--ink-soft);margin:2px 0 0;font-family:var(--mono);}
+  .replace-btn{
+    margin-left:auto;
+    font-family:var(--sans);
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--accent);
+    background:none;border:1px solid var(--line);
+    border-radius:8px;padding:7px 12px;cursor:pointer;
+  }
+  .replace-btn:hover{background:var(--accent-soft);border-color:var(--accent);}
+
+  .section-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 12px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    margin-bottom:20px;
+  }
+  @media (max-width:720px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+    position:relative;
+  }
+  .crop{
+    position:absolute;width:10px;height:10px;
+    border-color:var(--line);
+  }
+  .crop.tl{top:8px;left:8px;border-top:1.5px solid;border-left:1.5px solid;}
+  .crop.tr{top:8px;right:8px;border-top:1.5px solid;border-right:1.5px solid;}
+  .crop.bl{bottom:8px;left:8px;border-bottom:1.5px solid;border-left:1.5px solid;}
+  .crop.br{bottom:8px;right:8px;border-bottom:1.5px solid;border-right:1.5px solid;}
+
+  .card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+  .card-title{font-size:13.5px;font-weight:700;margin:0;}
+  .card-dims{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+
+  .preview-stage{
+    width:100%;
+    aspect-ratio:1/1;
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:14px;
+    overflow:hidden;
+    background:
+      linear-gradient(45deg,#e4e6ea 25%,transparent 25%) 0 0/16px 16px,
+      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%) 0 0/16px 16px,
+      linear-gradient(45deg,transparent 75%,#e4e6ea 75%) 0 0/16px 16px,
+      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%) 0 0/16px 16px,
+      #f6f7f9;
+  }
+  .preview-stage canvas{max-width:80%;max-height:80%;image-rendering:auto;border-radius:6px;}
+  .preview-stage.solid{background:var(--stage-bg,#fff);}
+
+  .card-foot{font-size:11.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.4;}
+
+  .color-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .swatch{
+    width:22px;height:22px;border-radius:50%;
+    border:1.5px solid var(--line);
+    cursor:pointer;padding:0;
+  }
+  .swatch.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+  input[type=color]{
+    width:26px;height:26px;border:1.5px solid var(--line);border-radius:50%;
+    padding:0;overflow:hidden;cursor:pointer;background:none;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  input[type=color]::-webkit-color-swatch{border:none;border-radius:50%;}
+
+  .dl-btn{
+    width:100%;
+    font-family:var(--sans);
+    font-size:13px;font-weight:600;
+    background:var(--ink);color:#fff;
+    border:none;border-radius:8px;
+    padding:10px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .dl-btn:hover{background:#000;}
+  .dl-btn:disabled{opacity:.4;cursor:default;}
+
+  .all-btn{
+    width:100%;
+    font-family:var(--sans);
+    font-size:14px;font-weight:600;
+    background:var(--accent);color:#fff;
+    border:none;border-radius:10px;
+    padding:14px;cursor:pointer;
+    margin-top:6px;
+  }
+  .all-btn:hover{background:#2e3a63;}
+  .all-btn:disabled{opacity:.4;cursor:default;}
+
+  .hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Asset export</p>
+  <h1>Logo kit generator</h1>
+  <p class="sub">Upload a logo once. Get an apple touch icon, a favicon, and a social square — sized and background-ready.</p>
+
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="dz-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    </div>
+    <p class="dz-title">Drop your logo here, or click to browse</p>
+    <p class="dz-sub">PNG, JPG, or SVG · works best with a square or transparent source</p>
+  </div>
+
+  <div class="workspace" id="workspace">
+    <div class="source-row">
+      <div class="source-thumb"><img id="sourceThumb" alt=""></div>
+      <div>
+        <p class="source-name" id="sourceName">—</p>
+        <p class="source-meta" id="sourceMeta">—</p>
+      </div>
+      <button class="replace-btn" id="replaceBtn">Replace file</button>
+    </div>
+
+    <p class="section-label">Generated assets</p>
+    <div class="grid">
+
+      <div class="card">
+        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+        <div class="card-head">
+          <p class="card-title">Apple touch icon</p>
+          <span class="card-dims">180×180</span>
+        </div>
+        <div class="preview-stage"><canvas id="canvasApple" width="180" height="180"></canvas></div>
+        <p class="card-foot">Transparent PNG. Used when saved to an iOS home screen.</p>
+        <button class="dl-btn" id="dlApple" disabled>Download PNG</button>
+      </div>
+
+      <div class="card">
+        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+        <div class="card-head">
+          <p class="card-title">Favicon</p>
+          <span class="card-dims">32×32</span>
+        </div>
+        <div class="preview-stage"><canvas id="canvasFavicon" width="32" height="32"></canvas></div>
+        <p class="card-foot">Transparent PNG. Browser tab and bookmark icon.</p>
+        <button class="dl-btn" id="dlFavicon" disabled>Download PNG</button>
+      </div>
+
+      <div class="card">
+        <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+        <div class="card-head">
+          <p class="card-title">Social square</p>
+          <span class="card-dims">400×400</span>
+        </div>
+        <div class="preview-stage solid" id="socialStage"><canvas id="canvasSocial" width="400" height="400"></canvas></div>
+        <p class="card-foot">JPG with a solid background — pick a color below.</p>
+        <div class="color-row" id="swatchRow">
+          <input type="color" id="colorPicker" value="#ffffff" title="Custom color">
+        </div>
+        <button class="dl-btn" id="dlSocial" disabled>Download JPG</button>
+      </div>
+
+    </div>
+
+    <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
+    <p class="hint">Everything runs in your browser — the image is never uploaded anywhere.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const workspace = document.getElementById('workspace');
+  const replaceBtn = document.getElementById('replaceBtn');
+  const sourceThumb = document.getElementById('sourceThumb');
+  const sourceName = document.getElementById('sourceName');
+  const sourceMeta = document.getElementById('sourceMeta');
+  const colorPicker = document.getElementById('colorPicker');
+  const socialStage = document.getElementById('socialStage');
+  const swatchRow = document.getElementById('swatchRow');
+
+  let currentImg = null;
+  let blobs = { apple: null, favicon: null, social: null };
+  const presets = ['#ffffff', '#1c2333', '#3b4a7a', '#e24b4a'];
+
+  presets.forEach(hex => {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.style.background = hex;
+    b.dataset.hex = hex;
+    b.title = hex;
+    b.addEventListener('click', () => setSocialColor(hex));
+    swatchRow.insertBefore(b, colorPicker);
+  });
+
+  function setSocialColor(hex){
+    colorPicker.value = hex;
+    document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.hex === hex));
+    socialStage.style.setProperty('--stage-bg', hex);
+    if(currentImg) renderAll();
+  }
+
+  ['dragenter','dragover'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
+  );
+  ['dragleave','drop'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
+  );
+  dropzone.addEventListener('drop', e => {
+    if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  dropzone.addEventListener('click', () => fileInput.click());
+  replaceBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => {
+    if(e.target.files.length) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file){
+    if(!file.type.startsWith('image/')){
+      alert('Please choose an image file.');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      currentImg = img;
+      sourceThumb.querySelector('img') ? null : null;
+      sourceThumb.innerHTML = '';
+      const t = document.createElement('img');
+      t.src = url;
+      sourceThumb.appendChild(t);
+      sourceName.textContent = file.name;
+      sourceMeta.textContent = `${img.naturalWidth}×${img.naturalHeight}px · ${(file.size/1024).toFixed(0)} KB`;
+      workspace.classList.add('active');
+      setSocialColor(colorPicker.value);
+      renderAll();
+    };
+    img.onerror = () => alert('Could not read that image. Try a different file.');
+    img.src = url;
+  }
+
+  colorPicker.addEventListener('input', () => {
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    socialStage.style.setProperty('--stage-bg', colorPicker.value);
+    if(currentImg) renderAll();
+  });
+
+  function drawContain(ctx, img, size, paddingRatio, bgColor){
+    ctx.clearRect(0,0,size,size);
+    if(bgColor){
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0,0,size,size);
+    }
+    const usable = size * (1 - paddingRatio);
+    const scale = Math.min(usable / img.naturalWidth, usable / img.naturalHeight);
+    const w = img.naturalWidth * scale;
+    const h = img.naturalHeight * scale;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  }
+
+  function renderAll(){
+    const cApple = document.getElementById('canvasApple');
+    const cFavicon = document.getElementById('canvasFavicon');
+    const cSocial = document.getElementById('canvasSocial');
+
+    drawContain(cApple.getContext('2d'), currentImg, 180, 0.08, null);
+    drawContain(cFavicon.getContext('2d'), currentImg, 32, 0, null);
+    drawContain(cSocial.getContext('2d'), currentImg, 400, 0.16, colorPicker.value);
+
+    cApple.toBlob(b => { blobs.apple = b; document.getElementById('dlApple').disabled = false; document.getElementById('dlAll').disabled = false; }, 'image/png');
+    cFavicon.toBlob(b => { blobs.favicon = b; document.getElementById('dlFavicon').disabled = false; }, 'image/png');
+    cSocial.toBlob(b => { blobs.social = b; document.getElementById('dlSocial').disabled = false; }, 'image/jpeg', 0.92);
+  }
+
+  function download(blob, filename){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  document.getElementById('dlApple').addEventListener('click', () => blobs.apple && download(blobs.apple, 'apple-touch-icon-180x180.png'));
+  document.getElementById('dlFavicon').addEventListener('click', () => blobs.favicon && download(blobs.favicon, 'favicon-32x32.png'));
+  document.getElementById('dlSocial').addEventListener('click', () => blobs.social && download(blobs.social, 'social-logo-400x400.jpg'));
+
+  document.getElementById('dlAll').addEventListener('click', async () => {
+    if(!blobs.apple || !blobs.favicon || !blobs.social) return;
+    const zip = new JSZip();
+    zip.file('apple-touch-icon-180x180.png', blobs.apple);
+    zip.file('favicon-32x32.png', blobs.favicon);
+    zip.file('social-logo-400x400.jpg', blobs.social);
+    const content = await zip.generateAsync({ type: 'blob' });
+    download(content, 'logo-kit.zip');
+  });
+</script>
+</body>
+</html>
