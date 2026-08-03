@@ -119,6 +119,19 @@
            EXPORT pixel units (not on-screen display units), mirroring the
            Step 2 crop tool's coordinate convention, so the same
            display-scale math pattern applies in both places.
+
+  v5 (this file, brand-kit-generator-v5.html)
+    - CHANGED: lockup-layer move-dragging now anchors to a "grab offset"
+           (where inside the layer the user clicked) computed fresh from the
+           canvas's on-screen position on every pointermove, instead of
+           accumulating deltas from the drag's start position. Functionally
+           layers were already unclamped/freeform in v4, but this version is
+           simpler to reason about and removes any chance of positional
+           drift — the layer now tracks exactly under the cursor for the
+           whole drag, and there is still no min/max clamp on x or y, so a
+           layer can be placed anywhere on (or off) the canvas.
+    - FIXED: page heading now reads "Brand Kit Generator" (title case),
+           matching the <title> tag instead of using sentence case.
   ============================================================================
 -->
 <!-- Wordmark font choices for the lockup editor (Step 4). If this request
@@ -468,7 +481,7 @@
 <body>
 <div class="wrap">
   <p class="eyebrow">Asset export</p>
-  <h1>Brand kit generator</h1>
+  <h1>Brand Kit Generator</h1>
   <p class="sub">Upload a logo once. Crop it, optionally strip the background, then export an apple touch icon, favicon, social square, and color palette.</p>
 
   <!-- Step indicator: purely visual, driven by goToStep() toggling .active/.done -->
@@ -723,6 +736,11 @@ let blobs = { apple: null, favicon: null, social: null };
  * selectedLayerId- id of the layer currently selected in the editor, or null.
  * layerDrag      - active pointer-drag info for whichever layer is being
  *                 moved/resized, or null when idle.
+ *                 Move:   { mode:'move', id, grabX, grabY } — grabX/grabY are
+ *                 the offset (in canvas px) between the layer's x/y and the
+ *                 point the user actually grabbed, so the layer tracks
+ *                 exactly under the cursor with no accumulated drift.
+ *                 Resize: { mode:'resize', id, startX, startY, orig:{x,y,w,h} }.
  * canvasSize     - { w, h } export resolution in px for the lockup canvas.
  *                 Freely editable by the user (no fixed presets), since a
  *                 "horizontal" vs "vertical" lockup is really just a canvas
@@ -1526,8 +1544,16 @@ function renderLockupStage(){
       e.stopPropagation(); // don't let this bubble to the stage's deselect handler
       selectLayer(layer.id);
       el.setPointerCapture(e.pointerId);
-      layerDrag = { mode: 'move', id: layer.id, startX: e.clientX, startY: e.clientY,
-                    orig: { x: layer.x, y: layer.y } };
+      // "Grab offset" = where inside the layer the user actually clicked, in
+      // canvas px. Storing this (rather than the pointer's start position)
+      // means the layer tracks exactly under the cursor for the whole drag —
+      // simpler than accumulating deltas, and there's nothing here that
+      // could ever clamp or snap it back, so it's genuinely movable anywhere.
+      const stageRect = lockupStage.getBoundingClientRect();
+      const { scale } = computeStageDisplayDims();
+      const pointerCanvasX = (e.clientX - stageRect.left) / scale;
+      const pointerCanvasY = (e.clientY - stageRect.top) / scale;
+      layerDrag = { mode: 'move', id: layer.id, grabX: pointerCanvasX - layer.x, grabY: pointerCanvasY - layer.y };
     });
 
     lockupStage.appendChild(el);
@@ -1553,17 +1579,22 @@ window.addEventListener('pointermove', e => {
   const layer = layers.find(l => l.id === layerDrag.id);
   if (!layer) { layerDrag = null; return; }
   const { scale } = computeStageDisplayDims();
-  const dx = (e.clientX - layerDrag.startX) / scale;
-  const dy = (e.clientY - layerDrag.startY) / scale;
 
   if (layerDrag.mode === 'move') {
-    // Fully freeform: intentionally NOT clamped to canvas bounds, so a layer
-    // can be dragged partly (or fully) off-canvas if that's what the design
-    // calls for — it will simply be cropped at export time, same as any
-    // normal design tool.
-    layer.x = layerDrag.orig.x + dx;
-    layer.y = layerDrag.orig.y + dy;
+    // Re-read the stage's position fresh on every move (instead of caching
+    // it at drag-start) so this stays correct even if the page scrolls
+    // mid-drag. Freeform on purpose: no min/max clamp on x or y, so a layer
+    // can be placed anywhere on the canvas — including partly or fully
+    // outside it, same as any ordinary design tool (it's simply cropped at
+    // export time).
+    const stageRect = lockupStage.getBoundingClientRect();
+    const pointerCanvasX = (e.clientX - stageRect.left) / scale;
+    const pointerCanvasY = (e.clientY - stageRect.top) / scale;
+    layer.x = pointerCanvasX - layerDrag.grabX;
+    layer.y = pointerCanvasY - layerDrag.grabY;
   } else if (layerDrag.mode === 'resize' && layer.type === 'image') {
+    const dx = (e.clientX - layerDrag.startX) / scale;
+    const dy = (e.clientY - layerDrag.startY) / scale;
     const aspect = layerDrag.orig.w / layerDrag.orig.h;
     const delta = (dx + dy) / 2; // average both axes for smoother diagonal drag
     const newW = Math.max(16, layerDrag.orig.w + delta);
