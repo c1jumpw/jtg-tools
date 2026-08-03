@@ -132,6 +132,31 @@
            layer can be placed anywhere on (or off) the canvas.
     - FIXED: page heading now reads "Brand Kit Generator" (title case),
            matching the <title> tag instead of using sentence case.
+
+  v6 (this file, brand-kit-generator-v6.html)
+    - FIXED: lockup layers could not actually be dragged. Root cause:
+           clicking a layer called selectLayer(), which called the full
+           renderLockupStage() — destroying and recreating every layer's DOM
+           element, including the one just clicked. The next line then
+           called setPointerCapture() on that now-detached element, which
+           throws NotFoundError per the Pointer Events spec (capturing on a
+           disconnected element is invalid). The thrown error silently
+           aborted the handler before `layerDrag` was ever assigned, so the
+           drag state never existed and every subsequent pointermove was a
+           no-op. Confirmed the failure mode with a small Node/jsdom
+           reproduction before fixing.
+    - CHANGED: selectLayer() / refreshLayerSelectionStyling() now only
+           toggle a CSS class on existing elements instead of rebuilding the
+           canvas, so the element a drag starts on is never invalidated
+           mid-gesture. Dragging (both move and resize) now writes directly
+           to the dragged element's style via a stored `layerDrag.el`
+           reference, instead of calling renderLockupStage() on every single
+           pointermove — fixes the bug and is lighter-weight to boot, in
+           keeping with "lightweight editor."
+    - CHANGED: every setPointerCapture() call is now wrapped in try/catch as
+           a defensive backstop, so if a similar issue ever recurs it fails
+           quietly (the window-level pointermove/pointerup listeners still
+           drive the drag) instead of silently killing the whole interaction.
   ============================================================================
 -->
 <!-- Wordmark font choices for the lockup editor (Step 4). If this request
@@ -735,12 +760,16 @@ let blobs = { apple: null, favicon: null, social: null };
  *                 works for both.
  * selectedLayerId- id of the layer currently selected in the editor, or null.
  * layerDrag      - active pointer-drag info for whichever layer is being
- *                 moved/resized, or null when idle.
- *                 Move:   { mode:'move', id, grabX, grabY } — grabX/grabY are
- *                 the offset (in canvas px) between the layer's x/y and the
- *                 point the user actually grabbed, so the layer tracks
+ *                 moved/resized, or null when idle. Both shapes carry `el`,
+ *                 a direct reference to that layer's (still-connected) DOM
+ *                 node, so pointermove can update its style in place without
+ *                 re-rendering the whole stage — see the v6 bug-fix note on
+ *                 the pointermove listener for why that matters.
+ *                 Move:   { mode:'move', id, el, grabX, grabY } — grabX/grabY
+ *                 are the offset (in canvas px) between the layer's x/y and
+ *                 the point the user actually grabbed, so the layer tracks
  *                 exactly under the cursor with no accumulated drift.
- *                 Resize: { mode:'resize', id, startX, startY, orig:{x,y,w,h} }.
+ *                 Resize: { mode:'resize', id, el, startX, startY, orig:{x,y,w,h} }.
  * canvasSize     - { w, h } export resolution in px for the lockup canvas.
  *                 Freely editable by the user (no fixed presets), since a
  *                 "horizontal" vs "vertical" lockup is really just a canvas
@@ -1503,6 +1532,10 @@ function renderLockupStage(){
   layers.forEach(layer => {
     const el = document.createElement('div');
     el.className = 'lockup-layer' + (layer.id === selectedLayerId ? ' selected' : '');
+    // Tag every layer element with its id so selection can be applied later
+    // via a plain CSS class toggle (see refreshLayerSelectionStyling) without
+    // needing to look up or recreate anything.
+    el.dataset.layerId = String(layer.id);
     el.style.left = (layer.x * scale) + 'px';
     el.style.top = (layer.y * scale) + 'px';
 
@@ -1522,8 +1555,13 @@ function renderLockupStage(){
       el.appendChild(handle);
       handle.addEventListener('pointerdown', e => {
         e.stopPropagation(); // don't also trigger the layer's own move handler below
-        handle.setPointerCapture(e.pointerId);
-        layerDrag = { mode: 'resize', id: layer.id, startX: e.clientX, startY: e.clientY,
+        // Defensive: setPointerCapture throws if its target isn't connected
+        // to the document. `el` is stable here (selection no longer rebuilds
+        // the DOM — see selectLayer below), but the try/catch keeps a future
+        // regression from silently swallowing the whole drag again like it
+        // did before this fix.
+        try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal: window listener still drives the drag */ }
+        layerDrag = { mode: 'resize', id: layer.id, el, startX: e.clientX, startY: e.clientY,
                       orig: { x: layer.x, y: layer.y, w: layer.w, h: layer.h } };
       });
     } else if (layer.type === 'text') {
@@ -1542,8 +1580,12 @@ function renderLockupStage(){
     el.addEventListener('pointerdown', e => {
       if (e.target.classList.contains('l-handle')) return; // handled separately above
       e.stopPropagation(); // don't let this bubble to the stage's deselect handler
+      // IMPORTANT: select the layer BEFORE computing anything drag-related,
+      // but selection must NOT rebuild this element out from under us — see
+      // the bug note on selectLayer() below. `el` has to stay connected to
+      // the document for setPointerCapture to succeed.
       selectLayer(layer.id);
-      el.setPointerCapture(e.pointerId);
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal: window listener still drives the drag */ }
       // "Grab offset" = where inside the layer the user actually clicked, in
       // canvas px. Storing this (rather than the pointer's start position)
       // means the layer tracks exactly under the cursor for the whole drag —
@@ -1553,7 +1595,7 @@ function renderLockupStage(){
       const { scale } = computeStageDisplayDims();
       const pointerCanvasX = (e.clientX - stageRect.left) / scale;
       const pointerCanvasY = (e.clientY - stageRect.top) / scale;
-      layerDrag = { mode: 'move', id: layer.id, grabX: pointerCanvasX - layer.x, grabY: pointerCanvasY - layer.y };
+      layerDrag = { mode: 'move', id: layer.id, el, grabX: pointerCanvasX - layer.x, grabY: pointerCanvasY - layer.y };
     });
 
     lockupStage.appendChild(el);
@@ -1564,16 +1606,33 @@ function renderLockupStage(){
 lockupStage.addEventListener('pointerdown', e => {
   if (e.target === lockupStage) {
     selectedLayerId = null;
-    renderLockupStage();
+    refreshLayerSelectionStyling();
     renderLayerList();
     renderPropPanel();
   }
 });
 
-// Single shared drag loop for both "move" and "resize" on lockup layers.
-// Uses its own `layerDrag` state variable (distinct from the crop tool's
-// `cropDrag`), so both listeners can coexist on the same window pointer
-// events without interfering with each other.
+/*
+ * Single shared drag loop for both "move" and "resize" on lockup layers.
+ * Uses its own `layerDrag` state variable (distinct from the crop tool's
+ * `cropDrag`), so both listeners can coexist on the same window pointer
+ * events without interfering with each other.
+ *
+ * BUG FIX (v6): this used to call the full renderLockupStage() on every
+ * single pointermove, which destroys and recreates every layer's DOM
+ * element from scratch. That's what originally broke dragging entirely:
+ * clicking a layer called selectLayer(), which triggered that same full
+ * rebuild, destroying the very element the click just happened on — and the
+ * next line tried to setPointerCapture() on that now-detached element,
+ * which throws (per the Pointer Events spec, capturing on a disconnected
+ * element throws NotFoundError). The thrown error aborted the handler
+ * before `layerDrag` was ever assigned, so nothing below ever ran.
+ * Fix: selection no longer rebuilds the canvas (see selectLayer /
+ * refreshLayerSelectionStyling), and dragging now mutates the *existing*
+ * element's style directly via `layerDrag.el` instead of rebuilding
+ * anything mid-drag. Faster too, since a handful of style writes beats
+ * rebuilding the whole layer tree on every mouse-move.
+ */
 window.addEventListener('pointermove', e => {
   if (!layerDrag) return;
   const layer = layers.find(l => l.id === layerDrag.id);
@@ -1592,6 +1651,8 @@ window.addEventListener('pointermove', e => {
     const pointerCanvasY = (e.clientY - stageRect.top) / scale;
     layer.x = pointerCanvasX - layerDrag.grabX;
     layer.y = pointerCanvasY - layerDrag.grabY;
+    layerDrag.el.style.left = (layer.x * scale) + 'px';
+    layerDrag.el.style.top = (layer.y * scale) + 'px';
   } else if (layerDrag.mode === 'resize' && layer.type === 'image') {
     const dx = (e.clientX - layerDrag.startX) / scale;
     const dy = (e.clientY - layerDrag.startY) / scale;
@@ -1600,15 +1661,30 @@ window.addEventListener('pointermove', e => {
     const newW = Math.max(16, layerDrag.orig.w + delta);
     layer.w = newW;
     layer.h = newW / aspect;
+    layerDrag.el.style.width = (layer.w * scale) + 'px';
+    layerDrag.el.style.height = (layer.h * scale) + 'px';
   }
-  renderLockupStage();
 });
 window.addEventListener('pointerup', () => { layerDrag = null; });
+
+/**
+ * Toggles the `.selected` class (and, via CSS, the resize handle's
+ * visibility) on whichever existing layer element matches
+ * `selectedLayerId`. Deliberately does NOT touch the DOM tree otherwise —
+ * this is what lets clicking a layer both select it and immediately start a
+ * drag on the very same, still-connected element (see the v6 bug fix note
+ * on the pointermove listener above).
+ */
+function refreshLayerSelectionStyling(){
+  lockupStage.querySelectorAll('.lockup-layer').forEach(node => {
+    node.classList.toggle('selected', node.dataset.layerId === String(selectedLayerId));
+  });
+}
 
 /** Selects a layer (or clears selection with a falsy id) and refreshes every dependent panel. */
 function selectLayer(id){
   selectedLayerId = id;
-  renderLockupStage();
+  refreshLayerSelectionStyling();
   renderLayerList();
   renderPropPanel();
 }
@@ -1800,8 +1876,11 @@ function addImageLayer(imgEl, name){
   const h = imgEl.naturalHeight * scale;
   const layer = { id: layerIdCounter++, type: 'image', x: (canvasSize.w - w) / 2, y: (canvasSize.h - h) / 2, w, h, imgEl, name };
   layers.push(layer);
+  // Structural change (a brand-new DOM node is needed), so this is one of
+  // the few places that still calls the full renderLockupStage() — unlike
+  // selectLayer(), which now only toggles a class on elements that already exist.
+  renderLockupStage();
   selectLayer(layer.id);
-  renderLayerList();
 }
 
 addImageInput.addEventListener('change', e => {
@@ -1825,8 +1904,8 @@ addTextBtn.addEventListener('click', () => {
     size: Math.round(canvasSize.h * 0.14), color: '#1c2333', weight: 'normal'
   };
   layers.push(layer);
+  renderLockupStage(); // create the new layer's DOM node (structural change)
   selectLayer(layer.id);
-  renderLayerList();
 });
 
 addMarkBtn.addEventListener('click', () => {
