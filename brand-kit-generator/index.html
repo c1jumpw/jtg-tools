@@ -157,6 +157,42 @@
            a defensive backstop, so if a similar issue ever recurs it fails
            quietly (the window-level pointermove/pointerup listeners still
            drive the drag) instead of silently killing the whole interaction.
+
+  v7 (this file, brand-kit-generator-v7.html)
+    - RENAMED (user-facing only): Step 4's visible label changed from
+           "Lockups" to "Compose" (step pill, entry-point button, hints).
+           "Lockup" is accurate brand-design terminology but is jargon most
+           users won't recognize; internal ids/function/variable names
+           (lockupStage, renderLockupStage, etc.) were deliberately left
+           alone since renaming those has no user-facing benefit and only
+           adds risk of typos/breakage.
+    - NEW: many more Google Fonts for text layers — expanded from 4 to 10
+           curated choices spanning sans (Space Grotesk, Inter, Poppins),
+           serif (Source Serif 4, Playfair Display), mono (JetBrains Mono),
+           display (Bebas Neue, Archivo Black), script (Caveat), and system
+           sans. Still a picked list rather than a full font browser.
+    - NEW: "Show coordinates" toolbar toggle overlays each layer's live x,y
+           position on the canvas. Independently, the property panel now
+           also has directly-editable X/Y (and, for image layers, aspect-
+           locked Width/Height) number fields for precise placement without
+           dragging — both read the same underlying layer.x/y/w/h, so
+           dragging, typing, and the on-canvas badge always agree.
+    - NEW: per-layer background removal. Any image layer's property panel
+           now has its own "Remove background" toggle, eyedropper, and
+           tolerance slider — the same color-distance chroma-key technique
+           as Step 2 (reuses applyChromaKey directly), just scoped to that
+           one layer's pixels. Always reprocesses from a preserved
+           `origImgEl` so adjusting tolerance repeatedly never compounds.
+    - NEW: undo/redo. A capped (50-entry) linear history of state snapshots,
+           with toolbar Undo/Redo buttons and Ctrl+Z / Ctrl+Y keyboard
+           shortcuts (Ctrl+Shift+Z also works for redo). History is
+           committed at discrete "settled" points — end of a drag, a
+           finished text/font/color/size edit, add/delete/reorder, canvas
+           size/background changes, background-removal changes — not on
+           every intermediate keystroke or slider tick, so undo steps stay
+           meaningful. Keyboard shortcuts are scoped to Step 4 and disabled
+           while focus is in a text field, so native browser undo still
+           works normally for editing text there.
   ============================================================================
 -->
 <!-- Wordmark font choices for the lockup editor (Step 4). If this request
@@ -164,7 +200,7 @@
      to system fonts, so the editor still works, just with less variety. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Source+Serif+4:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700&family=Poppins:wght@400;700&family=Source+Serif+4:wght@400;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&family=Caveat:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#EEF0F3;
@@ -501,6 +537,21 @@
   }
 
   .lockup-footer{display:flex;justify-content:space-between;gap:8px;margin-top:4px;}
+
+  .btn.toggled{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  /* Small on-canvas label showing a layer's x,y — only rendered while the
+     "Show coordinates" toolbar toggle is on. Positioned just above the
+     layer's top-left corner; pointer-events disabled so it never intercepts
+     the drag gesture meant for the layer beneath it. */
+  .coord-badge{
+    position:absolute;left:0;top:-20px;
+    font-family:var(--mono);font-size:10px;white-space:nowrap;
+    background:rgba(28,35,51,.85);color:#fff;
+    padding:2px 5px;border-radius:4px;pointer-events:none;
+  }
+
+  .bg-removal-block{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
 </style>
 </head>
 <body>
@@ -514,7 +565,7 @@
     <div class="step-pill active" id="pill1"><span class="num">1</span>Upload</div>
     <div class="step-pill" id="pill2"><span class="num">2</span>Edit</div>
     <div class="step-pill" id="pill3"><span class="num">3</span>Export</div>
-    <div class="step-pill" id="pill4"><span class="num">4</span>Lockups</div>
+    <div class="step-pill" id="pill4"><span class="num">4</span>Compose</div>
   </div>
 
   <!-- ======================= STEP 1: UPLOAD ======================= -->
@@ -637,7 +688,7 @@
     <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
     <p class="hint">Everything runs in your browser &mdash; the image is never uploaded anywhere.</p>
 
-    <button class="btn" id="goToLockupsBtn" type="button" style="width:100%;margin-top:14px;">Build a lockup (horizontal, vertical, or custom) &rarr;</button>
+    <button class="btn" id="goToLockupsBtn" type="button" style="width:100%;margin-top:14px;">Build a composition (horizontal, vertical, or custom) &rarr;</button>
   </div>
 
   <!-- ======================= STEP 4: LOCKUP EDITOR ======================= -->
@@ -657,7 +708,10 @@
         </div>
         <button class="btn" id="bgTransparentBtn" type="button">Transparent</button>
         <input type="color" id="canvasBgColor" value="#ffffff" title="Canvas background color">
+        <button class="btn" id="toggleCoordsBtn" type="button" title="Show each layer's x, y position on the canvas">Show coordinates</button>
         <span style="flex:1;"></span>
+        <button class="btn" id="undoBtn" type="button" title="Undo (Ctrl+Z)" disabled>&#8630; Undo</button>
+        <button class="btn" id="redoBtn" type="button" title="Redo (Ctrl+Y)" disabled>&#8631; Redo</button>
         <label class="btn" style="margin:0;">
           Add image
           <input type="file" id="addImageInput" accept="image/*">
@@ -671,7 +725,7 @@
           <div class="lockup-stage-wrap">
             <div class="lockup-stage" id="lockupStage"></div>
           </div>
-          <p class="hint" style="text-align:left;margin:0;">Drag a layer to move it. Drag the corner dot to resize an image layer. Click empty canvas to deselect.</p>
+          <p class="hint" style="text-align:left;margin:0;">Drag a layer to move it. Drag the corner dot to resize an image layer. Click empty canvas to deselect. Ctrl+Z / Ctrl+Y to undo/redo.</p>
         </div>
 
         <div>
@@ -796,6 +850,32 @@ let activeVariantId = null;
 let layerIdCounter = 1;
 let variantIdCounter = 1;
 
+/*
+ * ---- Step 4 additions: coordinates, undo/redo, per-layer bg removal -----
+ * showCoordinates  - when true, renderLockupStage() draws a small "x, y"
+ *                   badge above every layer (see .coord-badge in CSS),
+ *                   updated live during drags.
+ * history/historyIndex - simple linear undo/redo stack of state snapshots.
+ *                   `history[historyIndex]` is always the currently-applied
+ *                   state. commitHistory() truncates anything after the
+ *                   current index (so making a new change after undoing
+ *                   discards the old redo branch, standard editor behavior)
+ *                   then pushes a fresh snapshot. Capped at 50 entries so it
+ *                   can't grow unbounded in a long editing session.
+ *                   Snapshots use the same "shallow copy, share imgEl
+ *                   references" approach as variants (see STATE comment
+ *                   above) — cheap to take and safe because layer image
+ *                   elements are treated as immutable once loaded.
+ * layerEyedropper  - { active, layerId } for the per-layer background-
+ *                   removal color picker (Step 4's equivalent of Step 2's
+ *                   `eyedropperActive`, scoped to a specific layer instead
+ *                   of the single working image).
+ */
+let showCoordinates = false;
+let history = [];
+let historyIndex = -1;
+let layerEyedropper = { active: false, layerId: null };
+
 // ----------------------------------------------------------------------------
 // Element references (grabbed once; the DOM structure above is static)
 // ----------------------------------------------------------------------------
@@ -855,6 +935,9 @@ const variantListEl = document.getElementById('variantList');
 const variantNameInput = document.getElementById('variantNameInput');
 const saveVariantBtn = document.getElementById('saveVariantBtn');
 const exportCurrentBtn = document.getElementById('exportCurrentBtn');
+const toggleCoordsBtn = document.getElementById('toggleCoordsBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
 
 // Preset background colors offered as quick-pick swatches for the social JPG.
 // Quick-pick presets now sourced from the uploaded brand palette (color-palette.txt)
@@ -924,10 +1007,16 @@ function resetAll(){
   activeVariantId = null;
   canvasSize = { w: 800, h: 400 };
   canvasBg = { transparent: true, color: '#ffffff' };
+  showCoordinates = false;
+  toggleCoordsBtn.classList.remove('toggled');
+  layerEyedropper = { active: false, layerId: null };
+  history = [];
+  historyIndex = -1;
   renderLockupStage();
   renderLayerList();
   renderPropPanel();
   renderVariantList();
+  updateUndoRedoButtons();
 
   goToStep(1);
 }
@@ -1577,8 +1666,27 @@ function renderLockupStage(){
       // v4 changelog note above).
     }
 
+    // "Show coordinates" toolbar toggle: a small always-current x,y readout
+    // pinned above each layer. Purely visual (pointer-events:none in CSS)
+    // so it never competes with the drag handlers below for clicks.
+    if (showCoordinates) {
+      const badge = document.createElement('div');
+      badge.className = 'coord-badge';
+      badge.textContent = `${Math.round(layer.x)}, ${Math.round(layer.y)}`;
+      el.appendChild(badge);
+    }
+
     el.addEventListener('pointerdown', e => {
       if (e.target.classList.contains('l-handle')) return; // handled separately above
+
+      // If the per-layer background-removal eyedropper is armed and this is
+      // the layer it's armed for, sample a color instead of starting a drag.
+      if (layerEyedropper.active && layerEyedropper.layerId === layer.id && layer.type === 'image') {
+        e.stopPropagation();
+        sampleLayerEyedropper(layer, e);
+        return;
+      }
+
       e.stopPropagation(); // don't let this bubble to the stage's deselect handler
       // IMPORTANT: select the layer BEFORE computing anything drag-related,
       // but selection must NOT rebuild this element out from under us — see
@@ -1606,6 +1714,7 @@ function renderLockupStage(){
 lockupStage.addEventListener('pointerdown', e => {
   if (e.target === lockupStage) {
     selectedLayerId = null;
+    layerEyedropper = { active: false, layerId: null }; // don't leave an armed eyedropper orphaned
     refreshLayerSelectionStyling();
     renderLayerList();
     renderPropPanel();
@@ -1653,6 +1762,8 @@ window.addEventListener('pointermove', e => {
     layer.y = pointerCanvasY - layerDrag.grabY;
     layerDrag.el.style.left = (layer.x * scale) + 'px';
     layerDrag.el.style.top = (layer.y * scale) + 'px';
+    updateCoordBadge(layerDrag.el, layer);
+    updatePropCoordInputs(layer);
   } else if (layerDrag.mode === 'resize' && layer.type === 'image') {
     const dx = (e.clientX - layerDrag.startX) / scale;
     const dy = (e.clientY - layerDrag.startY) / scale;
@@ -1663,9 +1774,43 @@ window.addEventListener('pointermove', e => {
     layer.h = newW / aspect;
     layerDrag.el.style.width = (layer.w * scale) + 'px';
     layerDrag.el.style.height = (layer.h * scale) + 'px';
+    updatePropCoordInputs(layer);
   }
 });
-window.addEventListener('pointerup', () => { layerDrag = null; });
+window.addEventListener('pointerup', () => {
+  // A drag just finished (or a plain click with no movement did) — either
+  // way this is a good, discrete point to commit an undo/redo snapshot.
+  // See commitHistory()'s doc comment for why a no-op click committing an
+  // identical snapshot is a harmless simplification rather than a bug.
+  if (layerDrag) { layerDrag = null; commitHistory(); }
+});
+
+/** Updates (or removes) a layer element's coordinate badge to match its current x,y. */
+function updateCoordBadge(el, layer){
+  let badge = el.querySelector('.coord-badge');
+  if (!showCoordinates) { if (badge) badge.remove(); return; }
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.className = 'coord-badge';
+    el.appendChild(badge);
+  }
+  badge.textContent = `${Math.round(layer.x)}, ${Math.round(layer.y)}`;
+}
+
+/** If the property panel's x/y (and w/h) inputs are showing this layer, refreshes their values live during a drag. */
+function updatePropCoordInputs(layer){
+  if (layer.id !== selectedLayerId) return;
+  const xInput = document.getElementById('propX');
+  const yInput = document.getElementById('propY');
+  if (xInput) xInput.value = Math.round(layer.x);
+  if (yInput) yInput.value = Math.round(layer.y);
+  if (layer.type === 'image') {
+    const wInput = document.getElementById('propW');
+    const hInput = document.getElementById('propH');
+    if (wInput) wInput.value = Math.round(layer.w);
+    if (hInput) hInput.value = Math.round(layer.h);
+  }
+}
 
 /**
  * Toggles the `.selected` class (and, via CSS, the resize handle's
@@ -1701,6 +1846,7 @@ function reorderLayer(id, dir){
   [layers[idx], layers[newIdx]] = [layers[newIdx], layers[idx]];
   renderLockupStage();
   renderLayerList();
+  commitHistory();
 }
 
 function deleteLayer(id){
@@ -1709,6 +1855,7 @@ function deleteLayer(id){
   renderLockupStage();
   renderLayerList();
   renderPropPanel();
+  commitHistory();
 }
 
 /**
@@ -1761,9 +1908,11 @@ function renderLayerList(){
 
 /**
  * Renders the context-sensitive property panel for whichever layer is
- * selected: full text/font/size/color/weight controls for text layers, or a
- * brief read-only summary for image layers (their main controls — move and
- * resize — live directly on the canvas instead).
+ * selected. Every layer gets editable X/Y coordinates (images also get
+ * aspect-locked Width/Height); text layers additionally get content/font/
+ * size/color/weight controls, and image layers get a background-removal
+ * block. Move/resize-by-dragging still live directly on the canvas — these
+ * fields are the precise, type-a-number complement to that.
  */
 function renderPropPanel(){
   const layer = layers.find(l => l.id === selectedLayerId);
@@ -1775,6 +1924,74 @@ function renderPropPanel(){
   }
   propEmpty.style.display = 'none';
   propFields.style.display = 'block';
+
+  // --- coordinates (every layer type) --------------------------------
+  // Numeric, directly editable x/y (and w/h for images) in export-pixel
+  // units — the precise-placement complement to freeform dragging. Uses
+  // 'input' for live feedback and 'change' to commit an undo/redo step once
+  // the user finishes typing, same pattern used throughout this panel.
+  const coordRow = document.createElement('div');
+  coordRow.className = 'prop-row';
+  const xField = document.createElement('div');
+  xField.className = 'prop-field';
+  xField.innerHTML = '<label>X</label>';
+  const xInput = document.createElement('input');
+  xInput.type = 'number'; xInput.id = 'propX'; xInput.value = Math.round(layer.x);
+  xInput.addEventListener('input', () => { layer.x = Number(xInput.value) || 0; renderLockupStage(); });
+  xInput.addEventListener('change', () => commitHistory());
+  xField.appendChild(xInput);
+  coordRow.appendChild(xField);
+
+  const yField = document.createElement('div');
+  yField.className = 'prop-field';
+  yField.innerHTML = '<label>Y</label>';
+  const yInput = document.createElement('input');
+  yInput.type = 'number'; yInput.id = 'propY'; yInput.value = Math.round(layer.y);
+  yInput.addEventListener('input', () => { layer.y = Number(yInput.value) || 0; renderLockupStage(); });
+  yInput.addEventListener('change', () => commitHistory());
+  yField.appendChild(yInput);
+  coordRow.appendChild(yField);
+  propFields.appendChild(coordRow);
+
+  if (layer.type === 'image') {
+    const sizeRow = document.createElement('div');
+    sizeRow.className = 'prop-row';
+    const wField = document.createElement('div');
+    wField.className = 'prop-field';
+    wField.innerHTML = '<label>Width</label>';
+    const wInput = document.createElement('input');
+    wInput.type = 'number'; wInput.id = 'propW'; wInput.min = '4'; wInput.value = Math.round(layer.w);
+    // Width/height stay aspect-locked here too, matching the corner-drag
+    // resize behavior, so the numeric fields can't be used to accidentally
+    // squash/stretch a layer non-uniformly.
+    wInput.addEventListener('input', () => {
+      const aspect = layer.w / layer.h;
+      layer.w = Math.max(4, Number(wInput.value) || layer.w);
+      layer.h = layer.w / aspect;
+      renderLockupStage();
+      hInput.value = Math.round(layer.h); // keep the paired field's display in sync (aspect-locked)
+    });
+    wInput.addEventListener('change', () => commitHistory());
+    wField.appendChild(wInput);
+    sizeRow.appendChild(wField);
+
+    const hField = document.createElement('div');
+    hField.className = 'prop-field';
+    hField.innerHTML = '<label>Height</label>';
+    const hInput = document.createElement('input');
+    hInput.type = 'number'; hInput.id = 'propH'; hInput.min = '4'; hInput.value = Math.round(layer.h);
+    hInput.addEventListener('input', () => {
+      const aspect = layer.w / layer.h;
+      layer.h = Math.max(4, Number(hInput.value) || layer.h);
+      layer.w = layer.h * aspect;
+      renderLockupStage();
+      wInput.value = Math.round(layer.w); // keep the paired field's display in sync (aspect-locked)
+    });
+    hInput.addEventListener('change', () => commitHistory());
+    hField.appendChild(hInput);
+    sizeRow.appendChild(hField);
+    propFields.appendChild(sizeRow);
+  }
 
   if (layer.type === 'text') {
     // --- text content ---
@@ -1789,6 +2006,7 @@ function renderPropPanel(){
       renderLockupStage();
       renderLayerList();
     });
+    input.addEventListener('change', () => commitHistory());
     contentField.appendChild(input);
     propFields.appendChild(contentField);
 
@@ -1797,14 +2015,20 @@ function renderPropPanel(){
     fontField.className = 'prop-field';
     fontField.innerHTML = '<label>Font</label>';
     const select = document.createElement('select');
-    // Curated, deliberately small set (rather than every system font) to
-    // keep the "basic editor" promise — a handful of distinct voices
-    // (grotesk sans / serif / mono / neutral system sans) covers most
-    // wordmark needs without turning this into a full font browser.
+    // Curated set spanning distinct voices (grotesk / neutral / geometric
+    // sans, editorial / display serif, mono, condensed display, script) —
+    // still a picked list rather than a full font browser, per the
+    // "lightweight editor" direction, just a wider one than the original 4.
     const fontChoices = [
-      { label: 'Sans (Space Grotesk)', value: "'Space Grotesk', sans-serif" },
-      { label: 'Serif (Source Serif)', value: "'Source Serif 4', Georgia, serif" },
-      { label: 'Mono (JetBrains Mono)', value: "'JetBrains Mono', monospace" },
+      { label: 'Sans — Space Grotesk', value: "'Space Grotesk', sans-serif" },
+      { label: 'Sans — Inter', value: "'Inter', -apple-system, sans-serif" },
+      { label: 'Sans — Poppins', value: "'Poppins', sans-serif" },
+      { label: 'Serif — Source Serif', value: "'Source Serif 4', Georgia, serif" },
+      { label: 'Serif — Playfair Display', value: "'Playfair Display', Georgia, serif" },
+      { label: 'Mono — JetBrains Mono', value: "'JetBrains Mono', monospace" },
+      { label: 'Display — Bebas Neue', value: "'Bebas Neue', sans-serif" },
+      { label: 'Display — Archivo Black', value: "'Archivo Black', sans-serif" },
+      { label: 'Script — Caveat', value: "'Caveat', cursive" },
       { label: 'System sans', value: "-apple-system, 'Segoe UI', sans-serif" }
     ];
     fontChoices.forEach(f => {
@@ -1814,7 +2038,7 @@ function renderPropPanel(){
       if (f.value === layer.font) opt.selected = true;
       select.appendChild(opt);
     });
-    select.addEventListener('change', () => { layer.font = select.value; renderLockupStage(); });
+    select.addEventListener('change', () => { layer.font = select.value; renderLockupStage(); commitHistory(); });
     fontField.appendChild(select);
     propFields.appendChild(fontField);
 
@@ -1832,6 +2056,7 @@ function renderPropPanel(){
       sizeField.querySelector('label').textContent = `Size (${layer.size}px)`;
       renderLockupStage();
     });
+    sizeSlider.addEventListener('change', () => commitHistory());
     sizeField.appendChild(sizeSlider);
     row.appendChild(sizeField);
 
@@ -1842,6 +2067,7 @@ function renderPropPanel(){
     const colorInput = document.createElement('input');
     colorInput.type = 'color'; colorInput.value = layer.color;
     colorInput.addEventListener('input', () => { layer.color = colorInput.value; renderLockupStage(); });
+    colorInput.addEventListener('change', () => commitHistory());
     colorField.appendChild(colorInput);
     row.appendChild(colorField);
     propFields.appendChild(row);
@@ -1851,16 +2077,97 @@ function renderPropPanel(){
     weightRow.className = 'weight-toggle';
     const cb = document.createElement('input');
     cb.type = 'checkbox'; cb.checked = layer.weight === 'bold';
-    cb.addEventListener('change', () => { layer.weight = cb.checked ? 'bold' : 'normal'; renderLockupStage(); });
+    cb.addEventListener('change', () => { layer.weight = cb.checked ? 'bold' : 'normal'; renderLockupStage(); commitHistory(); });
     weightRow.append(cb, document.createTextNode('Bold'));
     propFields.appendChild(weightRow);
   } else {
-    const info = document.createElement('p');
-    info.className = 'layer-empty';
-    info.style.padding = '0';
-    info.textContent = `Image layer, ${Math.round(layer.w)}\u00d7${Math.round(layer.h)}px. Drag the corner dot on the canvas to resize.`;
-    propFields.appendChild(info);
+    renderLayerBgRemovalControls(layer);
   }
+}
+
+/**
+ * Renders the per-layer background-removal block (image layers only): a
+ * toggle, an eyedropper for picking the target color directly off that
+ * layer on the canvas, and a tolerance slider — the same color-distance
+ * "chroma key" approach as Step 2 (see applyChromaKey), just scoped to one
+ * layer instead of the whole working image.
+ * @param {object} layer an image-type layer
+ */
+function renderLayerBgRemovalControls(layer){
+  const block = document.createElement('div');
+  block.className = 'bg-removal-block';
+
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'toggle-row';
+  toggleRow.innerHTML = '<p class="field-label" style="margin:0;">Remove background</p>';
+  const switchLabel = document.createElement('label');
+  switchLabel.className = 'switch';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = layer.bgRemoval.enabled;
+  switchLabel.append(cb, Object.assign(document.createElement('span'), { className: 'track' }), Object.assign(document.createElement('span'), { className: 'thumb' }));
+  toggleRow.appendChild(switchLabel);
+  block.appendChild(toggleRow);
+
+  const controls = document.createElement('div');
+  controls.style.display = layer.bgRemoval.enabled ? 'block' : 'none';
+
+  const eyedropRow = document.createElement('div');
+  eyedropRow.className = 'eyedrop-row';
+  const swatch = document.createElement('div');
+  swatch.className = 'target-swatch';
+  if (layer.bgRemoval.target) {
+    const { r, g, b } = layer.bgRemoval.target;
+    swatch.style.background = rgbToHex(r, g, b);
+  }
+  const eyedropBtnLocal = document.createElement('button');
+  eyedropBtnLocal.type = 'button';
+  eyedropBtnLocal.className = 'eyedrop-btn';
+  eyedropBtnLocal.textContent = 'Pick color';
+  eyedropBtnLocal.addEventListener('click', () => {
+    const arming = !(layerEyedropper.active && layerEyedropper.layerId === layer.id);
+    layerEyedropper = { active: arming, layerId: arming ? layer.id : null };
+    eyedropBtnLocal.classList.toggle('picking', arming);
+  });
+  eyedropRow.append(swatch, eyedropBtnLocal);
+  controls.appendChild(eyedropRow);
+
+  const sliderRow = document.createElement('div');
+  sliderRow.className = 'slider-row';
+  sliderRow.innerHTML = `<div class="row-top"><span>Tolerance</span><span>${layer.bgRemoval.tolerance}</span></div>`;
+  const slider = document.createElement('input');
+  slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.value = layer.bgRemoval.tolerance;
+  slider.addEventListener('input', () => {
+    layer.bgRemoval.tolerance = Number(slider.value);
+    sliderRow.querySelector('.row-top span:last-child').textContent = slider.value;
+  });
+  slider.addEventListener('change', () => reprocessLayerImage(layer));
+  sliderRow.appendChild(slider);
+  controls.appendChild(sliderRow);
+  block.appendChild(controls);
+
+  cb.addEventListener('change', () => {
+    layer.bgRemoval.enabled = cb.checked;
+    controls.style.display = layer.bgRemoval.enabled ? 'block' : 'none';
+    // First time enabling with no manual pick yet, default to the layer's
+    // own top-left corner pixel — same convention as Step 2.
+    if (layer.bgRemoval.enabled && !layer.bgRemoval.target) {
+      const c = document.createElement('canvas');
+      c.width = 1; c.height = 1;
+      c.getContext('2d').drawImage(layer.origImgEl, 0, 0, 1, 1);
+      const p = c.getContext('2d').getImageData(0, 0, 1, 1).data;
+      layer.bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
+      swatch.style.background = rgbToHex(p[0], p[1], p[2]);
+    }
+    reprocessLayerImage(layer);
+  });
+
+  block.appendChild(Object.assign(document.createElement('p'), {
+    className: 'hint', style: 'margin:8px 0 0;text-align:left;',
+    textContent: 'Best for a flat, solid-color background behind this layer\u2019s image.'
+  }));
+
+  propFields.appendChild(block);
 }
 
 /**
@@ -1874,13 +2181,22 @@ function addImageLayer(imgEl, name){
   const scale = Math.min(target / imgEl.naturalWidth, target / imgEl.naturalHeight);
   const w = imgEl.naturalWidth * scale;
   const h = imgEl.naturalHeight * scale;
-  const layer = { id: layerIdCounter++, type: 'image', x: (canvasSize.w - w) / 2, y: (canvasSize.h - h) / 2, w, h, imgEl, name };
+  const layer = {
+    id: layerIdCounter++, type: 'image', x: (canvasSize.w - w) / 2, y: (canvasSize.h - h) / 2, w, h, imgEl, name,
+    // `origImgEl` keeps the untouched source around so background removal
+    // (see reprocessLayerImage) can always be re-run from scratch — same
+    // "never mutate the source" pattern as originalImg/rawCanvas in Step 2 —
+    // rather than compounding chroma-key passes on top of each other.
+    origImgEl: imgEl,
+    bgRemoval: { enabled: false, target: null, tolerance: 30 }
+  };
   layers.push(layer);
   // Structural change (a brand-new DOM node is needed), so this is one of
   // the few places that still calls the full renderLockupStage() — unlike
   // selectLayer(), which now only toggles a class on elements that already exist.
   renderLockupStage();
   selectLayer(layer.id);
+  commitHistory();
 }
 
 addImageInput.addEventListener('change', e => {
@@ -1906,6 +2222,7 @@ addTextBtn.addEventListener('click', () => {
   layers.push(layer);
   renderLockupStage(); // create the new layer's DOM node (structural change)
   selectLayer(layer.id);
+  commitHistory();
 });
 
 addMarkBtn.addEventListener('click', () => {
@@ -1926,23 +2243,34 @@ goToLockupsBtn.addEventListener('click', () => {
   renderLayerList();
   renderPropPanel();
   renderVariantList();
+  updateUndoRedoButtons();
 });
 backToExportBtn.addEventListener('click', () => goToStep(3));
 
 canvasWInput.addEventListener('change', () => {
   canvasSize.w = Math.max(40, Number(canvasWInput.value) || canvasSize.w);
   renderLockupStage();
+  commitHistory();
 });
 canvasHInput.addEventListener('change', () => {
   canvasSize.h = Math.max(40, Number(canvasHInput.value) || canvasSize.h);
   renderLockupStage();
+  commitHistory();
 });
 bgTransparentBtn.addEventListener('click', () => {
   canvasBg = { transparent: true, color: canvasBg.color };
   renderLockupStage();
+  commitHistory();
 });
 canvasBgColorInput.addEventListener('input', () => {
   canvasBg = { transparent: false, color: canvasBgColorInput.value };
+  renderLockupStage();
+});
+canvasBgColorInput.addEventListener('change', () => commitHistory());
+
+toggleCoordsBtn.addEventListener('click', () => {
+  showCoordinates = !showCoordinates;
+  toggleCoordsBtn.classList.toggle('toggled', showCoordinates);
   renderLockupStage();
 });
 
@@ -2032,6 +2360,7 @@ function loadVariant(id){
   renderLayerList();
   renderPropPanel();
   renderVariantList();
+  commitHistory();
 }
 
 function deleteVariant(id){
@@ -2097,6 +2426,172 @@ function renderVariantList(){
     variantListEl.appendChild(row);
   });
 }
+
+/*
+ * ============================================================================
+ * PER-LAYER BACKGROUND REMOVAL
+ * ============================================================================
+ * Same color-distance "chroma key" technique as Step 2 (see applyChromaKey
+ * near the top of this file), reused here rather than reimplemented, just
+ * scoped to a single image layer's own pixels instead of the whole working
+ * image. Always reprocesses from `layer.origImgEl` (the untouched original)
+ * so toggling the removal on/off or nudging the tolerance never compounds
+ * multiple chroma-key passes on top of each other.
+ */
+
+/**
+ * Handles a canvas click while the per-layer eyedropper is armed: samples
+ * the clicked pixel from the layer's ORIGINAL (unprocessed) image — so the
+ * eyedropper always reads true source colors, even if background removal is
+ * already partially applied — and re-runs removal with that as the new target.
+ * @param {object} layer
+ * @param {PointerEvent} e
+ */
+function sampleLayerEyedropper(layer, e){
+  const el = document.querySelector(`.lockup-layer[data-layer-id="${layer.id}"]`);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  // Map the click from on-screen layer pixels to the ORIGINAL image's
+  // natural pixel coordinates (the two can differ in both scale and
+  // aspect-adjusted size), then sample via a small 1x1 draw — cheaper than
+  // getImageData over the whole image just to read one pixel.
+  const fracX = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+  const fracY = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+  const nx = Math.round(fracX * (layer.origImgEl.naturalWidth - 1));
+  const ny = Math.round(fracY * (layer.origImgEl.naturalHeight - 1));
+
+  const sampleCanvas = document.createElement('canvas');
+  sampleCanvas.width = 1; sampleCanvas.height = 1;
+  sampleCanvas.getContext('2d').drawImage(layer.origImgEl, -nx, -ny);
+  const p = sampleCanvas.getContext('2d').getImageData(0, 0, 1, 1).data;
+  layer.bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
+
+  layerEyedropper = { active: false, layerId: null };
+  reprocessLayerImage(layer);
+  renderPropPanel(); // refresh the swatch color + un-arm the eyedropper button styling
+}
+
+/**
+ * Re-derives `layer.imgEl` from `layer.origImgEl`, applying the chroma-key
+ * background removal if enabled. Always starts from the original so this is
+ * safe to call repeatedly (e.g. once per tolerance-slider release) without
+ * degrading the image.
+ * @param {object} layer an image-type layer
+ * @returns {Promise<void>}
+ */
+async function reprocessLayerImage(layer){
+  const canvas = document.createElement('canvas');
+  canvas.width = layer.origImgEl.naturalWidth;
+  canvas.height = layer.origImgEl.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(layer.origImgEl, 0, 0);
+
+  if (layer.bgRemoval.enabled && layer.bgRemoval.target) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    applyChromaKey(imageData, layer.bgRemoval.target, layer.bgRemoval.tolerance);
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Reuses the same canvas->Image round-trip helper as Step 2's "Apply &
+  // continue" step, for the same reason: downstream code (renderLockupStage,
+  // composeLockupCanvas) all expects a real <img> with naturalWidth/Height.
+  layer.imgEl = await canvasToImage(canvas);
+  renderLockupStage();
+  commitHistory();
+}
+
+/*
+ * ============================================================================
+ * UNDO / REDO
+ * ============================================================================
+ * A linear history of state snapshots with a single position pointer
+ * (`historyIndex`). Undo moves the pointer back and restores that snapshot;
+ * redo moves it forward. Making a fresh change after undoing truncates
+ * everything ahead of the pointer, so the abandoned "redo branch" is
+ * discarded — standard editor behavior, and it keeps the model simple (a
+ * flat array + index, no tree).
+ */
+
+/** Captures the current editor state as a plain, independent snapshot. See STATE comment for why shallow-copying layers (sharing imgEl references) is safe here. */
+function snapshotState(){
+  return {
+    layers: layers.map(l => ({ ...l, bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined })),
+    canvasSize: { ...canvasSize },
+    canvasBg: { ...canvasBg },
+    selectedLayerId
+  };
+}
+
+/**
+ * Pushes the current state onto the history stack as a new entry, discarding
+ * any redo entries beyond the current position. Called after every discrete,
+ * "settled" edit (a finished drag, a committed text/font/color/size change,
+ * add/delete/reorder, canvas size/background changes, background-removal
+ * changes) — deliberately NOT on every intermediate 'input' event, or every
+ * keystroke/slider-tick would be its own undo step.
+ */
+function commitHistory(){
+  history = history.slice(0, historyIndex + 1);
+  history.push(snapshotState());
+  // Cap history length so a very long editing session can't grow this
+  // unboundedly; dropping the oldest entry is an acceptable trade-off for a
+  // "lightweight" editor rather than unlimited undo.
+  const MAX_HISTORY = 50;
+  if (history.length > MAX_HISTORY) history.shift();
+  historyIndex = history.length - 1;
+  updateUndoRedoButtons();
+}
+
+/** Applies a previously-captured snapshot back onto the live editor state. */
+function restoreSnapshot(snap){
+  layers = snap.layers.map(l => ({ ...l, bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined }));
+  canvasSize = { ...snap.canvasSize };
+  canvasBg = { ...snap.canvasBg };
+  selectedLayerId = snap.selectedLayerId;
+  canvasWInput.value = canvasSize.w;
+  canvasHInput.value = canvasSize.h;
+  canvasBgColorInput.value = canvasBg.color;
+  renderLockupStage();
+  renderLayerList();
+  renderPropPanel();
+}
+
+function undo(){
+  if (historyIndex <= 0) return; // already at the oldest recorded state
+  historyIndex--;
+  restoreSnapshot(history[historyIndex]);
+  updateUndoRedoButtons();
+}
+
+function redo(){
+  if (historyIndex >= history.length - 1) return; // already at the newest state
+  historyIndex++;
+  restoreSnapshot(history[historyIndex]);
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons(){
+  undoBtn.disabled = historyIndex <= 0;
+  redoBtn.disabled = historyIndex >= history.length - 1;
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+// Ctrl/Cmd+Z to undo, Ctrl/Cmd+Y (or Ctrl/Cmd+Shift+Z) to redo — only while
+// Step 4 is the active panel, and only when focus isn't inside a form field
+// (so native undo still works normally while editing a text box, rather
+// than fighting with the editor's own history).
+document.addEventListener('keydown', e => {
+  if (!panel4.classList.contains('active')) return;
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const ctrlOrCmd = e.ctrlKey || e.metaKey;
+  if (!ctrlOrCmd) return;
+  const key = e.key.toLowerCase();
+  if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (key === 'y' || (key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+});
 
 /*
  * ============================================================================
