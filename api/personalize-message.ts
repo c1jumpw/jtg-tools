@@ -90,6 +90,11 @@ export default async function handler(req: Request): Promise<Response> {
     const leadSource = truncate(body.leadSource) || 'unknown';
     const leadSourceNotes = truncate(body.leadSourceNotes);
     const firstName = truncate(body.firstName);
+    const lastAction = truncate(body.lastAction);
+    // Recent activity is inherently multi-line (up to 5 condensed comments
+    // from the frontend) -- give it a larger cap than the single-line
+    // fields above rather than truncating it down to the same 800 chars.
+    const recentActivity = typeof body.recentActivity === 'string' ? body.recentActivity.slice(0, 1500) : '';
 
     const prompt = `You are helping a sales/CRM team member personalize an outreach message before they send it themselves. You are NOT sending anything -- you are only drafting text a human will review, edit, and send manually.
 
@@ -106,10 +111,13 @@ CONTEXT ABOUT THIS SPECIFIC CONTACT (use to tailor tone and emphasis, not to inv
 - Lead source: ${leadSource}
 ${leadSourceNotes ? `- Lead source notes: ${leadSourceNotes}` : ''}
 ${firstName ? `- First name: ${firstName}` : ''}
+${lastAction ? `- Last recorded action taken: ${lastAction}` : ''}
+${recentActivity ? `\nRECENT ACTIVITY LOG on this contact (most recent touches, newest first -- use this so you don't repeat something that already happened or contradict it, but don't quote it verbatim either):\n${recentActivity}` : ''}
 
 Rewrite the baseline message so it feels specifically tailored to a "${leadType}" contact who came in via "${leadSource}", while:
 - Keeping the same overall structure/intent noted above
 - Keeping roughly the same length (this is a short text/DM-style message, not an email)
+- Staying consistent with the recent activity log above where one is given -- e.g. don't invite them to something the log shows they already did, and acknowledge a recent touch naturally if it makes the message land better
 - Never inventing specific claims, numbers, or facts that weren't in the baseline message or context above
 - Never leaving any [[bracketed placeholder]] text unfilled -- if the baseline had one, either work around it naturally or leave the same placeholder text, don't invent a fake value
 - Writing in plain text only, no markdown, no emoji unless the baseline used one`;
