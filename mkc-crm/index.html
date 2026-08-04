@@ -2722,6 +2722,11 @@ function renderTemplate(tpl,vars){
   return tpl.replace(/\{\{(\w+)\}\}/g,(m,key)=>vars[key]?vars[key]:`[[${MSG_VAR_LABELS[key]||key}]]`);
 }
 
+// Vercel Edge Function holding the Gemini API key server-side -- see
+// api/personalize-message.ts in this same repo. Never call Gemini
+// directly from this file; the key must never live in client-side code.
+const PERSONALIZE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/personalize-message';
+
 const CRM_ACTIONS={
   lead:{
     'Appointments':[
@@ -2879,6 +2884,7 @@ function renderMessagePreview(action,vars){
     <textarea id="msg-draft" class="msg-draft">${esc(rendered)}</textarea>
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
+      <button class="btn btn-secondary btn-sm" id="ai-personalize-btn" onclick="personalizeWithAI('${action.id}')">✨ Personalize with AI</button>
       <button class="btn btn-primary btn-sm" onclick="markActionSent()">✓ Mark as Sent</button>
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
     </div>`;
@@ -2969,6 +2975,54 @@ function copyGeneratedMessage(){
   const done=()=>showToast('Message copied.','success');
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(ta.value).then(done).catch(()=>{document.execCommand('copy');done();});
   else{document.execCommand('copy');done();}
+}
+
+// Calls the Vercel-hosted Gemini function to tailor the current draft by
+// lead type / source. Purely additive: the static template is already
+// sitting in the textarea and stays there untouched if this fails or is
+// slow -- nothing here can break the core generate-and-copy flow, and
+// nothing is ever sent to the contact from this call itself.
+async function personalizeWithAI(actionId){
+  if(!S.currentEntry)return;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(actionId,groups);
+  const ta=document.getElementById('msg-draft');
+  const btn=document.getElementById('ai-personalize-btn');
+  if(!action||!ta)return;
+  const baseMessage=ta.value; // current textarea content -- respects any manual edits/quick-fills already applied, not just the original render
+  const vars=buildMsgVars(task,type,cf);
+  const leadType=cf['lead/contact type']||'';
+  const leadSourceNotes=cf['lead source notes']||cf['source details']||cf['source activity']||'';
+  const origLabel=btn.textContent;
+  btn.disabled=true;btn.textContent='✨ Personalizing…';
+  try{
+    const res=await fetch(PERSONALIZE_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        actionLabel:action.label,
+        structure:action.structure||'',
+        baseMessage,
+        leadType,
+        leadSource:vars.leadSource,
+        leadSourceNotes,
+        firstName:vars.firstName
+      })
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.message){
+      showToast('AI personalize failed: '+(data.error||`HTTP ${res.status}`),'error');
+      return;
+    }
+    ta.value=data.message;
+    showToast('Draft personalized.','success');
+  }catch(e){
+    showToast('AI personalize failed: '+e.message,'error');
+  }finally{
+    btn.disabled=false;btn.textContent=origLabel;
+  }
 }
 
 // Best-effort write to the CRM Action / Deal Action field for reporting
