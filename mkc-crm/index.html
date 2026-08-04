@@ -3074,10 +3074,19 @@ async function personalizeWithAI(actionId){
 // confirmed -- if sends come back "could not be found," this matching
 // logic is the first place to check against the sheet's real columns.
 function resolveSenderIdentity(){
+  const mkcId=(S.user?.mkcId||'').trim().toLowerCase();
   const name=(S.user?.name||'').trim().toLowerCase();
   const wsEmail=(S.user?.wsEmail||'').trim().toLowerCase();
   const rows=S.ref.team||[];
+  // MKC ID is the confirmed primary match key (same identifier used for
+  // login everywhere else in this app) -- scan every cell rather than a
+  // hardcoded column position, so this doesn't break if the sheet's
+  // column order ever shifts. Falls back to name/wsEmail only if no
+  // MKC ID match is found, purely defensive.
   const row=rows.find(r=>r.some(cell=>{
+    const v=(cell??'').toString().trim().toLowerCase();
+    return v&&mkcId&&v===mkcId;
+  }))||rows.find(r=>r.some(cell=>{
     const v=(cell??'').toString().trim().toLowerCase();
     return v&&(v===name||v===wsEmail);
   }));
