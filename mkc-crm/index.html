@@ -2727,6 +2727,10 @@ function renderTemplate(tpl,vars){
 // api/personalize-message.ts in this same repo. Never call Gemini
 // directly from this file; the key must never live in client-side code.
 const PERSONALIZE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/personalize-message';
+// Same repo/project -- holds the Quo and SendGrid keys server-side. See
+// api/send-message.ts. Sends AS the currently logged-in team member,
+// resolved via resolveSenderIdentity() below.
+const SEND_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/send-message';
 
 const CRM_ACTIONS={
   lead:{
@@ -2825,6 +2829,11 @@ const CRM_ACTIONS={
       {id:'disruptor_2_deal',label:'Send Disruptor Message 2',structure:'"Have you given up on X" — direct reactivation ask',
        vars:['firstName'],
        template:"Hi {{firstName}} — honest question: have you given up on this? No wrong answer — if it's a no for now, I'll close this out on my end. If it's still a yes, let's pick it back up."}
+    ],
+    'Complete':[
+      {id:'completed_discovery',label:'Completed Discovery Call',type:'internal'},
+      {id:'completed_walkthrough',label:'Completed Walkthrough',type:'internal'},
+      {id:'completed_offer',label:'Completed Offer Presentation',type:'internal'}
     ]
   }
 };
@@ -2894,6 +2903,8 @@ function renderMessagePreview(action,vars){
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
       <button class="btn btn-secondary btn-sm" id="ai-personalize-btn" onclick="personalizeWithAI('${action.id}')">✨ Personalize with AI</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('sms')">📱 Send via Quo</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('email')">✉️ Send via Email</button>
       <button class="btn btn-primary btn-sm" onclick="logActionSent()">✓ Log as Sent</button>
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
     </div>`;
@@ -3050,6 +3061,81 @@ async function personalizeWithAI(actionId){
     showToast('AI personalize failed: '+e.message,'error');
   }finally{
     btn.disabled=false;btn.textContent=origLabel;
+  }
+}
+
+// Resolves the CURRENTLY LOGGED IN admin's own Quo number + verified
+// SendGrid address from the Team Directory sheet (already synced into
+// S.ref.team as 'MKC Team Member Directory!A:T' -- columns per the user:
+// S = Quo number (index 18, 0-based), K = SendGrid sender email (index
+// 10). ASSUMPTION FLAGGED FOR VERIFICATION: matched by scanning each row
+// for a cell equal to S.user.name or S.user.wsEmail, since the exact
+// column holding the match key (MKC ID vs name vs email) wasn't
+// confirmed -- if sends come back "could not be found," this matching
+// logic is the first place to check against the sheet's real columns.
+function resolveSenderIdentity(){
+  const name=(S.user?.name||'').trim().toLowerCase();
+  const wsEmail=(S.user?.wsEmail||'').trim().toLowerCase();
+  const rows=S.ref.team||[];
+  const row=rows.find(r=>r.some(cell=>{
+    const v=(cell??'').toString().trim().toLowerCase();
+    return v&&(v===name||v===wsEmail);
+  }));
+  return{
+    senderName:S.user?.name||'',
+    senderEmail:row?row[10]||'':'',   // column K
+    senderQuoFrom:row?row[18]||'':''  // column S
+  };
+}
+
+// Sends the current draft AS the logged-in team member (Quo SMS or
+// SendGrid email, per their own number/verified address), then -- only
+// on confirmed success -- automatically runs the exact same logActionSent()
+// flow the manual button uses, so a real send always ends up logged
+// without a second click. Copy and manual Log as Sent both stay
+// available regardless; this is additive, not a replacement path.
+async function sendViaChannel(channel){
+  if(!S.currentEntry||!S.selectedAction)return;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(S.selectedAction,groups);
+  const ta=document.getElementById('msg-draft');
+  if(!action||!ta)return;
+  const message=ta.value;
+  const identity=resolveSenderIdentity();
+  const recipientPhone=cf.phone||cf['primary contact phone']||cf['primary phone']||'';
+  const recipientEmail=cf['primary contact email']||cf.email||'';
+
+  let confirmMsg,payload;
+  if(channel==='sms'){
+    if(!identity.senderQuoFrom)return showToast('Your Quo number couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
+    if(!recipientPhone)return showToast('This entry has no phone number on file.','error');
+    confirmMsg=`Send this as a text to ${recipientPhone} from your Quo number? This sends immediately and cannot be undone.`;
+    payload={channel:'sms',message,recipientPhone,senderQuoFrom:identity.senderQuoFrom};
+  }else{
+    if(!identity.senderEmail)return showToast('Your SendGrid sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
+    if(!recipientEmail)return showToast('This entry has no email address on file.','error');
+    confirmMsg=`Send this as an email to ${recipientEmail} from ${identity.senderEmail}? This sends immediately and cannot be undone.`;
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:action.label};
+  }
+  if(!confirm(confirmMsg))return;
+
+  const statusEl=document.getElementById('action-status');
+  if(statusEl)statusEl.textContent='Sending…';
+  try{
+    const res=await fetch(SEND_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.sent){
+      showToast('Send failed: '+(data.error||`HTTP ${res.status}`),'error');
+      if(statusEl)statusEl.textContent='';
+      return;
+    }
+    showToast(`Sent via ${channel==='sms'?'Quo':'email'}.`,'success');
+    await logActionSent(); // confirmed send -> auto-log, no second click needed
+  }catch(e){
+    showToast('Send failed: '+e.message,'error');
+    if(statusEl)statusEl.textContent='';
   }
 }
 
