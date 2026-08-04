@@ -2452,6 +2452,7 @@ async function openProfile(taskId,type){
     const comments=await cuFetch(`/task/${taskId}/comment`);
     S.currentEntry={task,type,comments:comments.comments||[]};
     S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
+    S.currentDraftTokens=null;
     renderPfHeader(task,type);
     switchPfTab(S.currentPfTab,null);
   }catch(e){
@@ -2677,7 +2678,7 @@ function renderPfDetails(task,type,cf,body){
 // (see PROJECT_HANDOFF.md Section 7 / 7a). Every action here generates a
 // real, ready-to-send message from the entry's own CRM data, shown in an
 // editable draft box. Nothing is auto-sent — this is "generate + copy,"
-// per the agreed direction. "Mark as Sent" logs the ACTUAL message text
+// per the agreed direction. "Log as Sent" logs the ACTUAL message text
 // into a ClickUp comment (a real audit trail the old system never had,
 // since it only ever set a field label) and best-effort records the
 // action on the CRM Action / Deal Action field for future LAPS reporting.
@@ -2868,16 +2869,24 @@ function quickFillHtmlFor(missingVars){
 
 function renderMessagePreview(action,vars){
   if(action.type==='internal'){
+    S.currentDraftTokens=null;
     return `<h4>${esc(action.label)}</h4>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Internal log entry — nothing is sent to the contact.</div>
       <textarea id="internal-note" class="msg-draft" style="min-height:70px" placeholder="Optional note…"></textarea>
       <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
-        <button class="btn btn-primary btn-sm" onclick="markActionSent()">✓ Log &amp; Mark Done</button>
+        <button class="btn btn-primary btn-sm" onclick="logActionSent()">✓ Log &amp; Mark Done</button>
         <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
       </div>`;
   }
   const missing=(action.vars||[]).filter(v=>!vars[v]);
   const rendered=renderTemplate(action.template,vars);
+  // Track exactly what literal string got substituted for each token --
+  // lets the lead magnet picker (and anything else) patch just ONE value
+  // later via a plain string replace, instead of a full re-render that
+  // would discard any manual edits made elsewhere in the draft.
+  const tokenValues={};
+  (action.vars||[]).forEach(v=>{tokenValues[v]=vars[v]?vars[v]:`[[${MSG_VAR_LABELS[v]||v}]]`;});
+  S.currentDraftTokens=tokenValues;
   return `<h4>${esc(action.label)}</h4>
     ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
     ${quickFillHtmlFor(missing)}
@@ -2885,7 +2894,7 @@ function renderMessagePreview(action,vars){
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
       <button class="btn btn-secondary btn-sm" id="ai-personalize-btn" onclick="personalizeWithAI('${action.id}')">✨ Personalize with AI</button>
-      <button class="btn btn-primary btn-sm" onclick="markActionSent()">✓ Mark as Sent</button>
+      <button class="btn btn-primary btn-sm" onclick="logActionSent()">✓ Log as Sent</button>
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
     </div>`;
 }
@@ -2936,8 +2945,8 @@ function renderPfActions(task,type,cf,body){
     </select>
     <div id="lm-preview" style="display:none;font-size:12px;padding:8px 10px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-secondary)"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('nal')">→ Set as Next Action Link</button>
-      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnet('optin')">→ Set as Recent Opt-In</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnetToDraft('nal')">→ Set as Next Action Link</button>
+      <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnetToDraft('optin')">→ Set as Recent Opt-In</button>
     </div>
     <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:10px;text-decoration:none">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -2982,6 +2991,22 @@ function copyGeneratedMessage(){
 // sitting in the textarea and stays there untouched if this fails or is
 // slow -- nothing here can break the core generate-and-copy flow, and
 // nothing is ever sent to the contact from this call itself.
+// Last 5 ClickUp comments on this entry, condensed to one line each --
+// gives Personalize with AI real context on what's already happened
+// (prior [LOG] entries from earlier CRM Actions included) so it doesn't
+// repeat itself or contradict the actual history. Capped in both count
+// and per-comment length to keep the prompt small and cheap.
+function getRecentActivitySummary(){
+  const comments=(S.currentEntry?.comments||[]).slice(0,5);
+  if(!comments.length)return'';
+  return comments.map(c=>{
+    const who=c.user?.username||'Unknown';
+    const when=fmtDateShort(c.date);
+    const text=(c.comment_text||'').replace(/\s+/g,' ').slice(0,200);
+    return `[${when}] ${who}: ${text}`;
+  }).join('\n');
+}
+
 async function personalizeWithAI(actionId){
   if(!S.currentEntry)return;
   const{task,type}=S.currentEntry;
@@ -3008,7 +3033,9 @@ async function personalizeWithAI(actionId){
         leadType,
         leadSource:vars.leadSource,
         leadSourceNotes,
-        firstName:vars.firstName
+        firstName:vars.firstName,
+        lastAction:vars.lastAction,
+        recentActivity:getRecentActivitySummary()
       })
     });
     const data=await res.json().catch(()=>({}));
@@ -3038,7 +3065,7 @@ async function setCrmActionField(task,fieldId,label){
   if(opt)await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});
 }
 
-async function markActionSent(){
+async function logActionSent(){
   if(!S.selectedAction)return showToast('Select an action first.','error');
   const{task,type}=S.currentEntry;
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
@@ -3078,37 +3105,40 @@ function previewMagnet(sel){
   preview.innerHTML=`<strong>${esc(name)}</strong>${pubLink?`<br><span style="color:var(--accent)">${esc(pubLink)}</span>`:'<br><span style="color:var(--text-muted);font-style:italic">No public link on file</span>'}`;
 }
 
-async function applyLeadMagnet(target){
+// Applies a picked lead magnet to Next Action Link / Recent Opt-In. Writes
+// the field to ClickUp (so it's on record regardless of which message is
+// being drafted right now -- same as any other Quick Fill) AND, if a
+// draft is currently open and actually uses that variable, patches just
+// that one value in place via the token map from renderMessagePreview --
+// never a full re-render, so it doesn't discard any manual edits made
+// elsewhere in the draft. The final message text (magnet link included)
+// still only reaches ClickUp's activity log via Log as Sent, same as
+// every other action -- this function doesn't post its own log comment.
+async function applyLeadMagnetToDraft(target){
   const sel=document.getElementById('lm-sel');
   if(!sel||!sel.value)return showToast('Select a lead magnet first.','error');
   const opt=sel.options[sel.selectedIndex];
   const pubLink=opt.dataset.pub||'';
   const name=opt.dataset.name||'';
-  if(!pubLink)return showToast('This lead magnet has no public link on file. Add it in the Lead Magnet Matrix.','error');
-  const{task}=S.currentEntry;
-  const listId={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts}[S.currentEntry.type]||'';
-  const fields=await getListFields(listId);
+  if(target==='nal'&&!pubLink)return showToast('This lead magnet has no public link on file. Add it in the Lead Magnet Matrix.','error');
+  const{task,type}=S.currentEntry;
+  const fieldId=target==='nal'?CU_FIELDS.NEXT_ACTION_LINK:CU_FIELDS.RECENT_OPTIN;
+  const newValue=target==='nal'?pubLink:name;
   try{
-    if(target==='nal'){
-      // Set Next Action Link
-      const f=fields.find(f=>f.name?.toLowerCase().includes('next action link'))||(task.custom_fields||[]).find(f=>f.name?.toLowerCase().includes('next action link'));
-      if(!f)return showToast('Next Action Link field not found on this task.','error');
-      await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:pubLink});
-      showToast(`Next Action Link set: ${name}`,'success');
-    } else {
-      // Set Recent Opt-In Action (by name, not link)
-      const f=fields.find(f=>f.name?.toLowerCase().includes('recent opt-in'))||(task.custom_fields||[]).find(f=>f.name?.toLowerCase().includes('recent opt-in'));
-      if(!f)return showToast('Recent Opt-In field not found on this task.','error');
-      await cuFetch(`/task/${task.id}/field/${f.id}`,'POST',{value:name});
-      showToast(`Recent Opt-In set: ${name}`,'success');
+    await setFieldById(task.id,fieldId,newValue,target==='nal'?'url':'short_text');
+    await syncToSheets(task,type);
+  }catch(e){showToast('Failed to save field: '+e.message,'error');return;}
+
+  const varKey=target==='nal'?'nextActionLink':'recentOptIn';
+  const ta=document.getElementById('msg-draft');
+  if(ta&&S.currentDraftTokens&&S.currentDraftTokens[varKey]!==undefined){
+    const oldValue=S.currentDraftTokens[varKey];
+    if(ta.value.includes(oldValue)){
+      ta.value=ta.value.replace(oldValue,newValue);
+      S.currentDraftTokens[varKey]=newValue;
     }
-    await syncToSheets(task,S.currentEntry.type);
-    // Refresh entry, then re-render so an open message draft picks up the
-    // new Next Action Link / Recent Opt-In value right away.
-    const updated=await cuFetch(`/task/${task.id}?include_subtasks=true`);
-    S.currentEntry.task=updated;
-    switchPfTab('actions',null);
-  }catch(e){showToast('Failed: '+e.message,'error');}
+  }
+  showToast(`${target==='nal'?'Next Action Link':'Recent Opt-In'} saved${ta?' and filled into draft':''}: ${name}`,'success');
 }
 
 async function quickSaveFields(){
