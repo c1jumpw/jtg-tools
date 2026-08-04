@@ -168,7 +168,7 @@ tbody tr.is-subtask{opacity:.7;background:#fafafa}
 .action-option:hover,.action-option.selected{border-color:var(--accent);background:var(--accent-light)}
 .action-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .action-name{font-size:13px;flex:1}
-.action-req{font-size:11px;color:var(--text-muted)}
+.action-req{font-size:11px;color:var(--text-muted);cursor:help}
 .val-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:9px 13px;font-size:12px;color:#92400e;margin-top:8px;display:none}
 .val-warn.visible{display:block}
 .msg-structure{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--accent);background:var(--accent-light);padding:3px 9px;border-radius:20px;margin-bottom:10px}
@@ -2909,9 +2909,10 @@ function renderPfActions(task,type,cf,body){
     <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${esc(grp)}</div>
     ${actions.map(a=>{
       const missing=a.type==='internal'?[]:(a.vars||[]).filter(v=>!vars[v]);
+      const missingLabels=missing.map(v=>MSG_VAR_LABELS[v]||v).join(', ');
       const readyBadge=a.type==='internal'
         ?'<span style="color:var(--text-muted);font-size:12px">internal</span>'
-        :(missing.length?`<span class="action-req">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
+        :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
       return `<div class="action-option${S.selectedAction===a.id?' selected':''}" onclick="selectAction(this,'${a.id}')" data-action="${a.id}">
         <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
         <div class="action-name">${esc(a.label)}</div>
@@ -3071,6 +3072,11 @@ async function logActionSent(){
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const action=findActionById(S.selectedAction,groups);
   if(!action)return;
+  // Internal actions (Completed Intro Call, Mark Incomplete Call, Add to
+  // Disruptor Funnel) have no draft to review before logging -- unlike
+  // message-type actions, where seeing/editing the draft first is a
+  // natural pause against a misclick. Confirm explicitly here instead.
+  if(action.type==='internal'&&!confirm(`Log "${action.label}" on this entry? This updates the CRM Action field and posts a permanent log comment.`))return;
   const statusEl=document.getElementById('action-status');
   if(statusEl)statusEl.textContent='Logging…';
   try{
