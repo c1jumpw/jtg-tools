@@ -160,6 +160,9 @@ tbody tr.is-subtask{opacity:.7;background:#fafafa}
 .action-req{font-size:11px;color:var(--text-muted)}
 .val-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:9px 13px;font-size:12px;color:#92400e;margin-top:8px;display:none}
 .val-warn.visible{display:block}
+.msg-structure{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--accent);background:var(--accent-light);padding:3px 9px;border-radius:20px;margin-bottom:10px}
+.msg-draft{width:100%;min-height:120px;font-size:13px;line-height:1.5;font-family:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-primary);resize:vertical}
+.msg-draft:focus{outline:none;border-color:var(--accent)}
 /* COMMENTS */
 .comment-item{padding:10px 0;border-bottom:1px solid var(--border)}
 .comment-item:last-child{border-bottom:none}
@@ -2437,6 +2440,7 @@ async function openProfile(taskId,type){
     const task=await cuFetch(`/task/${taskId}?include_subtasks=true`);
     const comments=await cuFetch(`/task/${taskId}/comment`);
     S.currentEntry={task,type,comments:comments.comments||[]};
+    S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
     renderPfHeader(task,type);
     switchPfTab(S.currentPfTab,null);
   }catch(e){
@@ -2656,105 +2660,247 @@ function renderPfDetails(task,type,cf,body){
   </div>${descHtml}${subHtml}`;
 }
 
-const ACTION_GROUPS={
+// ═══════════════════════════════════════════════════════════════════════
+// CRM ACTION "GOLF BAG" — message template system (v2.8.0)
+// Replaces the old label-only ACTION_GROUPS + Zapier-trigger mechanism
+// (see PROJECT_HANDOFF.md Section 7 / 7a). Every action here generates a
+// real, ready-to-send message from the entry's own CRM data, shown in an
+// editable draft box. Nothing is auto-sent — this is "generate + copy,"
+// per the agreed direction. "Mark as Sent" logs the ACTUAL message text
+// into a ClickUp comment (a real audit trail the old system never had,
+// since it only ever set a field label) and best-effort records the
+// action on the CRM Action / Deal Action field for future LAPS reporting.
+// No Zapier automation is involved anywhere in this flow anymore.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Human labels for template variables — used both to fill {{tokens}} and,
+// when a variable is empty, to render an obvious [[Field Label]] gap in
+// the draft so an incomplete message can never look complete.
+const MSG_VAR_LABELS={
+  firstName:'First Name',fullName:'Full Name',branch:'Branch',
+  companyName:'Company Name',plan:'Plan',nextActionLink:'Next Action Link',
+  nextActionDate:'Next Action Date',leadSource:'Lead Source',
+  recentOptIn:'Recent Opt-In Action',lastAction:'Last Action',
+  opportunity:'Opportunity Amount',senderFirstName:'Your Name'
+};
+
+// Pulls template variables from a task's custom fields (+ the logged-in
+// user, for the sender's name). Mirrors getCF()'s lowercase-key reads
+// elsewhere in the app for consistency.
+function buildMsgVars(task,type,cf){
+  const fullName=task.name||'';
+  return{
+    firstName:cf['first name']||fullName.split(' ')[0]||'',
+    fullName,
+    branch:cf.branch||'',
+    companyName:cf['company name']||'',
+    plan:cf.plan||'',
+    nextActionLink:cf['next action link']||'',
+    nextActionDate:cf['next action date']?fmtDateShort(cf['next action date']):'',
+    leadSource:cf['lead source']||'',
+    recentOptIn:cf['recent opt-in action']||cf['recent opt in action']||'',
+    lastAction:cf['last action']||'',
+    opportunity:(cf.opportunity!==undefined&&cf.opportunity!=='')?('$'+Number(cf.opportunity).toLocaleString()):'',
+    senderFirstName:(S.user?.name||'').split(' ')[0]||'the team'
+  };
+}
+
+// Replaces {{key}} tokens with real data, or an obvious [[Field Label]]
+// placeholder when the underlying CRM field is empty.
+function renderTemplate(tpl,vars){
+  return tpl.replace(/\{\{(\w+)\}\}/g,(m,key)=>vars[key]?vars[key]:`[[${MSG_VAR_LABELS[key]||key}]]`);
+}
+
+const CRM_ACTIONS={
   lead:{
-    'Invite':['Invite to Intro Call','Invite to Brand Craftsman Newsletter','Invite to F5 CEO Newsletter','Invite to Conversion Leak Test'],
-    'Complete':['Completed Intro Call'],
-    'Attempt':['Attempt Warm Outreach','Attempt Warm Outreach 2nd','Attempt Cold Outreach','Attempt Cold Outreach 2nd','Attempt Cold Outreach 3rd'],
-    'Follow Up':['Follow Up — Missed Call','Follow Up — Missed Appointment','Mark Incomplete Call'],
-    'Disruptor':['Send Disruptor Message 1','Send Disruptor Message 2','Add to Disruptor Funnel']
+    'Appointments':[
+      {id:'invite_intro_call',label:'Invite to Intro Call',structure:'Name → Same → Fame → Pain → Aim → Game',
+       vars:['firstName','senderFirstName','recentOptIn','nextActionLink'],
+       template:"Hi {{firstName}}, it's {{senderFirstName}}. We help business owners turn their expertise into a brand that actually brings in clients — {{recentOptIn}} is exactly the kind of thing that tells me you're already thinking that way. I'd love to grab 20 minutes for a quick intro call to see where you're at and whether we're a fit; either way you'll walk away with a clearer next step. Here's my calendar: {{nextActionLink}}"},
+      {id:'invite_brand_craftsman',label:'Invite to Brand Craftsman Newsletter',structure:'Same → Fame → Aim (soft invite)',
+       vars:['firstName','nextActionLink'],
+       template:"Hi {{firstName}} — thought you'd get value from our Brand Craftsman newsletter. It's a short, practical read on building a brand that actually converts, no fluff. Free to join here: {{nextActionLink}}"},
+      {id:'invite_f5_ceo',label:'Invite to F5 CEO Newsletter',structure:'Same → Fame → Aim (soft invite)',
+       vars:['firstName','nextActionLink'],
+       template:"Hi {{firstName}} — if you're leading a business right now, our F5 CEO newsletter is built for exactly that seat: sharp, short insights on growth without the noise. Free to subscribe here: {{nextActionLink}}"},
+      {id:'invite_conversion_leak',label:'Invite to Conversion Leak Test',structure:'Pain → Aim (soft invite)',
+       vars:['firstName','nextActionLink'],
+       template:"Hi {{firstName}} — quick one. Most businesses are leaking conversions somewhere in their funnel without realizing it. We put together a free Conversion Leak Test that flags exactly where yours might be happening — takes a few minutes: {{nextActionLink}}"}
+    ],
+    'Follow-Up':[
+      {id:'attempt_warm_1',label:'Attempt Warm Outreach',structure:'Reaffirm relevance → ask permission',
+       vars:['firstName','senderFirstName','recentOptIn'],
+       template:"Hi {{firstName}}, it's {{senderFirstName}} again — following up on {{recentOptIn}}. Still a good time to connect for a quick call this week?"},
+      {id:'attempt_warm_2',label:'Attempt Warm Outreach 2nd',structure:'Reaffirm relevance → ask permission',
+       vars:['firstName'],
+       template:"Hey {{firstName}} — circling back one more time. No pressure at all, just didn't want this to slip through the cracks. Worth a quick call, or should I check back another time?"},
+      {id:'attempt_cold_1',label:'Attempt Cold Outreach',structure:'Reaffirm relevance → ask permission',
+       vars:['firstName','senderFirstName','leadSource'],
+       template:"Hi {{firstName}}, {{senderFirstName}} here — came across you through {{leadSource}} and wanted to reach out directly. Open to a quick conversation about where your business is headed this year?"},
+      {id:'attempt_cold_2',label:'Attempt Cold Outreach 2nd',structure:'Reaffirm relevance → ask permission',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — following up on my last note. Totally understand if the timing's off, just wanted to give this one more shot before I leave it alone. Worth 10 minutes?"},
+      {id:'attempt_cold_3',label:'Attempt Cold Outreach 3rd',structure:'Reaffirm relevance → ask permission (final attempt)',
+       vars:['firstName'],
+       template:"Hey {{firstName}} — last check-in from me on this. If now's genuinely not the time, no worries at all, just let me know and I'll step back. If it is, I'm happy to find 10 minutes whenever works."},
+      {id:'followup_missed_call',label:'Follow Up — Missed Call',structure:'Speed-first re-engage',
+       vars:['firstName'],
+       template:"Hi {{firstName}}, sorry we missed each other on the phone! What's the best time to try again — or happy to switch to text/email if that's easier for you."},
+      {id:'followup_missed_appt',label:'Follow Up — Missed Appointment',structure:'Speed-first re-engage',
+       vars:['firstName','nextActionLink'],
+       template:"Hi {{firstName}}, looks like we missed our scheduled time — totally happens. Want to grab a new slot? Here's my calendar: {{nextActionLink}}"},
+      {id:'mark_incomplete_call',label:'Mark Incomplete Call',type:'internal'}
+    ],
+    'Nurture':[
+      {id:'nurture_insight',label:'Nurture — Share an Insight',structure:'Insight (low-intensity nurture touch)',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — no ask here, just something I thought you'd find useful: [insert the specific insight/article/idea]. Let me know if it's helpful."},
+      {id:'nurture_testimonial',label:'Nurture — Share a Testimonial',structure:'Fame (low-intensity nurture touch)',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — thought of you when I saw this: [insert client story/result relevant to their situation]. Happy to share more if it's useful."},
+      {id:'nurture_checkin',label:'Nurture — Simple Check-In',structure:'Low-intensity nurture touch',
+       vars:['firstName'],
+       template:"Hey {{firstName}}, just checking in — no agenda, just wanted to see how things have been going on your end."}
+    ],
+    'Reactivation':[
+      {id:'disruptor_1_lead',label:'Send Disruptor Message 1',structure:'Soft reactivation nudge',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — it's been a while! Still thinking about [the thing they were exploring]? Happy to pick the conversation back up whenever's good for you."},
+      {id:'disruptor_2_lead',label:'Send Disruptor Message 2',structure:'"Have you given up on X" — direct reactivation ask',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — honest question: have you given up on [the goal they came to us for]? No wrong answer either way — if it's a no for now, I'll stop reaching out. If it's still a yes, I'd love to help you pick it back up."},
+      {id:'add_disruptor_funnel',label:'Add to Disruptor Funnel',type:'internal'}
+    ],
+    'Complete':[
+      {id:'completed_intro',label:'Completed Intro Call',type:'internal'}
+    ]
   },
   pipeline:{
-    'Deal Actions':['Send Post Discovery Message','Send Post Walkthrough Message','Send Post Offer Message','Send Reminder 1','Send Reminder 2','Send Reminder 3','Send Deposit Link','Send Disruptor Message 1','Send Disruptor Message 2']
+    'Presentation Follow-Up':[
+      {id:'post_discovery',label:'Send Post Discovery Message',structure:'Insight → Method',
+       vars:['firstName'],
+       template:"Hi {{firstName}}, great talking through where things stand today. Based on what you shared, the real opportunity is [insight about their situation] — and the way we'd approach it is [method, high-level]. Next step on my end is putting together exactly how that looks for you — talk soon."},
+      {id:'post_walkthrough',label:'Send Post Walkthrough Message',structure:'Insight → Method → Solution (intro)',
+       vars:['firstName','nextActionDate','nextActionLink'],
+       template:"Hi {{firstName}}, thanks for walking through this with me. To recap: [insight] means [method] is the right path, and here's how we'd put that into action for you: [solution summary]. I'll follow up on {{nextActionDate}} — in the meantime, here's everything in one place: {{nextActionLink}}"},
+      {id:'post_offer',label:'Send Post Offer Message',structure:'Solution (recap, tiered)',
+       vars:['firstName','plan','opportunity','nextActionLink'],
+       template:"Hi {{firstName}}, here's a recap of what we discussed: the {{plan}} plan at {{opportunity}}, built around [the specific outcome they want]. Full details here: {{nextActionLink}} — happy to answer anything before you decide."}
+    ],
+    'Sales Follow-Up':[
+      {id:'reminder_1',label:'Send Reminder 1',structure:'Speed + cadence (48h peak window)',
+       vars:['firstName','nextActionLink'],
+       template:"Hi {{firstName}}, just a friendly nudge on the proposal I sent over — any questions on my end I can answer? Here it is again for easy reference: {{nextActionLink}}"},
+      {id:'reminder_2',label:'Send Reminder 2',structure:'Speed + cadence',
+       vars:['firstName'],
+       template:"Hey {{firstName}} — checking back in. No pressure, just want to make sure this didn't get buried. Where are you at on this?"},
+      {id:'reminder_3',label:'Send Reminder 3',structure:'Speed + cadence (last of this run, before nurture)',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — last check-in from me on this one for now. If timing's off, totally understand — just let me know either way so I know where to leave things."},
+      {id:'deposit_link',label:'Send Deposit Link',structure:'Completing — close now',
+       vars:['firstName','nextActionLink','nextActionDate'],
+       template:"Hi {{firstName}}, excited to get this moving! Here's the link to lock in your spot with a deposit: {{nextActionLink}} — aiming to have this wrapped up by {{nextActionDate}}. Let me know once it's through."}
+    ],
+    'Reactivation':[
+      {id:'disruptor_1_deal',label:'Send Disruptor Message 1',structure:'Soft reactivation nudge',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — it's been quiet on this one. Still interested in moving forward, or has priorities shifted? Either way, good to know."},
+      {id:'disruptor_2_deal',label:'Send Disruptor Message 2',structure:'"Have you given up on X" — direct reactivation ask',
+       vars:['firstName'],
+       template:"Hi {{firstName}} — honest question: have you given up on this? No wrong answer — if it's a no for now, I'll close this out on my end. If it's still a yes, let's pick it back up."}
+    ]
   }
 };
-const GROUP_COLORS={'Invite':'#818cf8','Complete':'#22c55e','Attempt':'#f59e0b','Follow Up':'#3b82f6','Disruptor':'#ef4444','Deal Actions':'#8b5cf6'};
-const ACTION_REQS={
-  'Invite to Intro Call':'Next Action Link required',
-  'Invite to Brand Craftsman Newsletter':'Next Action Link required',
-  'Invite to F5 CEO Newsletter':'Next Action Link required',
-  'Invite to Conversion Leak Test':'Next Action Link required',
-  'Attempt Warm Outreach':'Recent Opt-In Action required',
-  'Attempt Warm Outreach 2nd':'Recent Opt-In Action required',
-  'Attempt Cold Outreach':'Lead Source required',
-  'Attempt Cold Outreach 2nd':'Lead Source required',
-  'Attempt Cold Outreach 3rd':'Lead Source required',
-  'Follow Up — Missed Call':'Last Action required',
-  'Follow Up — Missed Appointment':'Next Action Link required',
-  'Send Disruptor Message 1':'Last Action required',
-  'Send Disruptor Message 2':'Last Action required',
-  'Send Post Walkthrough Message':'Next Action + Next Action Link required',
-  'Send Post Offer Message':'Plan required',
-  'Send Reminder 1':'Next Action Link required',
-  'Send Reminder 2':'Next Action Link required',
-  'Send Reminder 3':'Next Action Link required',
-  'Send Deposit Link':'Next Action Link + Next Action Date required'
+
+const GROUP_COLORS={
+  'Appointments':'#818cf8','Follow-Up':'#3b82f6','Nurture':'#06b6d4','Reactivation':'#ef4444','Complete':'#22c55e',
+  'Presentation Follow-Up':'#8b5cf6','Sales Follow-Up':'#f59e0b'
 };
+
+function findActionById(id,groups){
+  if(!id||!groups)return null;
+  for(const cat of Object.values(groups)){const found=cat.find(a=>a.id===id);if(found)return found;}
+  return null;
+}
+
+// Maps template variables onto the SAME quick-fill inputs the old system
+// used (qf-nal/qf-nad/qf-optin/qf-la/qf-ls) -- quickSaveFields() below is
+// unchanged, it already writes these back to the real ClickUp fields.
+const QUICK_FILL_MAP={
+  nextActionLink:{label:'Next Action Link',html:()=>`<input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://…">`},
+  nextActionDate:{label:'Next Action Date',html:()=>`<input type="date" id="qf-nad" class="form-select" style="height:32px;font-size:12px">`},
+  recentOptIn:{label:'Recent Opt-In Action',html:()=>`<input type="text" id="qf-optin" class="form-select" style="height:32px;font-size:12px" placeholder="e.g. signed up for newsletter">`},
+  lastAction:{label:'Last Action',html:()=>`<select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'].map(a=>`<option>${a}</option>`).join('')}</select>`},
+  leadSource:{label:'Lead Source',html:()=>`<select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select>`}
+};
+function quickFillHtmlFor(missingVars){
+  const fillable=missingVars.filter(v=>QUICK_FILL_MAP[v]);
+  const other=missingVars.filter(v=>!QUICK_FILL_MAP[v]);
+  if(!fillable.length&&!other.length)return'';
+  let html='<div style="margin:10px 0;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">';
+  if(fillable.length){
+    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400e;margin-bottom:8px">Quick Fill</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${fillable.map(v=>`<div class="form-group" style="margin:0"><label style="font-size:11px">${QUICK_FILL_MAP[v].label}</label>${QUICK_FILL_MAP[v].html()}</div>`).join('')}</div>
+      <button class="btn btn-sm" style="margin-top:8px;background:#fef3c7;border-color:#fde68a;color:#92400e" onclick="quickSaveFields()">Save &amp; Refresh Draft</button>`;
+  }
+  if(other.length){
+    html+=`<div style="font-size:11.5px;color:#92400e;margin-top:${fillable.length?'8px':'0'}">Also missing (edit on the Details tab): ${other.map(v=>MSG_VAR_LABELS[v]).join(', ')}</div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderMessagePreview(action,vars){
+  if(action.type==='internal'){
+    return `<h4>${esc(action.label)}</h4>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Internal log entry — nothing is sent to the contact.</div>
+      <textarea id="internal-note" class="msg-draft" style="min-height:70px" placeholder="Optional note…"></textarea>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+        <button class="btn btn-primary btn-sm" onclick="markActionSent()">✓ Log &amp; Mark Done</button>
+        <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
+      </div>`;
+  }
+  const missing=(action.vars||[]).filter(v=>!vars[v]);
+  const rendered=renderTemplate(action.template,vars);
+  return `<h4>${esc(action.label)}</h4>
+    ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
+    ${quickFillHtmlFor(missing)}
+    <textarea id="msg-draft" class="msg-draft">${esc(rendered)}</textarea>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
+      <button class="btn btn-primary btn-sm" onclick="markActionSent()">✓ Mark as Sent</button>
+      <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
+    </div>`;
+}
 
 function renderPfActions(task,type,cf,body){
   const isLead=type==='leads'||type==='contacts';
-  const groups=isLead?ACTION_GROUPS.lead:ACTION_GROUPS.pipeline;
+  const groups=isLead?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const currentAction=cf['lead crm action']||cf['crm action']||cf['deal action']||'';
-
-  // Preflight field status — check which fields are filled
-  const fields_status={
-    'next action link':!!(cf['next action link']),
-    'recent opt-in action':!!(cf['recent opt-in action']),
-    'lead source':!!(cf['lead source']),
-    'last action':!!(cf['last action']),
-    'plan':!!(cf.plan),
-    'next action date':!!(cf['next action date']),
-    'next action':!!(cf['next action'])
-  };
-
-  const checkIcon=(ok)=>ok
-    ?'<span style="color:var(--success);font-size:13px">✓</span>'
-    :'<span style="color:var(--danger);font-size:13px">✕</span>';
-
-  const preflightHtml=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:10px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);width:100%;margin-bottom:4px">Field Status</div>
-    ${Object.entries(fields_status).map(([k,v])=>`<span style="font-size:11.5px;display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:${v?'#f0fdf4':'#fef2f2'};color:${v?'#15803d':'#dc2626'}">${checkIcon(v)} ${k}</span>`).join('')}
-  </div>`;
-
-  // Quick-fill panel for missing fields
-  const missingFills=[];
-  if(!cf['next action link'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Link</label><input type="url" id="qf-nal" class="form-select" style="height:32px;font-size:12px" placeholder="https://…" value=""></div>`);
-  if(!cf['next action date'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Next Action Date</label><input type="date" id="qf-nad" class="form-select" style="height:32px;font-size:12px"></div>`);
-  if(!cf['recent opt-in action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Recent Opt-In Action</label><input type="text" id="qf-optin" class="form-select" style="height:32px;font-size:12px" placeholder="e.g. signed up for newsletter"></div>`);
-  if(!cf['last action'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Last Action</label><select id="qf-la" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${['Called','Texted','Left Voicemail','Direct Messaged','Meeting/Workshop','Emailed','Auto Deal FU'].map(a=>`<option>${a}</option>`).join('')}</select></div>`);
-  if(!cf['lead source'])missingFills.push(`<div class="form-group" style="margin:0"><label style="font-size:11px">Lead Source</label><select id="qf-ls" class="form-select" style="height:32px;font-size:12px"><option value="">—</option>${(S.ref.leadSources||[]).map(r=>`<option>${esc(r[0]||'')}</option>`).join('')}</select></div>`);
-
-  const quickFillHtml=missingFills.length?`<div style="margin-bottom:12px;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400e;margin-bottom:8px">Quick Fill Missing Fields</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${missingFills.join('')}</div>
-    <button class="btn btn-sm" style="margin-top:8px;background:#fef3c7;border-color:#fde68a;color:#92400e" onclick="quickSaveFields()">Save Fields</button>
-  </div>`:'';
+  const vars=buildMsgVars(task,type,cf);
 
   const actionHtml=Object.entries(groups).map(([grp,actions])=>`
-    <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${grp}</div>
+    <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${esc(grp)}</div>
     ${actions.map(a=>{
-      const req=ACTION_REQS[a]||'';
-      let canTrigger=true;
-      if(req.includes('Next Action Link')&&!fields_status['next action link'])canTrigger=false;
-      if(req.includes('Recent Opt-In')&&!fields_status['recent opt-in action'])canTrigger=false;
-      if(req.includes('Lead Source')&&!fields_status['lead source'])canTrigger=false;
-      if(req.includes('Last Action')&&!fields_status['last action'])canTrigger=false;
-      if(req.includes('Plan')&&!fields_status['plan'])canTrigger=false;
-      if(req.includes('Next Action Date')&&!fields_status['next action date'])canTrigger=false;
-      return `<div class="action-option${canTrigger?'':' disabled-action'}" onclick="selectAction(this,'${esc(a)}')" data-action="${esc(a)}" style="${canTrigger?'':'opacity:.5'}">
+      const missing=a.type==='internal'?[]:(a.vars||[]).filter(v=>!vars[v]);
+      const readyBadge=a.type==='internal'
+        ?'<span style="color:var(--text-muted);font-size:12px">internal</span>'
+        :(missing.length?`<span class="action-req">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
+      return `<div class="action-option${S.selectedAction===a.id?' selected':''}" onclick="selectAction(this,'${a.id}')" data-action="${a.id}">
         <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
-        <div class="action-name">${esc(a)}</div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:5px">
-          ${req?`<span class="action-req">${esc(req)}</span>`:''}
-          ${req?(canTrigger?'<span style="color:var(--success);font-size:12px">✓</span>':'<span style="color:var(--danger);font-size:12px">✕</span>'):''}
-        </div>
+        <div class="action-name">${esc(a.label)}</div>
+        <div style="margin-left:auto">${readyBadge}</div>
       </div>`;
     }).join('')}
   `).join('');
 
-  // Lead Magnet selector — show all, col A=branch, B=leadType, C=name, D=desc, E=dateAdded, F=adminLink, G=publicLink
+  const selected=findActionById(S.selectedAction,groups);
+  const previewHtml=selected
+    ?renderMessagePreview(selected,vars)
+    :'<div style="font-size:13px;color:var(--text-muted);font-style:italic">Select an action above to generate a draft message.</div>';
+
+  // Lead Magnet selector — unchanged from v2.7.0
   const allMagnets=S.ref.leadMagnets||[];
-  // Group unique names with their public link (col G index 6)
   const magnetMap={};
   allMagnets.forEach(r=>{
     const name=r[2]||'';
@@ -2786,65 +2932,75 @@ function renderPfActions(task,type,cf,body){
     <div class="pf-section"><h4>Current CRM Action</h4>
       <div style="font-size:13px;font-weight:500;padding:8px 12px;background:var(--bg-main);border:1px solid var(--border);border-radius:7px">${esc(currentAction)||'<span style="color:var(--text-muted);font-style:italic">None set</span>'}</div>
     </div>
-    <div class="pf-section"><h4>Trigger New Action</h4>
-      ${preflightHtml}
-      ${quickFillHtml}
+    <div class="pf-section"><h4>Choose an Action</h4>
       ${actionHtml}
-      <div class="val-warn" id="action-warn"></div>
-      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
-        <button class="btn btn-primary btn-sm" onclick="triggerAction()">⚡ Trigger Selected</button>
-        <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
-      </div>
     </div>
+    <div class="pf-section" id="msg-preview-section">${previewHtml}</div>
     <div class="pf-section"><h4>Lead Magnet</h4>${lmHtml}</div>`;
 }
 
-function selectAction(el,action){
+function selectAction(el,actionId){
   document.querySelectorAll('.action-option').forEach(o=>o.classList.remove('selected'));
-  el.classList.add('selected');S.selectedAction=action;
-  document.getElementById('action-warn')?.classList.remove('visible');
-}
-
-async function triggerAction(){
-  if(!S.selectedAction)return showToast('Select an action first.','error');
+  el.classList.add('selected');
+  S.selectedAction=actionId;
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
-  const req=ACTION_REQS[S.selectedAction]||'';
-  const warn=document.getElementById('action-warn');
-  if(req){
-    let missing=false;
-    if(req.includes('Next Action Link')&&!cf['next action link'])missing=true;
-    if(req.includes('Recent Opt-In')&&!cf['recent opt-in action'])missing=true;
-    if(req.includes('Lead Source')&&!cf['lead source'])missing=true;
-    if(req.includes('Last Action')&&!cf['last action'])missing=true;
-    if(req.includes('Plan')&&!cf.plan)missing=true;
-    if(req.includes('Next Action Date')&&!cf['next action date'])missing=true;
-    if(missing){if(warn){warn.textContent='⚠ Cannot trigger: '+req;warn.classList.add('visible');}return;}
-  }
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(actionId,groups);
+  const sec=document.getElementById('msg-preview-section');
+  if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
+}
+
+function copyGeneratedMessage(){
+  const ta=document.getElementById('msg-draft');
+  if(!ta)return;
+  ta.select();
+  const done=()=>showToast('Message copied.','success');
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(ta.value).then(done).catch(()=>{document.execCommand('copy');done();});
+  else{document.execCommand('copy');done();}
+}
+
+// Best-effort write to the CRM Action / Deal Action field for reporting
+// history -- same dual lookup (label-masterlist UUID, falling back to the
+// task's own drop_down option list) the pre-golf-bag triggerAction() used,
+// since that mechanism already worked correctly for these two fields.
+async function setCrmActionField(task,fieldId,label){
+  if(!fieldId)return;
+  const uuid=lookupUUID(label);
+  if(uuid){await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:uuid});return;}
+  const f=(task.custom_fields||[]).find(f=>f.id===fieldId);
+  const opt=f?.type_config?.options?.find(o=>o.name?.toLowerCase()===label.toLowerCase()||o.label?.toLowerCase()===label.toLowerCase());
+  if(opt)await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});
+}
+
+async function markActionSent(){
+  if(!S.selectedAction)return showToast('Select an action first.','error');
+  const{task,type}=S.currentEntry;
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(S.selectedAction,groups);
+  if(!action)return;
   const statusEl=document.getElementById('action-status');
-  if(statusEl)statusEl.textContent='Triggering…';
+  if(statusEl)statusEl.textContent='Logging…';
   try{
-    const fieldName=type==='pipeline'?'deal action':'lead crm action';
-    const fieldId=findCFId(task,fieldName)||findCFId(task,'crm action');
-    if(fieldId){
-      const uuid=lookupUUID(S.selectedAction);
-      if(uuid){await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:uuid});}
-      else{
-        // Try setting by label name
-        const f=(task.custom_fields||[]).find(f=>f.id===fieldId);
-        const opt=f?.type_config?.options?.find(o=>o.name?.toLowerCase()===S.selectedAction.toLowerCase()||o.label?.toLowerCase()===S.selectedAction.toLowerCase());
-        if(opt)await cuFetch(`/task/${task.id}/field/${fieldId}`,'POST',{value:opt.orderindex!==undefined?opt.orderindex:opt.id});
-      }
+    let logBody=`[LOG] CRM Action: ${action.label} — ${S.user?.name||'Admin'} | ${getTS()}`;
+    if(action.type==='internal'){
+      const note=document.getElementById('internal-note')?.value?.trim();
+      if(note)logBody+=`\n\n${note}`;
+    }else{
+      const msgText=document.getElementById('msg-draft')?.value||'';
+      if(msgText)logBody+=`\n\n${msgText}`;
     }
-    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] CRM Action: ${S.selectedAction} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
+    const fieldId=type==='pipeline'?CU_FIELDS.DEAL_ACTION:CU_FIELDS.LEAD_CRM_ACTION;
+    await setCrmActionField(task,fieldId,action.label);
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:logBody,notify_all:false});
     await syncToSheets(task,type);
-    if(statusEl)statusEl.textContent='✓ Done';
-    showToast(`"${S.selectedAction}" triggered.`,'success');
-    if(type==='pipeline')showToast('Reminder: Remove Deal Action label after Zapier processes it.','info');
+    if(statusEl)statusEl.textContent='✓ Logged';
+    showToast(`"${action.label}" logged.`,'success');
     const c=await cuFetch(`/task/${task.id}/comment`);
     S.currentEntry.comments=c.comments||[];
-  }catch(e){if(statusEl)statusEl.textContent='';showToast('Trigger failed: '+e.message,'error');}
+  }catch(e){if(statusEl)statusEl.textContent='';showToast('Failed: '+e.message,'error');}
 }
+
 
 function previewMagnet(sel){
   const opt=sel.options[sel.selectedIndex];
@@ -2882,9 +3038,11 @@ async function applyLeadMagnet(target){
       showToast(`Recent Opt-In set: ${name}`,'success');
     }
     await syncToSheets(task,S.currentEntry.type);
-    // Refresh entry
+    // Refresh entry, then re-render so an open message draft picks up the
+    // new Next Action Link / Recent Opt-In value right away.
     const updated=await cuFetch(`/task/${task.id}?include_subtasks=true`);
     S.currentEntry.task=updated;
+    switchPfTab('actions',null);
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
