@@ -2304,6 +2304,7 @@ async function quickUpdateTaskStatus(taskId,taskName,newStatus){
   try{
     // Update in ClickUp
     await cuFetch(`/task/${taskId}`,'PUT',{status:newStatus});
+    try{await cuFetch(`/task/${taskId}/comment`,'POST',{comment_text:`[LOG] Status → ${newStatus} — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
     // Update in Google Sheet
     await syncTaskUpdateToSheets(taskName,newStatus,'','','','',S.user?.name||'');
     showToast(`Status → ${newStatus}`,'success');
@@ -2427,6 +2428,7 @@ async function submitNewTask(){
     if(dueCombined){body.due_date=dueCombined.ms;body.due_date_time=dueCombined.hasTime;}
     if(assigneeIds.length)body.assignees=assigneeIds;
     const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
+    try{await cuFetch(`/task/${newTask.id}/comment`,'POST',{comment_text:`[LOG] Task created — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
     // Set linked entry IDs as custom fields
     if(S._taskLinks?.length){
       const fields=await getListFields(S.creds.listTasks);
@@ -3915,6 +3917,7 @@ async function createQuickTaskForEntry(name,dueStr,entryId,entryName){
   const body={name,status:'TO DO'};
   if(dueStr)body.due_date=new Date(dueStr).getTime();
   const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
+  try{await cuFetch(`/task/${newTask.id}/comment`,'POST',{comment_text:`[LOG] Task created — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
   // Link using hardcoded field IDs — resolve which Related field to use based on the entry's list type
   const entryType=S.currentEntry?.type||'';
   if(entryType==='pipeline')await setFieldById(newTask.id,CU_FIELDS.RELATED_DEAL_ID,entryId,'short_text');
@@ -4078,6 +4081,12 @@ async function submitEntry(){
   try{
     const notes=document.getElementById('nf-notes')?.value?.trim()||'';
     const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name:name.trim(),description:notes});
+    // Feature 2 (Administrative Activity Logging): entry creation wasn't
+    // logged at all before -- ClickUp's own native "created this task"
+    // activity always attributes to the shared API identity regardless
+    // of who actually created it in the app, so this comment is the only
+    // place the real creator is recorded.
+    try{await cuFetch(`/task/${newTask.id}/comment`,'POST',{comment_text:`[LOG] Entry created — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
     const fields=await getListFields(listId);
     // Universal field setter — handles all ClickUp field types correctly
     const setField=async(partial,val)=>{
