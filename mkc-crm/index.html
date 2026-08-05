@@ -3192,6 +3192,18 @@ async function personalizeWithAI(actionId){
 // column holding the match key (MKC ID vs name vs email) wasn't
 // confirmed -- if sends come back "could not be found," this matching
 // logic is the first place to check against the sheet's real columns.
+// Normalizes a human-formatted phone number ("1 470 300 1898", "(404)
+// 200-2827") to E.164 ("+14703001898") for the Quo API. Best-effort: US-
+// centric (10 digits -> assume +1), but doesn't mangle numbers that
+// already look international.
+function normalizePhoneE164(raw){
+  const digits=(raw||'').replace(/\D/g,'');
+  if(!digits)return'';
+  if(digits.length===10)return'+1'+digits;
+  if(digits.length===11&&digits[0]==='1')return'+'+digits;
+  return'+'+digits;
+}
+
 function resolveSenderIdentity(){
   const mkcId=(S.user?.mkcId||'').trim().toLowerCase();
   const name=(S.user?.name||'').trim().toLowerCase();
@@ -3211,8 +3223,8 @@ function resolveSenderIdentity(){
   }));
   return{
     senderName:S.user?.name||'',
-    senderEmail:row?row[10]||'':'',   // column K
-    senderQuoFrom:row?row[18]||'':''  // column S
+    senderEmail:row?row[10]||'':'',                    // column K -- MKC Public Email
+    senderQuoFrom:row?normalizePhoneE164(row[11]):''    // column L -- MKC Public Phone (column S is Quo's own internal Phone Number ID, not a real number -- wrong field, corrected)
   };
 }
 
@@ -3232,7 +3244,7 @@ async function sendViaChannel(channel){
   if(!action||!ta)return;
   const message=ta.value;
   const identity=resolveSenderIdentity();
-  const recipientPhone=cf.phone||cf['primary contact phone']||cf['primary phone']||'';
+  const recipientPhone=normalizePhoneE164(cf.phone||cf['primary contact phone']||cf['primary phone']||'');
   const recipientEmail=cf['primary contact email']||cf.email||'';
 
   let confirmMsg,payload;
