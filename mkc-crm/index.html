@@ -677,6 +677,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <button class="btn btn-primary" onclick="openUpdateProfile()">Edit Record</button>
     <button class="btn btn-secondary" onclick="openActivityModal()">Log New Activity</button>
     <button class="btn btn-success" id="pf-addtask-btn" onclick="openNewTaskModal(S.currentEntry?.task?.id||'',S.currentEntry?.task?.name||'')">+ Add Task</button>
+    <button class="btn btn-ghost btn-sm" onclick="openCatchUpModal()">✨ Catch Up</button>
     <button class="btn btn-ghost btn-sm" id="pf-nb-btn" onclick="openNotebook()" style="display:none">Notebook ↗</button>
     <button class="btn btn-ghost btn-sm" onclick="openInClickUp()">View in ClickUp ↗</button>
   </div>
@@ -799,6 +800,32 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="qc-assign-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('qc-assign-modal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- CATCH UP: on-demand AI activity summary, ephemeral -- never stored or logged -->
+<div id="catchup-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h3>✨ Catch Up</h3><button class="pf-close" onclick="closeModal('catchup-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Generated on demand from this entry's activity log — not saved anywhere, so there's nothing to keep in sync if you regenerate it.</div>
+      <div class="form-group"><label>Time scope</label>
+        <select id="catchup-scope" class="form-select" onchange="document.getElementById('catchup-custom-range').style.display=this.value==='custom'?'grid':'none'">
+          <option value="latest">Most recent activity</option>
+          <option value="last5" selected>Last 3–5 activities</option>
+          <option value="day">Past day</option>
+          <option value="3days">Past 3 days</option>
+          <option value="custom">Custom date range</option>
+        </select>
+      </div>
+      <div id="catchup-custom-range" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="form-group" style="margin:0"><label>From</label><input type="date" id="catchup-from"></div>
+        <div class="form-group" style="margin:0"><label>To</label><input type="date" id="catchup-to"></div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="catchup-generate-btn" onclick="generateCatchUpSummary()">✨ Generate Summary</button>
+      <div id="catchup-result" style="margin-top:16px"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('catchup-modal')">Close</button></div>
   </div>
 </div>
 
@@ -3017,6 +3044,91 @@ function getRecentActivitySummary(){
     const text=(c.comment_text||'').replace(/\s+/g,' ').slice(0,200);
     return `[${when}] ${who}: ${text}`;
   }).join('\n');
+}
+
+// Vercel Edge Function holding the Gemini key server-side, same as the
+// other two. See api/catchup-summary.ts in this repo.
+const CATCHUP_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/catchup-summary';
+
+function openCatchUpModal(){
+  if(!S.currentEntry)return;
+  document.getElementById('catchup-scope').value='last5';
+  document.getElementById('catchup-custom-range').style.display='none';
+  document.getElementById('catchup-result').innerHTML='';
+  const today=toDateLocal(Date.now());
+  document.getElementById('catchup-from').value=today;
+  document.getElementById('catchup-to').value=today;
+  document.getElementById('catchup-modal').style.display='flex';
+}
+
+// Filters this entry's comments down to whichever window the scope
+// selector picked. S.currentEntry.comments is newest-first (same order
+// the Activity tab already renders in), so .slice() from the front works
+// for the "most recent" / "last 3-5" presets without needing to sort.
+function filterCatchUpComments(){
+  const all=(S.currentEntry?.comments||[]).slice();
+  const scope=document.getElementById('catchup-scope').value;
+  const now=Date.now();
+  if(scope==='latest')return{comments:all.slice(0,1),scopeLabel:'the most recent activity'};
+  if(scope==='last5')return{comments:all.slice(0,5),scopeLabel:'the last few activities'};
+  if(scope==='day')return{comments:all.filter(c=>now-Number(c.date)<=24*60*60*1000),scopeLabel:'the past day'};
+  if(scope==='3days')return{comments:all.filter(c=>now-Number(c.date)<=3*24*60*60*1000),scopeLabel:'the past 3 days'};
+  if(scope==='custom'){
+    const from=parseLocalDate(document.getElementById('catchup-from').value);
+    const to=parseLocalDate(document.getElementById('catchup-to').value);
+    const toEnd=to!=null?to+24*60*60*1000-1:Infinity; // include the whole "to" day, not just its midnight instant
+    return{comments:all.filter(c=>{const d=Number(c.date);return d>=(from??0)&&d<=toEnd;}),scopeLabel:'the selected date range'};
+  }
+  return{comments:all.slice(0,5),scopeLabel:'recent activity'};
+}
+
+// On-demand only, per the spec: nothing generated here is saved, logged,
+// or editable -- regenerating just re-runs this against the live data,
+// so there's no stale-summary problem to solve.
+async function generateCatchUpSummary(){
+  if(!S.currentEntry)return;
+  const{task}=S.currentEntry;
+  const{comments,scopeLabel}=filterCatchUpComments();
+  const resultEl=document.getElementById('catchup-result');
+  if(!comments.length){
+    resultEl.innerHTML=`<div style="font-size:13px;color:var(--text-muted);font-style:italic">No activity found in ${esc(scopeLabel)}.</div>`;
+    return;
+  }
+  const activityLog=comments.map(c=>{
+    const who=c.user?.username||'Unknown';
+    const when=fmtDateShort(c.date);
+    const text=(c.comment_text||'').replace(/\s+/g,' ').slice(0,400);
+    return `[${when}] ${who}: ${text}`;
+  }).join('\n');
+
+  const btn=document.getElementById('catchup-generate-btn');
+  const origLabel=btn.textContent;
+  btn.disabled=true;btn.textContent='✨ Summarizing…';
+  resultEl.innerHTML='';
+  try{
+    const res=await fetch(CATCHUP_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({entryName:task.name||'',scopeLabel,activityLog})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.recap){
+      resultEl.innerHTML=`<div class="val-warn visible">Summary failed: ${esc(data.error||`HTTP ${res.status}`)}</div>`;
+      return;
+    }
+    const steps=Array.isArray(data.nextSteps)?data.nextSteps:[];
+    resultEl.innerHTML=`
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">Recap</div>
+      <div style="font-size:13.5px;line-height:1.55;margin-bottom:16px">${esc(data.recap)}</div>
+      ${steps.length?`
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">Next Steps</div>
+      <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.6">${steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
+    `;
+  }catch(e){
+    resultEl.innerHTML=`<div class="val-warn visible">Summary failed: ${esc(e.message)}</div>`;
+  }finally{
+    btn.disabled=false;btn.textContent=origLabel;
+  }
 }
 
 async function personalizeWithAI(actionId){
