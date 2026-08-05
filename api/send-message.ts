@@ -73,11 +73,16 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       const recipientPhone = truncate(body.recipientPhone, 30);
-      const senderQuoFrom = truncate(body.senderQuoFrom, 30); // the sending team member's own Quo number, e.g. "+15551234567"
+      // Column S on the Team Directory sheet holds Quo's own internal
+      // Phone Number ID (e.g. "PNZuuloy1Z", same convention as Twilio's
+      // resource IDs) -- NOT a raw E.164 number. Only validate the
+      // RECIPIENT number as phone-shaped; the sender identifier is an ID,
+      // not a number, and was being wrongly rejected by the same check.
+      const senderQuoFrom = truncate(body.senderQuoFrom, 40);
       if (!recipientPhone || !looksLikePhone(recipientPhone)) {
         return jsonResponse({ error: 'This entry has no valid phone number on file to send an SMS to.' }, 400);
       }
-      if (!senderQuoFrom || !looksLikePhone(senderQuoFrom)) {
+      if (!senderQuoFrom) {
         return jsonResponse({ error: 'Your Quo number could not be found (check the Team Directory sheet, column S) -- cannot send as you specifically.' }, 400);
       }
 
@@ -91,6 +96,14 @@ export default async function handler(req: Request): Promise<Response> {
         },
         body: JSON.stringify({
           content: message,
+          // phoneNumberId is Quo's deprecated-but-still-documented param
+          // for exactly this case -- their Team Directory data is stored
+          // as a Phone Number ID, not a raw number, so this is the field
+          // that actually matches what we have. Sending "from" as well,
+          // set to the same value, costs nothing if Quo ignores it and
+          // hedges in case their API prefers it despite the deprecation
+          // notice.
+          phoneNumberId: senderQuoFrom,
           from: senderQuoFrom,
           to: [recipientPhone],
         }),
