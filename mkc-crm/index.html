@@ -668,7 +668,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   <div class="pf-tabs">
     <div class="pf-tab active" onclick="switchPfTab('details',this)">Details</div>
     <div class="pf-tab" onclick="switchPfTab('actions',this)">CRM Actions</div>
-    <div class="pf-tab" onclick="switchPfTab('activity',this)">Activity</div>
+    <div class="pf-tab" onclick="switchPfTab('activity',this)">Activity <span class="nav-badge" id="pf-activity-badge" style="display:none;margin-left:4px"></span></div>
     <div class="pf-tab" onclick="switchPfTab('related',this)">Related</div>
     <div class="pf-tab" onclick="switchPfTab('tasks',this)">Tasks</div>
   </div>
@@ -1519,7 +1519,6 @@ async function loadAllEntries(){
       const tasks=await fetchAllTasks(lists[type]);
       S.entries[type]=tasks;
       S.filtered[type]=tasks.filter(t=>!t.parent);
-      updateBadge(type,S.filtered[type].length);
       renderTable(type);
       const mode=S.viewMode[type];
       if(mode==='kanban')renderKanban(type);
@@ -1529,6 +1528,7 @@ async function loadAllEntries(){
       showToast(`Failed to load ${type}: ${e.message}`,'error');
     }
   }
+  refreshEntityBadges();
   renderTasks();
 }
 
@@ -1554,6 +1554,10 @@ function switchView(view){
   if(el)el.classList.add('active');
   const titles={dashboard:'Dashboard',mywork:'My Work',leads:'Leads',pipeline:'Pipeline',contacts:'Contacts',accounts:'Accounts',tasks:'Action Hub',qcinbox:'Activity Inbox','search-view':'Search',export:'Export',settings:'Settings'};
   document.getElementById('page-title').textContent=titles[view]||view;
+  if(['leads','pipeline','contacts','accounts'].includes(view)){
+    setLastViewed(view);
+    updateBadge(view,0);
+  }
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
   }
@@ -2483,6 +2487,7 @@ async function openProfile(taskId,type){
     S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
+    updatePfActivityBadge();
     switchPfTab(S.currentPfTab,null);
   }catch(e){
     showToast('Failed to load entry: '+e.message,'error');
@@ -2590,7 +2595,7 @@ function switchPfTab(tab,btnEl){
   const body=document.getElementById('pf-body');
   if(tab==='details')renderPfDetails(task,type,cf,body);
   else if(tab==='actions')renderPfActions(task,type,cf,body);
-  else if(tab==='activity')renderPfActivity(comments,body);
+  else if(tab==='activity'){renderPfActivity(comments,body);if(task)setLastViewed('entry:'+task.id);updatePfActivityBadge();}
   else if(tab==='related')renderPfRelated(task,body);
   else if(tab==='tasks')renderPfTasks(task,body);
 }
@@ -3441,6 +3446,25 @@ function renderPfTasks(task,body,showCompleted){
       ${rows}
       <button class="btn btn-success btn-sm" style="margin-top:8px" onclick="openNewTaskModal('${taskId}','${esc(task.name||'')}')">+ Add Task for this Entry</button>
     </div>`;
+}
+
+// Excludes comments the CURRENT admin posted themselves -- posting a new
+// activity note and then seeing "1 unread" on the tab you just used would
+// be a confusing, wrong signal. Only counts what happened since without
+// you.
+function updatePfActivityBadge(){
+  const badge=document.getElementById('pf-activity-badge');
+  if(!badge)return;
+  const task=S.currentEntry?.task;
+  if(!task){badge.style.display='none';return;}
+  const lv=getLastViewed('entry:'+task.id);
+  const myName=(S.user?.name||'').toLowerCase();
+  const count=(S.currentEntry.comments||[]).filter(c=>{
+    const isMine=(c.user?.username||'').toLowerCase()===myName;
+    return !isMine&&Number(c.date)>lv;
+  }).length;
+  if(count>0){badge.textContent=count;badge.style.display='inline-block';}
+  else badge.style.display='none';
 }
 
 function renderPfActivity(comments,body){
@@ -4397,10 +4421,7 @@ function renderDashboard(){
   document.getElementById('d-deals').textContent=active(S.entries.pipeline).length||'—';
   document.getElementById('d-contacts').textContent=S.entries.contacts.filter(t=>!t.parent).length||'—';
   document.getElementById('d-accounts').textContent=S.entries.accounts.filter(t=>!t.parent).length||'—';
-  updateBadge('leads',S.entries.leads.filter(t=>!t.parent).length);
-  updateBadge('pipeline',S.entries.pipeline.filter(t=>!t.parent).length);
-  updateBadge('contacts',S.entries.contacts.filter(t=>!t.parent).length);
-  updateBadge('accounts',S.entries.accounts.filter(t=>!t.parent).length);
+  refreshEntityBadges();
 
   const typeKeys={Lead:'leads',Deal:'pipeline',Contact:'contacts',Account:'accounts'};
   const typeColors={Lead:'var(--accent)',Deal:'var(--success)',Contact:'var(--warning)',Account:'#8b5cf6'};
@@ -4430,6 +4451,31 @@ function renderDashboard(){
 function updateBadge(type,count){
   const el=document.getElementById(`badge-${type}`);
   if(el){el.textContent=count||0;el.className='nav-badge'+(count?' has-items':'');}
+}
+
+// Per-list "last viewed" timestamps, localStorage-backed (per-device by
+// design -- this is a 6-person team where an admin viewing from a second
+// device occasionally resetting to 0 unread is a fine tradeoff against
+// standing up a real backend just for this). Missing/never-viewed
+// defaults to 0, so a brand-new device shows everything as unread once,
+// then clears immediately on first visit to that list.
+function getLastViewed(key){return Number(localStorage.getItem('lastViewed:'+key))||0;}
+function setLastViewed(key){localStorage.setItem('lastViewed:'+key,String(Date.now()));}
+
+// Leads/Pipeline/Contacts/Accounts badges: count of entries whose
+// date_updated is newer than this admin's last visit to that list.
+// date_updated is already present on every task object from the list
+// fetch -- no extra API calls needed. Doesn't catch comment-only activity
+// (ClickUp doesn't bump date_updated for a new comment), but does catch
+// every field/status write -- which covers CRM Actions, quick fills, and
+// status changes, since all of those pair a field write with their log
+// comment anyway.
+function refreshEntityBadges(){
+  ['leads','pipeline','contacts','accounts'].forEach(type=>{
+    const lv=getLastViewed(type);
+    const count=(S.entries[type]||[]).filter(t=>!t.parent&&Number(t.date_updated)>lv).length;
+    updateBadge(type,count);
+  });
 }
 
 // ═══════════════════════════════════════════
