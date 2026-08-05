@@ -1564,7 +1564,7 @@ function switchView(view){
   if(view==='export')updateExportFields();
   if(view==='tasks'){populateTaskFilters();renderTasks();}
   if(view==='mywork')renderMyWork();
-  if(view==='qcinbox')loadQcInbox();
+  if(view==='qcinbox'){setLastViewed('qcinbox');updateBadge('qcinbox',0);loadQcInbox();}
 }
 
 function setViewMode(type,mode,btn){
@@ -4450,7 +4450,9 @@ function renderDashboard(){
 
 function updateBadge(type,count){
   const el=document.getElementById(`badge-${type}`);
-  if(el){el.textContent=count||0;el.className='nav-badge'+(count?' has-items':'');}
+  if(!el)return;
+  if(count>0){el.textContent=count;el.style.display='inline-block';el.className='nav-badge has-items';}
+  else{el.style.display='none';el.textContent='';el.className='nav-badge';}
 }
 
 // Per-list "last viewed" timestamps, localStorage-backed (per-device by
@@ -4800,7 +4802,17 @@ async function refreshQcBadge(){
   try{
     const items=await authFetch('/api/staging','GET',null);
     const list=(Array.isArray(items)?items:(items.results||items.events||[])).filter(qcNeedsReview);
-    updateBadge('qcinbox',list.length);
+    // Enhancement: badge shows what's NEW since this admin last opened the
+    // Inbox, layered on top of the existing pending/posted filter above --
+    // qcNeedsReview alone answers "how big is the backlog," this answers
+    // "how much of it is new since I last looked." Full backlog count is
+    // still visible once you're actually in the Inbox view itself.
+    const lv=getLastViewed('qcinbox');
+    const unseen=list.filter(it=>{
+      const d=new Date(/[TZ]/.test(it.occurred_at||'')?it.occurred_at:(it.occurred_at||'').replace(' ','T')+'Z').getTime();
+      return !isNaN(d)&&d>lv;
+    });
+    updateBadge('qcinbox',unseen.length);
   }catch(e){/* silent — background refresh; a session hiccup here isn't worth interrupting the user over */}
 }
 
