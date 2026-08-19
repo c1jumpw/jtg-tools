@@ -634,6 +634,16 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
              Connection Status above still work unchanged, as a plain
              connectivity diagnostic. -->
         <div class="settings-section">
+          <h3>Data Maintenance</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">One-time/occasional bulk fixes. These write directly to ClickUp — read what each one does before running it.</p>
+          <div style="padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Backfill Related Account IDs</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Scans every Master CRM Task. For any task missing its Related Account field that's linked to a Lead/Contact/Deal which itself has an Account, fills it in. Tasks that already have an Account set, or whose linked entry has none, are left untouched.</div>
+            <button class="btn btn-secondary btn-sm" id="backfill-acct-btn" onclick="backfillRelatedAccounts()">Run Backfill</button>
+            <div id="backfill-status" style="margin-top:10px;font-size:12.5px;color:var(--text-secondary)"></div>
+          </div>
+        </div>
+        <div class="settings-section">
           <h3>Workspace Info</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text-secondary)">
             <div style="padding:7px 13px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px">Workspace: <strong>90161137399</strong></div>
@@ -2079,6 +2089,73 @@ function resolveLinkedEntry(cf,lookup){
   // No ID resolved against any of the 4 lists — fall back to whichever ID is present, unlabeled.
   const fallbackId=relLead||relDeal||relAcct||'';
   return{id:fallbackId,name:'',type:''};
+}
+
+// One-time/occasional admin utility (Settings -> Data Maintenance):
+// retroactively fills Related Account ID on existing Master CRM Tasks
+// created before that propagation existed. Sequential, not parallel --
+// this can touch every task in the list, so it's deliberately slow and
+// safe over fast and rate-limit-risky. Never overwrites a task that
+// already has an Account set.
+async function backfillRelatedAccounts(){
+  if(!S.creds.listTasks)return showToast('Master CRM Tasks list ID not configured.','error');
+  if(!confirm('Scan every Master CRM Task and fill in any missing Related Account IDs? This writes directly to ClickUp and cannot be bulk-undone. Continue?'))return;
+
+  const btn=document.getElementById('backfill-acct-btn');
+  const statusEl=document.getElementById('backfill-status');
+  btn.disabled=true;
+  statusEl.textContent='Fetching field definitions…';
+
+  try{
+    const fields=await getListFields(S.creds.listTasks);
+    const acctField=fields.find(f=>f.name?.toLowerCase().includes('related account'));
+    if(!acctField){
+      statusEl.textContent='';
+      showToast('Could not find a "Related Account" field on the Tasks list — nothing changed.','error');
+      return;
+    }
+
+    statusEl.textContent='Loading all tasks…';
+    const tasks=await fetchAllTasks(S.creds.listTasks);
+
+    let updated=0,skipped=0,noLink=0,errors=0;
+    for(let i=0;i<tasks.length;i++){
+      const t=tasks[i];
+      statusEl.textContent=`Processing ${i+1} of ${tasks.length}… (${updated} updated so far)`;
+      const cf=getCF(t);
+      const existingAcct=cf['related account id']||cf['related account']||'';
+      if(existingAcct){skipped++;continue;}
+
+      const linkedRaw=cf['related deal id']||cf['related deal']||cf['related lead/contact id']||cf['related lead']||cf['related contact']||'';
+      const linkedId=linkedRaw.split(',')[0].trim(); // if multiple, use the first — same convention as elsewhere in the app
+      if(!linkedId){noLink++;continue;}
+
+      try{
+        const linkedTask=await cuFetch(`/task/${linkedId}`);
+        let acctToSet='';
+        if(linkedTask.list?.id===S.creds.listAccounts){
+          acctToSet=linkedId; // the link IS an Account
+        }else{
+          const linkedCf=getCF(linkedTask);
+          acctToSet=linkedCf['related account id']||linkedCf['related account']||'';
+        }
+        if(acctToSet){
+          await cuFetch(`/task/${t.id}/field/${acctField.id}`,'POST',{value:acctToSet});
+          updated++;
+        }else{
+          noLink++;
+        }
+      }catch(e){errors++;}
+    }
+
+    statusEl.textContent=`Done — ${updated} updated, ${skipped} already had an Account, ${noLink} had nothing to link, ${errors} errors.`;
+    showToast(`Backfill complete: ${updated} tasks updated.`,'success');
+  }catch(e){
+    statusEl.textContent='';
+    showToast('Backfill failed: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 // Populate Action Hub filter dropdowns with real entry names
