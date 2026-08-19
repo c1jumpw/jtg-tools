@@ -642,6 +642,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <button class="btn btn-secondary btn-sm" id="backfill-acct-btn" onclick="backfillRelatedAccounts()">Run Backfill</button>
             <div id="backfill-status" style="margin-top:10px;font-size:12.5px;color:var(--text-secondary)"></div>
           </div>
+          <div style="padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;margin-top:10px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px">Check Team Directory ↔ ClickUp Sync</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Compares every "active" row in the Team Directory sheet (by Workspace Email) against ClickUp's actual current workspace member list. Flags anyone active in the sheet with no matching real ClickUp account, and any ClickUp member not yet in the sheet at all. Read-only — doesn't change anything, just reports drift.</div>
+            <button class="btn btn-secondary btn-sm" id="team-sync-btn" onclick="checkTeamDirectorySync()">Run Check</button>
+            <div id="team-sync-status" style="margin-top:10px;font-size:12.5px;color:var(--text-secondary);white-space:pre-line"></div>
+          </div>
         </div>
         <div class="settings-section">
           <h3>Workspace Info</h3>
@@ -1974,6 +1980,55 @@ async function resolveClickupUserId(){
       sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
     }
   }catch(e){console.warn('resolveClickupUserId failed:',e.message);}
+}
+
+// Settings -> Data Maintenance: read-only drift check between the Team
+// Directory sheet and ClickUp's actual live workspace member list.
+// Reuses the same GET /team endpoint + email-matching logic
+// resolveClickupUserId already uses for the logged-in user, just applied
+// to every row instead of one. Column Q (index 16) is Workspace Email --
+// the same column already used to resolve real ClickUp identity, not to
+// be confused with column K (MKC Public Email), which is the outbound
+// send identity for SendGrid/Resend and unrelated to this check.
+async function checkTeamDirectorySync(){
+  const btn=document.getElementById('team-sync-btn');
+  const statusEl=document.getElementById('team-sync-status');
+  btn.disabled=true;
+  statusEl.textContent='Checking…';
+  try{
+    const d=await cuFetch('/team');
+    const team=(d.teams||[]).find(t=>t.id===S.creds.wsId)||(d.teams||[])[0];
+    const members=team?.members||[];
+    const clickupEmails=new Set(members.map(m=>(m.user?.email||'').toLowerCase().trim()).filter(Boolean));
+
+    const rows=S.ref.team||[];
+    const mismatches=[];
+    rows.forEach(r=>{
+      const mkcId=r[0]||'',status=(r[1]||'').toLowerCase(),firstName=r[2]||'',wsEmail=(r[16]||'').toLowerCase().trim();
+      if(status==='active'&&wsEmail&&!clickupEmails.has(wsEmail)){
+        mismatches.push(`⚠ ${firstName} (${mkcId}) — "${wsEmail}" doesn't match any current ClickUp workspace member`);
+      }
+    });
+
+    const sheetEmails=new Set(rows.map(r=>(r[16]||'').toLowerCase().trim()).filter(Boolean));
+    const unlisted=members.filter(m=>{
+      const e=(m.user?.email||'').toLowerCase().trim();
+      return e&&!sheetEmails.has(e);
+    }).map(m=>m.user?.username||m.user?.email);
+
+    let report;
+    if(!mismatches.length&&!unlisted.length){
+      report='✓ No drift found — every active Team Directory row matches a real, current ClickUp workspace member.';
+    }else{
+      report=mismatches.join('\n');
+      if(unlisted.length)report+=(mismatches.length?'\n\n':'')+`ℹ ${unlisted.length} ClickUp workspace member(s) not found in the Team Directory sheet at all: ${unlisted.join(', ')}`;
+    }
+    statusEl.textContent=report;
+  }catch(e){
+    statusEl.textContent='Check failed: '+e.message;
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 /**
