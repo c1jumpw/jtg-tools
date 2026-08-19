@@ -2446,6 +2446,25 @@ async function submitNewTask(){
       await setF('related lead',idStr);
       await setF('related deal',idStr);
       await setF('related contact',idStr);
+      // Propagate Related Account too -- either a link IS an Account
+      // directly, or (Deal/Lead/Contact links) has its own Related
+      // Account this task should inherit. Small number of extra fetches
+      // (one per link), acceptable for a low-frequency action like
+      // creating a task.
+      const acctIds=new Set();
+      for(const link of S._taskLinks){
+        try{
+          const linkedTask=await cuFetch(`/task/${link.id}`);
+          if(linkedTask.list?.id===S.creds.listAccounts){
+            acctIds.add(link.id);
+          }else{
+            const linkedCf=getCF(linkedTask);
+            const acct=linkedCf['related account id']||linkedCf['related account']||'';
+            if(acct)acctIds.add(acct);
+          }
+        }catch(e){}
+      }
+      if(acctIds.size)await setF('related account',[...acctIds].join(', '));
     }
     // Sync to Master CRM Tasks Google Sheet
     // Columns: A=Task Name, B=Status, C=Related Lead/Contact ID, D=Related Deal ID, E=Related Account ID, F=Next Action Date, G=Assignee, H=Notebook Link
@@ -3959,6 +3978,17 @@ async function createQuickTaskForEntry(name,dueStr,entryId,entryName){
   if(entryType==='pipeline')await setFieldById(newTask.id,CU_FIELDS.RELATED_DEAL_ID,entryId,'short_text');
   else if(entryType==='accounts')await setFieldById(newTask.id,CU_FIELDS.RELATED_ACCT_ID,entryId,'short_text');
   else await setFieldById(newTask.id,CU_FIELDS.RELATED_LC_ID,entryId,'short_text');
+  // Also propagate the linked entry's OWN Related Account, if it has one
+  // and isn't itself an Account (an Account entry IS its own account,
+  // already handled by the branch above). Previously the new task only
+  // ever got whichever single field matched the direct link -- a task
+  // created for a Deal or Lead/Contact never inherited the Account that
+  // Deal/Lead belongs to.
+  if(entryType!=='accounts'){
+    const linkedCf=getCF(S.currentEntry?.task||{});
+    const relAcct=linkedCf['related account id']||linkedCf['related account']||'';
+    if(relAcct)await setFieldById(newTask.id,CU_FIELDS.RELATED_ACCT_ID,relAcct,'short_text');
+  }
   try{
     const linkedLead=entryType==='leads'||entryType==='contacts'?entryId:'';
     const linkedDeal=entryType==='pipeline'?entryId:'';
@@ -4514,11 +4544,29 @@ function setupSearch(){
 
 function searchAll(q){
   const res=[];
+  // Digit-only view of the query, for phone matching regardless of how
+  // the number is formatted in the field ("+1 470 222 6558" vs a plain
+  // "4702226558" query). Require a few digits before treating it as a
+  // phone search -- a 1-2 digit query would otherwise match almost every
+  // phone number in the list and be useless noise.
+  const qDigits=q.replace(/\D/g,'');
+  const phoneSearch=qDigits.length>=4;
+  // Word-based text matching: each word in the query must appear
+  // SOMEWHERE in the combined name/email text, not necessarily adjacent
+  // or in the same order -- "Miles Garry" now finds "Garry Miles", and
+  // "j garry" finds "Garry Miles <j...@...>" even though "j" and "garry"
+  // aren't next to each other in the source text.
+  const qWords=q.split(/\s+/).filter(Boolean);
   const map={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
   Object.entries(map).forEach(([key,label])=>{
     S.entries[key].filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      if([t.name,t.id,cf['primary contact email'],cf.email,cf.phone].some(v=>(v||'').toLowerCase().includes(q)))
+      const idMatch=(t.id||'').toLowerCase().includes(q);
+      const phoneDigits=(cf.phone||'').replace(/\D/g,'');
+      const phoneMatch=phoneSearch&&phoneDigits.includes(qDigits);
+      const textBlob=[t.name,cf['primary contact email'],cf.email].filter(Boolean).join(' ').toLowerCase();
+      const textMatch=qWords.length>0&&qWords.every(w=>textBlob.includes(w));
+      if(idMatch||phoneMatch||textMatch)
         res.push({id:t.id,name:t.name,type:label,key,status:t.status?.status,email:cf['primary contact email']||cf.email||''});
     });
   });
