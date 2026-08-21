@@ -2930,14 +2930,33 @@ const MSG_VAR_LABELS={
   nextActionDate:'Next Action Date',leadSource:'Lead Source',
   recentOptIn:'Recent Opt-In Action',lastAction:'Last Action',
   opportunity:'Opportunity Amount',senderFirstName:'Your Name',
-  magnetName:'Lead Magnet Name',magnetLink:'Lead Magnet Link'
+  magnetName:'Lead Magnet Name',magnetLink:'Lead Magnet Link',
+  introCallLink:'Your Intro Call Link',discoveryCallLink:'Your Discovery Call Link',walkthroughCallLink:'Your Walkthrough Call Link'
 };
 
 // Pulls template variables from a task's custom fields (+ the logged-in
 // user, for the sender's name). Mirrors getCF()'s lowercase-key reads
 // elsewhere in the app for consistency.
+// Staff-specific scheduling links (Team Directory columns V/W/X), matched
+// by MKC ID -- same lookup pattern as resolveSenderIdentity. Unlike
+// nextActionLink (a manual, per-ENTRY field for things that are
+// inherently unique per deal -- proposals, deposit amounts), these
+// auto-resolve to whoever's actually logged in and sending the message,
+// same as the Quo number and SendGrid email already do.
+function resolveSchedulingLinks(){
+  const mkcId=(S.user?.mkcId||'').trim().toLowerCase();
+  const rows=S.ref.team||[];
+  const row=mkcId?rows.find(r=>r.some(cell=>(cell??'').toString().trim().toLowerCase()===mkcId)):null;
+  return{
+    introCallLink:row?row[21]||'':'',       // column V
+    discoveryCallLink:row?row[22]||'':'',   // column W
+    walkthroughCallLink:row?row[23]||'':''  // column X
+  };
+}
+
 function buildMsgVars(task,type,cf){
   const fullName=task.name||'';
+  const scheduling=resolveSchedulingLinks();
   return{
     firstName:cf['first name']||fullName.split(' ')[0]||'',
     fullName,
@@ -2950,7 +2969,10 @@ function buildMsgVars(task,type,cf){
     recentOptIn:cf['recent opt-in action']||cf['recent opt in action']||'',
     lastAction:cf['last action']||'',
     opportunity:(cf.opportunity!==undefined&&cf.opportunity!=='')?('$'+Number(cf.opportunity).toLocaleString()):'',
-    senderFirstName:(S.user?.name||'').split(' ')[0]||'the team'
+    senderFirstName:(S.user?.name||'').split(' ')[0]||'the team',
+    introCallLink:scheduling.introCallLink,
+    discoveryCallLink:scheduling.discoveryCallLink,
+    walkthroughCallLink:scheduling.walkthroughCallLink
   };
 }
 
@@ -2973,17 +2995,8 @@ const CRM_ACTIONS={
   lead:{
     'Appointments':[
       {id:'invite_intro_call',label:'Invite to Intro Call',structure:'Name → Same → Fame → Pain → Aim → Game',
-       vars:['firstName','senderFirstName','recentOptIn','nextActionLink'],
-       template:"Hi {{firstName}}, it's {{senderFirstName}}. We help business owners turn their expertise into a brand that actually brings in clients — {{recentOptIn}} is exactly the kind of thing that tells me you're already thinking that way. I'd love to grab 20 minutes for a quick intro call to see where you're at and whether we're a fit; either way you'll walk away with a clearer next step. Here's my calendar: {{nextActionLink}}"},
-      {id:'invite_brand_craftsman',label:'Invite to Brand Craftsman Newsletter',structure:'Same → Fame → Aim (soft invite)',
-       vars:['firstName','nextActionLink'],
-       template:"Hi {{firstName}} — thought you'd get value from our Brand Craftsman newsletter. It's a short, practical read on building a brand that actually converts, no fluff. Free to join here: {{nextActionLink}}"},
-      {id:'invite_f5_ceo',label:'Invite to F5 CEO Newsletter',structure:'Same → Fame → Aim (soft invite)',
-       vars:['firstName','nextActionLink'],
-       template:"Hi {{firstName}} — if you're leading a business right now, our F5 CEO newsletter is built for exactly that seat: sharp, short insights on growth without the noise. Free to subscribe here: {{nextActionLink}}"},
-      {id:'invite_conversion_leak',label:'Invite to Conversion Leak Test',structure:'Pain → Aim (soft invite)',
-       vars:['firstName','nextActionLink'],
-       template:"Hi {{firstName}} — quick one. Most businesses are leaking conversions somewhere in their funnel without realizing it. We put together a free Conversion Leak Test that flags exactly where yours might be happening — takes a few minutes: {{nextActionLink}}"},
+       vars:['firstName','senderFirstName','recentOptIn','introCallLink'],
+       template:"Hi {{firstName}}, it's {{senderFirstName}}. We help business owners turn their expertise into a brand that actually brings in clients — {{recentOptIn}} is exactly the kind of thing that tells me you're already thinking that way. I'd love to grab 20 minutes for a quick intro call to see where you're at and whether we're a fit; either way you'll walk away with a clearer next step. Here's my calendar: {{introCallLink}}"},
       {id:'invite_lead_magnet',label:'Invite to Lead Magnet',type:'magnet',structure:'Same → Fame → Aim (dynamic, picked below)',
        vars:['firstName','magnetName','magnetLink'],
        template:"Hi {{firstName}} — thought you'd get value from {{magnetName}}. Free to check out here: {{magnetLink}}"}
@@ -3008,8 +3021,8 @@ const CRM_ACTIONS={
        vars:['firstName'],
        template:"Hi {{firstName}}, sorry we missed each other on the phone! What's the best time to try again — or happy to switch to text/email if that's easier for you."},
       {id:'followup_missed_appt',label:'Follow Up — Missed Appointment',structure:'Speed-first re-engage',
-       vars:['firstName','nextActionLink'],
-       template:"Hi {{firstName}}, looks like we missed our scheduled time — totally happens. Want to grab a new slot? Here's my calendar: {{nextActionLink}}"},
+       vars:['firstName','introCallLink'],
+       template:"Hi {{firstName}}, looks like we missed our scheduled time — totally happens. Want to grab a new slot? Here's my calendar: {{introCallLink}}"},
       {id:'mark_incomplete_call',label:'Mark Incomplete Call',type:'internal'}
     ],
     'Nurture':[
@@ -3037,6 +3050,14 @@ const CRM_ACTIONS={
     ]
   },
   pipeline:{
+    'Appointments':[
+      {id:'invite_discovery_call',label:'Invite to Discovery Call',structure:'Ask for the appointment',
+       vars:['firstName','senderFirstName','discoveryCallLink'],
+       template:"Hi {{firstName}}, it's {{senderFirstName}} — let's find some time for a discovery call so I can get a clear picture of what you're working with and where we can actually help. Here's my calendar: {{discoveryCallLink}}"},
+      {id:'invite_walkthrough_call',label:'Invite to Walkthrough Call',structure:'Ask for the appointment',
+       vars:['firstName','senderFirstName','walkthroughCallLink'],
+       template:"Hi {{firstName}}, it's {{senderFirstName}} — ready to walk you through exactly how this would work for you, step by step. Grab a time here: {{walkthroughCallLink}}"}
+    ],
     'Presentation Follow-Up':[
       {id:'post_discovery',label:'Send Post Discovery Message',structure:'Insight → Method',
        vars:['firstName'],
