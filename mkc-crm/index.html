@@ -1536,6 +1536,15 @@ const LEAD_MAGNET_FIELDS={
   PUBLIC_LINK:    '740edadb-cee2-40b3-880b-7d38500bfc4d',
   SUB_BRANCH_MCO: 'b9b66ef7-08e1-405f-b3ca-6c2bcc93ed46'
 };
+// Duplicate magnet NAMES across branches/sub-branches are expected by
+// design (same content, different targeting) -- this label is what makes
+// them distinguishable in a picker. Sub-branch only shown when present,
+// since most magnets won't have one set.
+function magnetLabel(m){
+  const sub=m.subBranchJTG||m.subBranchMCO||'';
+  const tag=m.branch?`[${m.branch}${sub?` / ${sub}`:''}] `:'';
+  return tag+m.name;
+}
 async function loadLeadMagnetsCU(){
   try{
     const tasks=await fetchAllTasks(LEAD_MAGNET_LIST_ID);
@@ -3126,7 +3135,7 @@ function renderMessagePreview(action,vars){
       <div class="form-group"><label>Which lead magnet?</label>
         <select class="form-select" onchange="selectLeadMagnetForAction(this.value)">
           <option value="">— Select Lead Magnet —</option>
-          ${magnets.map(m=>`<option value="${m.id}"${picked&&picked.id===m.id?' selected':''}>${m.branch?`[${esc(m.branch)}] `:''}${esc(m.name)}</option>`).join('')}
+          ${magnets.map(m=>`<option value="${m.id}"${picked&&picked.id===m.id?' selected':''}>${esc(magnetLabel(m))}</option>`).join('')}
         </select>
       </div>`;
     if(picked){
@@ -3198,7 +3207,7 @@ function renderPfActions(task,type,cf,body){
     <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Select a lead magnet to auto-fill the Next Action Link field.</div>
     <select class="form-select" id="lm-sel" style="margin-bottom:8px" onchange="previewMagnet(this)">
       <option value="">— Select Lead Magnet —</option>
-      ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.publicLink)}" data-name="${esc(m.name)}">${m.branch?`[${esc(m.branch)}] `:''}${esc(m.name)}${m.status!=='active/published'?' (not published)':''}</option>`).join('')}
+      ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.publicLink)}" data-name="${esc(m.name)}">${esc(magnetLabel(m))}${m.status!=='active/published'?' (not published)':''}</option>`).join('')}
     </select>
     <div id="lm-preview" style="display:none;font-size:12px;padding:8px 10px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-secondary)"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
