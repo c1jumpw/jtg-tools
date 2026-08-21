@@ -1583,8 +1583,13 @@ async function loadAllEntries(){
     if(!lists[type])continue;
     try{
       const tasks=await fetchAllTasks(lists[type]);
-      S.entries[type]=tasks;
-      S.filtered[type]=tasks.filter(t=>!t.parent);
+      // Staff tier sees only what's assigned to them -- filtered right
+      // here, at the source, rather than in every individual view. Admin
+      // and Super Admin are unaffected. Reuses the same isAssignedToMe
+      // already powering "My Work", so the matching logic (ID-first, name/
+      // email fallback) stays in exactly one place.
+      S.entries[type]=isStaffOnly()?tasks.filter(isAssignedToMe):tasks;
+      S.filtered[type]=S.entries[type].filter(t=>!t.parent);
       renderTable(type);
       const mode=S.viewMode[type];
       if(mode==='kanban')renderKanban(type);
@@ -2007,7 +2012,8 @@ async function loadMasterTasks(){
   if(!S.creds.listTasks)return;
   try{
     const d=await cuFetch(`/list/${S.creds.listTasks}/task?include_closed=true&subtasks=true`);
-    S_masterTasks=d.tasks||[];
+    const tasks=d.tasks||[];
+    S_masterTasks=isStaffOnly()?tasks.filter(isAssignedToMe):tasks;
   }catch(e){console.warn('Master tasks load:',e.message);}
 }
 
@@ -2041,6 +2047,7 @@ async function resolveClickupUserId(){
 // be confused with column K (MKC Public Email), which is the outbound
 // send identity for SendGrid/Resend and unrelated to this check.
 async function checkTeamDirectorySync(){
+  if(!isSuperAdmin())return showToast('Super Admin access required for this tool.','error');
   const btn=document.getElementById('team-sync-btn');
   const statusEl=document.getElementById('team-sync-status');
   btn.disabled=true;
@@ -2203,6 +2210,7 @@ function resolveLinkedEntry(cf,lookup){
 // safe over fast and rate-limit-risky. Never overwrites a task that
 // already has an Account set.
 async function backfillRelatedAccounts(){
+  if(!isSuperAdmin())return showToast('Super Admin access required for this tool.','error');
   if(!S.creds.listTasks)return showToast('Master CRM Tasks list ID not configured.','error');
   if(!confirm('Scan every Master CRM Task and fill in any missing Related Account IDs? This writes directly to ClickUp and cannot be bulk-undone. Continue?'))return;
 
@@ -5743,15 +5751,23 @@ function goPage(type,p){const max=Math.ceil(S.filtered[type].length/50);S.pages[
 
 function closeModal(id){document.getElementById(id).style.display='none';S.isEditMode=false;}
 
-/**
- * @returns {boolean} true if the logged-in user's session has admin
- *   access (see the Worker's handleLogin -- accessLevel is read from a
- *   dedicated column in the Team Directory sheet, fails closed to
- *   'standard' for anything blank/unrecognized). Used to gate the
- *   Settings/Admin sidebar section -- see updateUserUI and
- *   switchView's guard below.
- */
-function isAdmin(){return S.user?.accessLevel==='admin';}
+// Three access tiers, read from the Team Directory sheet's Access Level
+// column: "Super Admin" > "Admin" > anything else (fails closed to the
+// most restrictive tier -- Staff -- for blank/unrecognized values, same
+// philosophy as the old binary check).
+function accessTier(){
+  const lvl=(S.user?.accessLevel||'').toLowerCase().trim();
+  if(lvl==='super admin')return'super';
+  if(lvl==='admin')return'admin';
+  return'staff';
+}
+// Admin-or-above -- unchanged meaning from before, so every existing call
+// site (Settings visibility, etc.) keeps working exactly as it did.
+function isAdmin(){return accessTier()==='super'||accessTier()==='admin';}
+// Strictly Super Admin -- gates destructive/account-level actions
+// (Data Maintenance bulk tools, changing someone else's access level).
+function isSuperAdmin(){return accessTier()==='super';}
+function isStaffOnly(){return accessTier()==='staff';}
 
 function updateUserUI(){
   const n=S.user?.name||'';
