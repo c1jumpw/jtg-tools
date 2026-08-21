@@ -1500,13 +1500,13 @@ async function loadRef(){
     ['ClickUp Labels Mastersheet!A:C','labels'],
     ['MKC Team Member Directory!A:T','team'],
     ['Entities & Branches!A:D','branches'],
-    ['Lead Sources!A:C','leadSources'],
-    ['Lead Magnet Masterlist!A:G','leadMagnets']
+    ['Lead Sources!A:C','leadSources']
   ];
   for(const[range,key]of sheets){
     try{const r=await gsFetch(range);S.ref[key]=r.slice(1);}
     catch(e){console.warn('Ref:',range,e.message);}
   }
+  await loadLeadMagnetsCU();
   // populateAssigneeFilter() removed -- it populated #tf-assignee from
   // the Team Directory SHEET, which directly conflicted with
   // populateTaskFilters() (in the Action Hub code) populating the SAME
@@ -1517,6 +1517,43 @@ async function loadRef(){
   // ClickUp space members, not just the sheet". populateTaskFilters is
   // the correct, ClickUp-sourced one; this was legacy/redundant code
   // from before that function existed.
+}
+
+// Lead Magnets moved off the Sheet entirely and onto their own ClickUp
+// List (901715467342, "Lead Magnet Master List") -- adding a new magnet
+// is now purely a ClickUp task, no spreadsheet edit and no code change.
+// S.ref.leadMagnets holds clean objects (not raw row arrays like the old
+// Sheet version), filtered to nothing here -- callers filter by status
+// as needed (the generic Invite to Lead Magnet action only wants
+// 'active/published', but other future uses might want the full set).
+const LEAD_MAGNET_LIST_ID='901715467342';
+const LEAD_MAGNET_FIELDS={
+  SUB_BRANCH_JTG: '20b50b13-180c-4d35-9b6d-e54d055d1393',
+  SYSTEME_TAG:    '26036bdc-200c-4213-9c96-b3b421a5b569',
+  MKC_ID:         '283bb059-1ab3-42ac-a004-c428840adc28',
+  NOTEBOOK_LINK:  '5e37aae5-7f16-4669-b05a-0435ca51c5dd',
+  BRANCH:         '6623fa17-7220-4e17-8011-ee6a4a8fe2c7',
+  PUBLIC_LINK:    '740edadb-cee2-40b3-880b-7d38500bfc4d',
+  SUB_BRANCH_MCO: 'b9b66ef7-08e1-405f-b3ca-6c2bcc93ed46'
+};
+async function loadLeadMagnetsCU(){
+  try{
+    const tasks=await fetchAllTasks(LEAD_MAGNET_LIST_ID);
+    S.ref.leadMagnets=tasks.filter(t=>!t.parent).map(t=>{
+      const cf=getCF(t);
+      return{
+        id:t.id,
+        name:t.name,
+        status:(t.status?.status||'').toLowerCase(),
+        branch:cf.branch||'',
+        subBranchJTG:cf['sub-branch (jtg)']||'',
+        subBranchMCO:cf['sub-branch (mco)']||'',
+        publicLink:cf['public opt-in link']||'',
+        systemeTag:cf['systeme.io tag/campaign']||'',
+        notebookLink:cf['notebook link']||''
+      };
+    });
+  }catch(e){console.warn('loadLeadMagnetsCU failed:',e.message);S.ref.leadMagnets=[];}
 }
 
 // ═══════════════════════════════════════════
@@ -2636,6 +2673,7 @@ async function openProfile(taskId,type){
     const comments=await cuFetch(`/task/${taskId}/comment`);
     S.currentEntry={task,type,comments:comments.comments||[]};
     S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
+    S.selectedMagnetId=null;
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
     updatePfActivityBadge();
@@ -2878,7 +2916,8 @@ const MSG_VAR_LABELS={
   companyName:'Company Name',plan:'Plan',nextActionLink:'Next Action Link',
   nextActionDate:'Next Action Date',leadSource:'Lead Source',
   recentOptIn:'Recent Opt-In Action',lastAction:'Last Action',
-  opportunity:'Opportunity Amount',senderFirstName:'Your Name'
+  opportunity:'Opportunity Amount',senderFirstName:'Your Name',
+  magnetName:'Lead Magnet Name',magnetLink:'Lead Magnet Link'
 };
 
 // Pulls template variables from a task's custom fields (+ the logged-in
@@ -2931,7 +2970,10 @@ const CRM_ACTIONS={
        template:"Hi {{firstName}} — if you're leading a business right now, our F5 CEO newsletter is built for exactly that seat: sharp, short insights on growth without the noise. Free to subscribe here: {{nextActionLink}}"},
       {id:'invite_conversion_leak',label:'Invite to Conversion Leak Test',structure:'Pain → Aim (soft invite)',
        vars:['firstName','nextActionLink'],
-       template:"Hi {{firstName}} — quick one. Most businesses are leaking conversions somewhere in their funnel without realizing it. We put together a free Conversion Leak Test that flags exactly where yours might be happening — takes a few minutes: {{nextActionLink}}"}
+       template:"Hi {{firstName}} — quick one. Most businesses are leaking conversions somewhere in their funnel without realizing it. We put together a free Conversion Leak Test that flags exactly where yours might be happening — takes a few minutes: {{nextActionLink}}"},
+      {id:'invite_lead_magnet',label:'Invite to Lead Magnet',type:'magnet',structure:'Same → Fame → Aim (dynamic, picked below)',
+       vars:['firstName','magnetName','magnetLink'],
+       template:"Hi {{firstName}} — thought you'd get value from {{magnetName}}. Free to check out here: {{magnetLink}}"}
     ],
     'Follow-Up':[
       {id:'attempt_warm_1',label:'Attempt Warm Outreach',structure:'Reaffirm relevance → ask permission',
@@ -3072,6 +3114,32 @@ function renderMessagePreview(action,vars){
         <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
       </div>`;
   }
+  if(action.type==='magnet'){
+    const magnets=(S.ref.leadMagnets||[]).filter(m=>m.status==='active/published');
+    if(!magnets.length){
+      S.currentDraftTokens=null;
+      return `<h4>${esc(action.label)}</h4><div style="font-size:13px;color:var(--text-muted)">No lead magnets are marked Active/Published right now. <a href="https://app.clickup.com/25724879/v/li/${LEAD_MAGNET_LIST_ID}" target="_blank" style="color:var(--accent)">Check the list →</a></div>`;
+    }
+    const picked=S.selectedMagnetId?magnets.find(m=>m.id===S.selectedMagnetId):null;
+    let html=`<h4>${esc(action.label)}</h4>
+      ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
+      <div class="form-group"><label>Which lead magnet?</label>
+        <select class="form-select" onchange="selectLeadMagnetForAction(this.value)">
+          <option value="">— Select Lead Magnet —</option>
+          ${magnets.map(m=>`<option value="${m.id}"${picked&&picked.id===m.id?' selected':''}>${m.branch?`[${esc(m.branch)}] `:''}${esc(m.name)}</option>`).join('')}
+        </select>
+      </div>`;
+    if(picked){
+      // Recurse as an ordinary message action once a magnet's picked --
+      // reuses Copy/Personalize/Send/Log exactly as-is, no separate code
+      // path to maintain for what happens after selection.
+      const magnetVars={...vars,magnetName:picked.name,magnetLink:picked.publicLink||''};
+      html+=renderMessagePreview({...action,type:undefined},magnetVars);
+    }else{
+      S.currentDraftTokens=null;
+    }
+    return html;
+  }
   const missing=(action.vars||[]).filter(v=>!vars[v]);
   const rendered=renderTemplate(action.template,vars);
   // Track exactly what literal string got substituted for each token --
@@ -3104,11 +3172,13 @@ function renderPfActions(task,type,cf,body){
   const actionHtml=Object.entries(groups).map(([grp,actions])=>`
     <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${esc(grp)}</div>
     ${actions.map(a=>{
-      const missing=a.type==='internal'?[]:(a.vars||[]).filter(v=>!vars[v]);
+      const missing=(a.type==='internal'||a.type==='magnet')?[]:(a.vars||[]).filter(v=>!vars[v]);
       const missingLabels=missing.map(v=>MSG_VAR_LABELS[v]||v).join(', ');
       const readyBadge=a.type==='internal'
         ?'<span style="color:var(--text-muted);font-size:12px">internal</span>'
-        :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
+        :a.type==='magnet'
+          ?'<span style="color:var(--text-muted);font-size:12px">pick magnet</span>'
+          :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
       return `<div class="action-option${S.selectedAction===a.id?' selected':''}" onclick="selectAction(this,'${a.id}')" data-action="${a.id}">
         <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
         <div class="action-name">${esc(a.label)}</div>
@@ -3122,34 +3192,24 @@ function renderPfActions(task,type,cf,body){
     ?renderMessagePreview(selected,vars)
     :'<div style="font-size:13px;color:var(--text-muted);font-style:italic">Select an action above to generate a draft message.</div>';
 
-  // Lead Magnet selector — unchanged from v2.7.0
-  const allMagnets=S.ref.leadMagnets||[];
-  const magnetMap={};
-  allMagnets.forEach(r=>{
-    const name=r[2]||'';
-    const branch=r[0]||'';
-    const pubLink=r[6]||'';
-    const key=branch+'||'+name;
-    if(!magnetMap[key])magnetMap[key]={name,branch,pubLink,desc:r[3]||''};
-    if(pubLink&&!magnetMap[key].pubLink)magnetMap[key].pubLink=pubLink;
-  });
-  const magnetList=Object.values(magnetMap);
+  // Lead Magnet selector -- sourced live from ClickUp (loadLeadMagnetsCU), not the old Sheet
+  const magnetList=S.ref.leadMagnets||[];
   const lmHtml=magnetList.length?`
     <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted)">Select a lead magnet to auto-fill the Next Action Link field.</div>
     <select class="form-select" id="lm-sel" style="margin-bottom:8px" onchange="previewMagnet(this)">
       <option value="">— Select Lead Magnet —</option>
-      ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.pubLink)}" data-name="${esc(m.name)}">[${esc(m.branch)}] ${esc(m.name)}</option>`).join('')}
+      ${magnetList.map((m,i)=>`<option value="${i}" data-pub="${esc(m.publicLink)}" data-name="${esc(m.name)}">${m.branch?`[${esc(m.branch)}] `:''}${esc(m.name)}${m.status!=='active/published'?' (not published)':''}</option>`).join('')}
     </select>
     <div id="lm-preview" style="display:none;font-size:12px;padding:8px 10px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;color:var(--text-secondary)"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnetToDraft('nal')">→ Set as Next Action Link</button>
       <button class="btn btn-secondary btn-sm" onclick="applyLeadMagnetToDraft('optin')">→ Set as Recent Opt-In</button>
     </div>
-    <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:10px;text-decoration:none">
+    <a href="https://app.clickup.com/25724879/v/li/${LEAD_MAGNET_LIST_ID}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:10px;text-decoration:none">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       Manage lead magnets →
     </a>`
-    :'<div style="font-size:13px;color:var(--text-muted)">No lead magnets found. <a href="https://c1jumpw.github.io/jtg-tools/lead-magnet-index/" target="_blank" style="color:var(--accent)">Add some →</a></div>';
+    :`<div style="font-size:13px;color:var(--text-muted)">No lead magnets found. <a href="https://app.clickup.com/25724879/v/li/${LEAD_MAGNET_LIST_ID}" target="_blank" style="color:var(--accent)">Add one →</a></div>`;
 
   body.innerHTML=`
     <div class="pf-section"><h4>Current CRM Action</h4>
@@ -3166,10 +3226,21 @@ function selectAction(el,actionId){
   document.querySelectorAll('.action-option').forEach(o=>o.classList.remove('selected'));
   el.classList.add('selected');
   S.selectedAction=actionId;
+  S.selectedMagnetId=null; // fresh action pick, don't carry over a magnet chosen for a previous selection
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const action=findActionById(actionId,groups);
+  const sec=document.getElementById('msg-preview-section');
+  if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
+}
+
+function selectLeadMagnetForAction(magnetId){
+  S.selectedMagnetId=magnetId||null;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(S.selectedAction,groups);
   const sec=document.getElementById('msg-preview-section');
   if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
 }
