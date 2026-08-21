@@ -650,6 +650,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </div>
         </div>
         <div class="settings-section">
+          <h3>Team Management</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Creates a real record in the ClickUp Team Member Directory AND the matching Google Sheet row in one action, so the two never drift out of sync.</p>
+          <button class="btn btn-primary btn-sm" onclick="openAddTeamMemberModal()">+ Add Team Member</button>
+        </div>
+        <div class="settings-section">
           <h3>Workspace Info</h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text-secondary)">
             <div style="padding:7px 13px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px">Workspace: <strong>90161137399</strong></div>
@@ -842,6 +847,69 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="catchup-result" style="margin-top:16px"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('catchup-modal')">Close</button></div>
+  </div>
+</div>
+
+<!-- ADD TEAM MEMBER: creates the ClickUp task + matching Sheet row in one action -->
+<div id="add-team-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto">
+    <div class="modal-header"><h3>+ Add Team Member</h3><button class="pf-close" onclick="closeModal('add-team-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Creates a real record in ClickUp's Team Member Directory and the matching Google Sheet row together — this is what keeps the two from drifting apart the way the old manual process could.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>First Name *</label><input type="text" id="atm-first"></div>
+        <div class="form-group"><label>Last Name *</label><input type="text" id="atm-last"></div>
+        <div class="form-group"><label>Known As</label><input type="text" id="atm-known" placeholder="Defaults to First Name"></div>
+        <div class="form-group"><label>Middle Name</label><input type="text" id="atm-middle"></div>
+        <div class="form-group"><label>Branch *</label>
+          <select id="atm-branch" class="form-select">
+            <option value="">— Select —</option>
+            <option>JTG</option><option>UNY</option><option>MCO</option><option>MKC SA</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Role / Position / Title</label><input type="text" id="atm-role"></div>
+      </div>
+
+      <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Login &amp; Access</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>Workspace Email *</label><input type="email" id="atm-wsemail" placeholder="Their real ClickUp login email"></div>
+          <div class="form-group"><label>Workspace Passcode *</label><input type="text" id="atm-passcode" placeholder="New login passcode"></div>
+          <div class="form-group" style="grid-column:1/-1"><label>Access Level *</label>
+            <select id="atm-access" class="form-select">
+              <option value="Staff" selected>Staff</option>
+              <option value="Admin">Admin</option>
+              <option value="Super Admin">Super Admin</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Send Identity (for CRM Actions)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>MKC Public Email</label><input type="email" id="atm-pubemail" placeholder="Used for Send via Email"></div>
+          <div class="form-group"><label>MKC Public Phone</label><input type="tel" id="atm-pubphone" placeholder="Used for Send via Quo, e.g. 1 470 300 1898"></div>
+        </div>
+      </div>
+
+      <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Optional / HR Reference</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>Personal Email</label><input type="email" id="atm-persemail"></div>
+          <div class="form-group"><label>Personal Phone</label><input type="tel" id="atm-persphone"></div>
+          <div class="form-group" style="grid-column:1/-1"><label>Mailing Address</label><input type="text" id="atm-address"></div>
+          <div class="form-group"><label>Hire Date</label><input type="date" id="atm-hiredate"></div>
+        </div>
+      </div>
+
+      <div id="add-team-status" style="font-size:12.5px;color:var(--text-secondary);white-space:pre-line;margin-top:6px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-team-modal')">Cancel</button>
+      <button class="btn btn-primary" id="add-team-submit-btn" onclick="submitAddTeamMember()">Create Team Member</button>
+    </div>
   </div>
 </div>
 
@@ -1287,6 +1355,10 @@ async function setFieldById(taskId,fieldId,value,fieldType){
       payload={value:Number(value)};break;
     case'checkbox':
       payload={value:!!value};break;
+    case'users':
+      // People-type fields use an add/rem relationship format, not a
+      // plain value -- accepts a single ID or an array.
+      payload={value:{add:Array.isArray(value)?value:[value],rem:[]}};break;
     default:payload={value:String(value)};
   }
   try{
@@ -1536,6 +1608,39 @@ const LEAD_MAGNET_FIELDS={
   PUBLIC_LINK:    '740edadb-cee2-40b3-880b-7d38500bfc4d',
   SUB_BRANCH_MCO: 'b9b66ef7-08e1-405f-b3ca-6c2bcc93ed46'
 };
+// Team Member Directory -- same list the Worker now authenticates
+// against. Field IDs verified through actual console output during the
+// auth migration (two of these caught real screenshot-transcription
+// errors, so these are trustworthy -- don't re-derive from a screenshot).
+const TEAM_DIR_LIST_ID='901711759484';
+const TEAM_DIR_FIELDS={
+  MKC_ID:              '283bb059-1ab3-42ac-a004-c428840adc28',
+  FIRST_NAME:          'e9a9e94c-88c0-423b-a6db-05669ff5f967',
+  LAST_NAME:           '55530398-9f87-435b-bfe-e662549714d1',
+  MIDDLE_NAME:         '4c9a2c6c-eaf6-4621-9015-e52417fe9a0f',
+  KNOWN_AS:            '2e7b9ad6-456e-4aa5-a1a6-166e4267ceb0',
+  BRANCH:              '6623fa17-7220-4e17-8011-ee6a4a8fe2c7',
+  ROLE:                '1d178589-7a1f-4929-9466-6f9a8604bb57',
+  HIRE_DATE:           '640d6807-15e5-4d2d-b15d-9c51abd6522c',
+  PERSONAL_EMAIL:      'f5ea5720-a0ee-40df-bf34-8f8b2db18b95',
+  PERSONAL_PHONE:      '5961871c-c7fe-4b8b-8adb-107a4e889868',
+  MAILING_ADDRESS:     '611480d3-05fa-4ab8-a794-959354746cfc',
+  WORKSPACE_NAME:      'b5b1ccc3-f07b-44a6-afeb-a11d204cd2ba',
+  WORKSPACE_EMAIL:     'b7efdfbb-f273-4bf4-a3cc-70ca32cbc25d',
+  WORKSPACE_PASSCODE:  '483f45bc-4c06-4860-82f9-dca098badbcb',
+  MKC_PUBLIC_EMAIL:    'ac459ce5-c8e4-4e2c-a94f-d113051f1238',
+  MKC_PUBLIC_PHONE:    '25052cbb-de85-4d75-9a46-208bc5135c73',
+  QUO_PHONE_ID:        'b12241e6-40ab-42d3-b5dc-077a38b7fcdd',
+  ACCESS_LEVEL:        'e75be9a5-8c59-4a68-b265-80944de37c91',
+  NOTEBOOK_LINK:       '5e37aae5-7f16-4669-b05a-0435ca51c5dd',
+  INTRO_CALL_LINK:     '09d21e83-22e6-420e-bded-a463803794c4',
+  DISCOVERY_CALL_LINK: '2af84401-1644-4e38-b64d-730d50e2b483',
+  WALKTHROUGH_CALL_LINK:'b5ea2c1c-d90d-4328-ad3b-ab0f5aa34de7'
+};
+// Access Level drop_down field: writing requires the option's orderindex
+// (a number), not its display text -- confirmed via console, in this
+// exact order.
+const ACCESS_LEVEL_ORDERINDEX={'Super Admin':0,'Admin':1,'Staff':2};
 // Duplicate magnet NAMES across branches/sub-branches are expected by
 // design (same content, different targeting) -- this label is what makes
 // them distinguishable in a picker. Sub-branch only shown when present,
@@ -2209,6 +2314,129 @@ function resolveLinkedEntry(cf,lookup){
 // this can touch every task in the list, so it's deliberately slow and
 // safe over fast and rate-limit-risky. Never overwrites a task that
 // already has an Account set.
+function openAddTeamMemberModal(){
+  ['atm-first','atm-last','atm-known','atm-middle','atm-role','atm-wsemail','atm-passcode',
+   'atm-pubemail','atm-pubphone','atm-persemail','atm-persphone','atm-address','atm-hiredate']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('atm-branch').value='';
+  document.getElementById('atm-access').value='Staff';
+  document.getElementById('add-team-status').textContent='';
+  document.getElementById('add-team-modal').style.display='flex';
+}
+
+// Creates the ClickUp task AND the matching Sheet row in one action --
+// the whole point being that these two never get a chance to drift out
+// of sync the way the old fully-manual process could. Every ClickUp
+// field write goes through setFieldById, which already fails soft
+// per-field (logs + continues) rather than aborting the whole record on
+// one bad field -- appropriate here since a half-populated real record
+// is still far better than none.
+async function submitAddTeamMember(){
+  const first=document.getElementById('atm-first').value.trim();
+  const last=document.getElementById('atm-last').value.trim();
+  const known=document.getElementById('atm-known').value.trim()||first;
+  const middle=document.getElementById('atm-middle').value.trim();
+  const branch=document.getElementById('atm-branch').value;
+  const role=document.getElementById('atm-role').value.trim();
+  const wsEmail=document.getElementById('atm-wsemail').value.trim();
+  const passcode=document.getElementById('atm-passcode').value.trim();
+  const access=document.getElementById('atm-access').value;
+  const pubEmail=document.getElementById('atm-pubemail').value.trim();
+  const pubPhone=document.getElementById('atm-pubphone').value.trim();
+  const persEmail=document.getElementById('atm-persemail').value.trim();
+  const persPhone=document.getElementById('atm-persphone').value.trim();
+  const address=document.getElementById('atm-address').value.trim();
+  const hireDate=document.getElementById('atm-hiredate').value;
+
+  const statusEl=document.getElementById('add-team-status');
+  if(!first||!last||!branch||!wsEmail||!passcode){
+    statusEl.textContent='First Name, Last Name, Branch, Workspace Email, and Workspace Passcode are all required.';
+    return;
+  }
+  if(!confirm(`Create a real Team Member Directory record for ${first} ${last} (${access})? This writes directly to ClickUp and the Team Directory sheet.`))return;
+
+  const btn=document.getElementById('add-team-submit-btn');
+  btn.disabled=true;
+  statusEl.textContent='Checking ClickUp workspace membership…';
+
+  // Resolve the real ClickUp numeric user ID for the Workspace Name
+  // People field -- same email-matching approach used everywhere else
+  // in this app. Non-blocking: someone can exist as a record before
+  // they have a ClickUp seat, they just won't be linkable via People
+  // fields (assignee references, etc.) until they do.
+  let clickupUserId=null,clickupUserName='';
+  try{
+    const d=await cuFetch('/team');
+    const team=(d.teams||[]).find(t=>t.id===S.creds.wsId)||(d.teams||[])[0];
+    const match=(team?.members||[]).find(m=>(m.user?.email||'').toLowerCase()===wsEmail.toLowerCase());
+    clickupUserId=match?match.user.id:null;
+    clickupUserName=match?(match.user.username||''):'';
+  }catch(e){}
+  if(!clickupUserId){
+    if(!confirm(`"${wsEmail}" doesn't match any current ClickUp workspace member -- this person needs a ClickUp seat for the Workspace Name field / assignee linking to work. Create the record anyway (without that link, fixable later)?`)){
+      btn.disabled=false;
+      statusEl.textContent='';
+      return;
+    }
+  }
+
+  try{
+    statusEl.textContent='Creating ClickUp record…';
+    const newTask=await cuFetch(`/list/${TEAM_DIR_LIST_ID}/task`,'POST',{name:`${first} ${last}`,status:'Active'});
+
+    statusEl.textContent='Setting fields…';
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.FIRST_NAME,first,'short_text');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.LAST_NAME,last,'short_text');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.KNOWN_AS,known,'short_text');
+    if(middle)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MIDDLE_NAME,middle,'short_text');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.BRANCH,BRANCH_UUIDS[branch],'labels');
+    if(role)await setFieldById(newTask.id,TEAM_DIR_FIELDS.ROLE,role,'short_text');
+    if(hireDate)await setFieldById(newTask.id,TEAM_DIR_FIELDS.HIRE_DATE,hireDate,'date');
+    if(persEmail)await setFieldById(newTask.id,TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
+    if(persPhone)await setFieldById(newTask.id,TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    if(address)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_EMAIL,wsEmail,'email');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,passcode,'short_text');
+    if(pubEmail)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
+    if(pubPhone)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    await setFieldById(newTask.id,TEAM_DIR_FIELDS.ACCESS_LEVEL,ACCESS_LEVEL_ORDERINDEX[access],'drop_down');
+    if(clickupUserId)await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_NAME,clickupUserId,'users');
+
+    statusEl.textContent='Writing Sheet row…';
+    // Full A-X order, verified column-by-column against the confirmed
+    // layout (this is exactly the class of bug that broke login before --
+    // count every value against the real 24-column range before ever
+    // touching this again):
+    // A MKC ID, B Status, C First, D Last, E Middle, F Known As, G Branch,
+    // H Role, I Hire Date, J Term Date, K Personal Email, L Personal Phone,
+    // M Mailing Address, N Workspace Name, O Workspace Email,
+    // P Workspace Passcode, Q MKC Public Email, R MKC Public Phone,
+    // S Quo Phone ID, T Access Level, U Notebook Link, V Intro Call Link,
+    // W Discovery Call Link, X Walkthrough Call Link
+    const sheetRow=[
+      newTask.id,'Active',first,last,middle,known,branch,role,
+      hireDate||'','',persEmail,persPhone,address,clickupUserName,
+      wsEmail,passcode,pubEmail,pubPhone,'',access,'','','',''
+    ];
+    if(sheetRow.length!==24){
+      statusEl.textContent=`Internal error: Sheet row has ${sheetRow.length} columns, expected 24 -- ClickUp record was created (${newTask.id}) but the Sheet write was skipped to avoid writing misaligned data. Add the Sheet row manually for now.`;
+      showToast('ClickUp record created, but Sheet write blocked (column count mismatch) -- see status for details.','error');
+      btn.disabled=false;
+      return;
+    }
+    await gsAppend('MKC Team Member Directory!A:X',[sheetRow]);
+
+    statusEl.textContent=`✓ Created ${first} ${last} — MKC ID ${newTask.id}`;
+    showToast(`Team member created: ${first} ${last}`,'success');
+    setTimeout(()=>closeModal('add-team-modal'),1800);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+    showToast('Failed to create team member: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
 async function backfillRelatedAccounts(){
   if(!isSuperAdmin())return showToast('Super Admin access required for this tool.','error');
   if(!S.creds.listTasks)return showToast('Master CRM Tasks list ID not configured.','error');
