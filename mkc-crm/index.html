@@ -2061,13 +2061,13 @@ async function checkTeamDirectorySync(){
     const rows=S.ref.team||[];
     const mismatches=[];
     rows.forEach(r=>{
-      const mkcId=r[0]||'',status=(r[1]||'').toLowerCase(),firstName=r[2]||'',wsEmail=(r[16]||'').toLowerCase().trim();
+      const mkcId=r[0]||'',status=(r[1]||'').toLowerCase(),firstName=r[2]||'',wsEmail=(r[14]||'').toLowerCase().trim();
       if(status==='active'&&wsEmail&&!clickupEmails.has(wsEmail)){
         mismatches.push(`⚠ ${firstName} (${mkcId}) — "${wsEmail}" doesn't match any current ClickUp workspace member`);
       }
     });
 
-    const sheetEmails=new Set(rows.map(r=>(r[16]||'').toLowerCase().trim()).filter(Boolean));
+    const sheetEmails=new Set(rows.map(r=>(r[14]||'').toLowerCase().trim()).filter(Boolean));
     const unlisted=members.filter(m=>{
       const e=(m.user?.email||'').toLowerCase().trim();
       return e&&!sheetEmails.has(e);
@@ -3497,8 +3497,8 @@ function resolveSenderIdentity(){
   }));
   return{
     senderName:S.user?.name||'',
-    senderEmail:row?row[10]||'':'',                    // column K -- MKC Public Email
-    senderQuoFrom:row?normalizePhoneE164(row[11]):''    // column L -- MKC Public Phone (column S is Quo's own internal Phone Number ID, not a real number -- wrong field, corrected)
+    senderEmail:row?row[16]||'':'',                    // column Q -- MKC Public Email
+    senderQuoFrom:row?normalizePhoneE164(row[17]):''    // column R -- MKC Public Phone
   };
 }
 
