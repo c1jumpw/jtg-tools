@@ -1559,7 +1559,11 @@ async function loadLeadMagnetsCU(){
         subBranchMCO:cf['sub-branch (mco)']||'',
         publicLink:cf['public opt-in link']||'',
         systemeTag:cf['systeme.io tag/campaign']||'',
-        notebookLink:cf['notebook link']||''
+        notebookLink:cf['notebook link']||'',
+        // Native task description -- no dedicated "Short Description"/"CTA"
+        // field exists on this list yet, so this is whatever's written in
+        // the task's own description body. Feeds AI personalization below.
+        description:t.text_content||t.description||''
       };
     });
   }catch(e){console.warn('loadLeadMagnetsCU failed:',e.message);S.ref.leadMagnets=[];}
@@ -3382,6 +3386,15 @@ async function personalizeWithAI(actionId){
   const vars=buildMsgVars(task,type,cf);
   const leadType=cf['lead/contact type']||'';
   const leadSourceNotes=cf['lead source notes']||cf['source details']||cf['source activity']||'';
+  // If this draft came from a picked lead magnet, feed its own
+  // description/CTA text in as extra grounding -- otherwise the AI is
+  // only working from the generic magnet-invite template, not what the
+  // magnet is actually about.
+  let magnetDescription='';
+  if(action.type==='magnet'&&S.selectedMagnetId){
+    const picked=(S.ref.leadMagnets||[]).find(m=>m.id===S.selectedMagnetId);
+    if(picked)magnetDescription=picked.description||'';
+  }
   const origLabel=btn.textContent;
   btn.disabled=true;btn.textContent='✨ Personalizing…';
   try{
@@ -3397,7 +3410,8 @@ async function personalizeWithAI(actionId){
         leadSourceNotes,
         firstName:vars.firstName,
         lastAction:vars.lastAction,
-        recentActivity:getRecentActivitySummary()
+        recentActivity:getRecentActivitySummary(),
+        magnetDescription
       })
     });
     const data=await res.json().catch(()=>({}));
