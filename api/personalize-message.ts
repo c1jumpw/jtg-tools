@@ -95,6 +95,7 @@ export default async function handler(req: Request): Promise<Response> {
     // from the frontend) -- give it a larger cap than the single-line
     // fields above rather than truncating it down to the same 800 chars.
     const recentActivity = typeof body.recentActivity === 'string' ? body.recentActivity.slice(0, 1500) : '';
+    const magnetDescription = truncate(body.magnetDescription);
 
     const prompt = `You are helping a sales/CRM team member personalize an outreach message before they send it themselves. You are NOT sending anything -- you are only drafting text a human will review, edit, and send manually.
 
@@ -105,7 +106,7 @@ BASELINE MESSAGE (already correctly formatted with this contact's real data -- u
 """
 ${baseMessage}
 """
-
+${magnetDescription ? `\nWHAT THIS LEAD MAGNET ACTUALLY IS (its own description, from the Lead Magnet list -- use this to make the pitch specific and concrete instead of generic, e.g. reference what it actually covers or the real outcome it delivers):\n"""\n${magnetDescription}\n"""\n` : ''}
 CONTEXT ABOUT THIS SPECIFIC CONTACT (use to tailor tone and emphasis, not to invent facts not given):
 - Lead/Contact classification: ${leadType}
 - Lead source: ${leadSource}
@@ -118,7 +119,7 @@ Rewrite the baseline message so it feels specifically tailored to a "${leadType}
 - Keeping the same overall structure/intent noted above
 - Keeping roughly the same length (this is a short text/DM-style message, not an email)
 - Staying consistent with the recent activity log above where one is given -- e.g. don't invite them to something the log shows they already did, and acknowledge a recent touch naturally if it makes the message land better
-- Never inventing specific claims, numbers, or facts that weren't in the baseline message or context above
+${magnetDescription ? `- Grounding the pitch in what the lead magnet actually delivers per its own description above, not just its name\n` : ''}- Never inventing specific claims, numbers, or facts that weren't in the baseline message or context above
 - Never leaving any [[bracketed placeholder]] text unfilled -- if the baseline had one, either work around it naturally or leave the same placeholder text, don't invent a fake value
 - Writing in plain text only, no markdown, no emoji unless the baseline used one`;
 
