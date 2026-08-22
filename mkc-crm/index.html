@@ -377,7 +377,8 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     </div>
     <div id="user-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:12px;right:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);overflow:hidden;z-index:50">
       <div style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);border-bottom:1px solid var(--border)">Account</div>
-      <div style="padding:10px 12px;cursor:pointer;font-size:13px;color:#dc2626" onclick="signOut()">Sign Out</div>
+      <div style="padding:10px 12px;cursor:pointer;font-size:13px" onclick="openEditProfileModal()">Edit Profile</div>
+      <div style="padding:10px 12px;cursor:pointer;font-size:13px;color:#dc2626;border-top:1px solid var(--border)" onclick="signOut()">Sign Out</div>
     </div>
   </div>
 </nav>
@@ -913,6 +914,50 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('add-team-modal')">Cancel</button>
       <button class="btn btn-primary" id="add-team-submit-btn" onclick="submitAddTeamMember()">Create Team Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE: self-service passcode change + send-identity update, syncs both ClickUp and the Sheet -->
+<div id="edit-profile-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Edit Profile</h3><button class="pf-close" onclick="closeModal('edit-profile-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:16px;font-size:12.5px;color:var(--text-secondary);margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div><div style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">Name</div><div id="ep-name" style="font-weight:600"></div></div>
+        <div><div style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">Branch</div><div id="ep-branch"></div></div>
+        <div><div style="color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em">MKC ID</div><div id="ep-mkcid" style="font-family:monospace;font-size:11px"></div></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Change Passcode</div>
+      <div class="form-group"><label>Current Passcode *</label><input type="password" id="ep-current-passcode" placeholder="Required to save any change below"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>New Passcode</label><input type="password" id="ep-new-passcode" placeholder="Leave blank to keep current"></div>
+        <div class="form-group"><label>Confirm New Passcode</label><input type="password" id="ep-confirm-passcode"></div>
+      </div>
+
+      <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Send Identity (for CRM Actions)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>MKC Public Email</label><input type="email" id="ep-pubemail"></div>
+          <div class="form-group"><label>MKC Public Phone</label><input type="tel" id="ep-pubphone"></div>
+        </div>
+      </div>
+
+      <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Personal Info (optional)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label>Personal Email</label><input type="email" id="ep-persemail"></div>
+          <div class="form-group"><label>Personal Phone</label><input type="tel" id="ep-persphone"></div>
+          <div class="form-group" style="grid-column:1/-1"><label>Mailing Address</label><input type="text" id="ep-address"></div>
+        </div>
+      </div>
+
+      <div id="edit-profile-status" style="font-size:12.5px;color:var(--text-secondary);margin-top:6px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('edit-profile-modal')">Cancel</button>
+      <button class="btn btn-primary" id="edit-profile-submit-btn" onclick="submitEditProfile()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -2318,6 +2363,110 @@ function resolveLinkedEntry(cf,lookup){
 // this can touch every task in the list, so it's deliberately slow and
 // safe over fast and rate-limit-risky. Never overwrites a task that
 // already has an Account set.
+function openEditProfileModal(){
+  document.getElementById('user-menu').style.display='none';
+  ['ep-current-passcode','ep-new-passcode','ep-confirm-passcode','ep-pubemail','ep-pubphone','ep-persemail','ep-persphone','ep-address']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('edit-profile-status').textContent='';
+  document.getElementById('ep-name').textContent=S.user?.name||'';
+  document.getElementById('ep-branch').textContent=S.user?.branch||'';
+  document.getElementById('ep-mkcid').textContent=S.user?.mkcId||'';
+  document.getElementById('edit-profile-modal').style.display='flex';
+  loadOwnProfileFields();
+}
+
+async function loadOwnProfileFields(){
+  if(!S.user?.mkcId)return;
+  try{
+    const task=await cuFetch(`/task/${S.user.mkcId}`);
+    const cf=getCF(task);
+    document.getElementById('ep-pubemail').value=cf['mkc public email']||'';
+    document.getElementById('ep-pubphone').value=cf['mkc public phone']||'';
+    document.getElementById('ep-persemail').value=cf['personal email']||'';
+    document.getElementById('ep-persphone').value=cf['personal phone']||'';
+    document.getElementById('ep-address').value=cf['mailing address']||'';
+  }catch(e){console.warn('loadOwnProfileFields failed:',e.message);}
+}
+
+// Finds this admin's own row number in the (already-loaded) Team
+// Directory sheet data -- S.ref.team is rows.slice(1) from the Worker,
+// so array index 0 is actual sheet row 2 (header row is 1).
+function findOwnSheetRowNumber(){
+  const rows=S.ref.team||[];
+  const idx=rows.findIndex(r=>r[0]===S.user.mkcId);
+  return idx>=0?idx+2:null;
+}
+
+// Updates ClickUp AND the specific Sheet cells that actually changed --
+// deliberately single-cell writes here, not a full-row rewrite, so there
+// is no chance of miscounting columns and silently blanking fields this
+// form never touches (Branch, Access Level, scheduling links, etc.).
+async function submitEditProfile(){
+  const currentPass=document.getElementById('ep-current-passcode').value.trim();
+  const newPass=document.getElementById('ep-new-passcode').value.trim();
+  const confirmPass=document.getElementById('ep-confirm-passcode').value.trim();
+  const pubEmail=document.getElementById('ep-pubemail').value.trim();
+  const pubPhone=document.getElementById('ep-pubphone').value.trim();
+  const persEmail=document.getElementById('ep-persemail').value.trim();
+  const persPhone=document.getElementById('ep-persphone').value.trim();
+  const address=document.getElementById('ep-address').value.trim();
+  const statusEl=document.getElementById('edit-profile-status');
+
+  if(!currentPass){statusEl.textContent='Enter your current passcode to save any changes.';return;}
+  if(newPass&&newPass!==confirmPass){statusEl.textContent="New passcode and confirmation don't match.";return;}
+
+  const btn=document.getElementById('edit-profile-submit-btn');
+  btn.disabled=true;
+  statusEl.textContent='Verifying current passcode…';
+  try{
+    const task=await cuFetch(`/task/${S.user.mkcId}`);
+    const cf=getCF(task);
+    const realPasscode=cf['workspace passcode']||'';
+    if(currentPass!==realPasscode){
+      statusEl.textContent='Current passcode is incorrect.';
+      btn.disabled=false;
+      return;
+    }
+
+    statusEl.textContent='Saving to ClickUp…';
+    if(newPass)await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,newPass,'short_text');
+    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
+    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
+    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
+
+    statusEl.textContent='Saving to Sheet…';
+    const rowNum=findOwnSheetRowNumber();
+    if(rowNum){
+      // Single-cell targeted updates, columns confirmed: P=Passcode,
+      // Q=MKC Public Email, R=MKC Public Phone, K=Personal Email,
+      // L=Personal Phone, M=Mailing Address.
+      if(newPass)await gsUpdate(`MKC Team Member Directory!P${rowNum}`,newPass);
+      await gsUpdate(`MKC Team Member Directory!Q${rowNum}`,pubEmail);
+      await gsUpdate(`MKC Team Member Directory!R${rowNum}`,pubPhone);
+      await gsUpdate(`MKC Team Member Directory!K${rowNum}`,persEmail);
+      await gsUpdate(`MKC Team Member Directory!L${rowNum}`,persPhone);
+      await gsUpdate(`MKC Team Member Directory!M${rowNum}`,address);
+    }else{
+      statusEl.textContent='Saved to ClickUp, but could not find your row in the Sheet to update Send via Quo/Email identity there -- check with a Super Admin.';
+      showToast('Partially saved -- see status.','error');
+      btn.disabled=false;
+      return;
+    }
+
+    statusEl.textContent=newPass?'✓ Saved. Your new passcode is active immediately.':'✓ Saved.';
+    showToast('Profile updated.','success');
+    await loadRef(); // refresh cached S.ref.team so Send via Quo/Email uses the new values right away
+    setTimeout(()=>closeModal('edit-profile-modal'),1800);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+    showToast('Failed to save profile: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
 function openAddTeamMemberModal(){
   ['atm-first','atm-last','atm-known','atm-middle','atm-role','atm-wsemail','atm-passcode',
    'atm-pubemail','atm-pubphone','atm-persemail','atm-persphone','atm-address','atm-hiredate']
