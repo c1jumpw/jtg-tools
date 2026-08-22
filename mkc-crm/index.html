@@ -370,10 +370,14 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
     </div>
   </div>
-  <div class="sidebar-bottom">
-    <div class="user-chip">
+  <div class="sidebar-bottom" style="position:relative">
+    <div class="user-chip" onclick="toggleUserMenu(event)" style="cursor:pointer">
       <div class="user-avatar" id="sidebar-avatar">?</div>
       <div><div id="sidebar-name" style="font-size:12px;color:var(--text-sidebar)">Not signed in</div><div style="font-size:10px;color:var(--text-muted)" id="sidebar-role"></div></div>
+    </div>
+    <div id="user-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:12px;right:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);overflow:hidden;z-index:50">
+      <div style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);border-bottom:1px solid var(--border)">Account</div>
+      <div style="padding:10px 12px;cursor:pointer;font-size:13px;color:#dc2626" onclick="signOut()">Sign Out</div>
     </div>
   </div>
 </nav>
@@ -1616,7 +1620,7 @@ const TEAM_DIR_LIST_ID='901711759484';
 const TEAM_DIR_FIELDS={
   MKC_ID:              '283bb059-1ab3-42ac-a004-c428840adc28',
   FIRST_NAME:          'e9a9e94c-88c0-423b-a6db-05669ff5f967',
-  LAST_NAME:           '55530398-9f87-435b-bfe-e662549714d1',
+  LAST_NAME:           '55530338-993f-4187-b1fe-e66254971d14',
   MIDDLE_NAME:         '4c9a2c6c-eaf6-4621-9015-e52417fe9a0f',
   KNOWN_AS:            '2e7b9ad6-456e-4aa5-a1a6-166e4267ceb0',
   BRANCH:              '6623fa17-7220-4e17-8011-ee6a4a8fe2c7',
@@ -5281,6 +5285,22 @@ async function testSheets(){
 }
 function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
 
+function toggleUserMenu(evt){
+  evt.stopPropagation();
+  const menu=document.getElementById('user-menu');
+  if(!menu)return;
+  const opening=menu.style.display==='none';
+  menu.style.display=opening?'block':'none';
+  if(opening){
+    // Close on any click elsewhere -- one-shot listener, re-added each
+    // time the menu opens rather than left permanently attached.
+    const closeOnOutsideClick=(e)=>{
+      if(!menu.contains(e.target)){menu.style.display='none';document.removeEventListener('click',closeOnOutsideClick);}
+    };
+    setTimeout(()=>document.addEventListener('click',closeOnOutsideClick),0);
+  }
+}
+
 // saveWorkerConfig()/forgetWorkerConfig() removed (v1.7.0) -- Activity
 // Inbox access no longer needs a separately-configured Worker URL/admin
 // token at all; it authenticates with the same session your login
@@ -5421,6 +5441,8 @@ async function loadQcInbox(){
 function qcPopulateOwnerFilter(){
   const sel=document.getElementById('qc-owner-filter');
   if(!sel)return;
+  if(!isAdmin()){sel.style.display='none';sel.innerHTML='<option value="">All Users</option>';return;}
+  sel.style.display='';
   const current=sel.value;
   const owners=[...new Set((S.qc.items||[]).map(it=>it.owner_name).filter(Boolean))].sort();
   sel.innerHTML='<option value="">All Users</option>'+owners.map(o=>`<option value="${esc(o)}"${o===current?' selected':''}>${esc(o)}</option>`).join('');
@@ -5490,7 +5512,7 @@ function renderQcInbox(){
     const nameIsResolved=!it.contact_name&&resolvedName;
     const who=esc(resolvedName||it.contact_identifier||'Unknown contact')+(nameIsResolved?' <span style="font-weight:400;color:var(--text-muted);font-size:10.5px">(CRM)</span>':'');
     const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc(qcParseMessageBody(it.body).main.slice(0,140));
-    const owner=it.owner_name?`<span class="badge" style="background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)">${esc(it.owner_name)}</span>`:'';
+    const owner=(it.owner_name&&isAdmin())?`<span class="badge" style="background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)">${esc(it.owner_name)}</span>`:'';
     return`
     <div class="card qc-item" style="margin-bottom:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="qcOpenThread('${it.id}')">
       <div style="width:32px;height:32px;border-radius:8px;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
