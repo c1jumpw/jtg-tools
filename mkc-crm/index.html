@@ -1868,9 +1868,9 @@ function buildToolbar(type){
     <select class="filter-select" id="fs-subbranch-${type}" onchange="filterByField('${type}','subbranch',this.value)">
       <option value="">— Sub-Branch —</option><option value="">All Sub-Branches</option>${allSubBranches.map(s=>`<option value="${s}">${s}</option>`).join('')}
     </select>
-    <select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value)">
+    ${isStaffOnly()?'':`<select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value)">
       <option value="">— Assignee —</option><option value="">All Assignees</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
-    </select>
+    </select>`}
     <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value)">
       <option value="">— Sort by —</option>
       <option value="date_updated_desc">Last Updated ↓</option>
@@ -2505,7 +2505,10 @@ function populateTaskFilters(){
   const assignees=new Set();
   S_masterTasks.forEach(t=>t.assignees?.forEach(a=>{const n=a.username||a.email;if(n)assignees.add(n);}));
   const aEl=document.getElementById('tf-assignee');
-  if(aEl){const cur=aEl.value;aEl.innerHTML='<option value="" style="color:var(--text-muted)">Assignee</option><option value="">All Assignees</option>'+[...assignees].sort().map(a=>`<option value="${esc(a)}"${a===cur?' selected':''}>${esc(a)}</option>`).join('');}
+  if(aEl){
+    if(isStaffOnly()){aEl.style.display='none';}
+    else{aEl.style.display='';const cur=aEl.value;aEl.innerHTML='<option value="" style="color:var(--text-muted)">Assignee</option><option value="">All Assignees</option>'+[...assignees].sort().map(a=>`<option value="${esc(a)}"${a===cur?' selected':''}>${esc(a)}</option>`).join('');}
+  }
   const leads=new Map(),deals=new Map(),accts=new Map();
   S_masterTasks.forEach(t=>{
     const cf=getCF(t);
