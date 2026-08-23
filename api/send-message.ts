@@ -1,6 +1,6 @@
 // api/send-message.ts
 //
-// Vercel Edge Function. Holds the Quo and SendGrid API keys server-side
+// Vercel Edge Function. Holds the Quo and Resend API keys server-side
 // (same non-negotiable rule as the Gemini key -- never in client-side
 // code) and sends a CRM Action draft AS the specific team member who's
 // logged in and sending it, not a shared/generic identity.
@@ -12,11 +12,18 @@
 //
 // Deploy: lives in the same /api folder as personalize-message.ts, same
 // repo, same Vercel project -- auto-deploys on push, nothing extra to
-// configure in Vercel beyond the two new Environment Variables below.
+// configure in Vercel beyond the two Environment Variables below.
 //
 // Env vars needed (Vercel Project Settings -> Environment Variables):
-//   QUO_API_KEY       -- from Quo Settings -> API
-//   SENDGRID_API_KEY  -- from SendGrid Settings -> API Keys
+//   QUO_API_KEY      -- from Quo Settings -> API
+//   RESEND_API_KEY   -- from Resend Settings -> API Keys
+//
+// Migrated from SendGrid to Resend: Resend verifies at the DOMAIN level
+// (SPF/DKIM), not per-address like SendGrid's Single Sender Verification
+// -- once a domain is verified in Resend, ANY address @that domain can
+// send with zero further per-person setup. No frontend changes were
+// needed for this migration; the request/response contract this
+// function exposes is identical to the SendGrid version it replaces.
 
 export const config = { runtime: 'edge' };
 
@@ -114,15 +121,15 @@ export default async function handler(req: Request): Promise<Response> {
       return jsonResponse({ sent: true, channel: 'sms', detail: quoJson }, 200);
     }
 
-    // ─────────────────────── Email via SendGrid ───────────────────────
+    // ─────────────────────── Email via Resend ───────────────────────
     if (channel === 'email') {
-      const sgKey = process.env.SENDGRID_API_KEY;
-      if (!sgKey) {
-        return jsonResponse({ error: 'SENDGRID_API_KEY is not set on this Vercel project.' }, 500);
+      const resendKey = process.env.RESEND_API_KEY;
+      if (!resendKey) {
+        return jsonResponse({ error: 'RESEND_API_KEY is not set on this Vercel project.' }, 500);
       }
 
       const recipientEmail = truncate(body.recipientEmail, 200);
-      const senderEmail = truncate(body.senderEmail, 200); // must be a Single Sender Verified address (or covered by domain auth)
+      const senderEmail = truncate(body.senderEmail, 200); // must be @ a domain verified in Resend
       const senderName = truncate(body.senderName, 100) || 'MKC';
       const subject = truncate(body.subject, 200) || 'A quick note';
 
@@ -130,45 +137,49 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse({ error: 'This entry has no valid email address on file to send to.' }, 400);
       }
       if (!senderEmail || !senderEmail.includes('@')) {
-        return jsonResponse({ error: 'Your SendGrid sender email could not be found (check the Team Directory sheet, column K) -- cannot send as you specifically.' }, 400);
+        return jsonResponse({ error: 'Your sender email could not be found (check the Team Directory sheet, column Q) -- cannot send as you specifically.' }, 400);
       }
 
-      const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sgKey}`,
+          'Authorization': `Bearer ${resendKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          personalizations: [{ to: [{ email: recipientEmail }] }],
-          from: { email: senderEmail, name: senderName },
+          from: `${senderName} <${senderEmail}>`,
+          to: [recipientEmail],
           subject,
-          content: [{ type: 'text/plain', value: message }],
+          text: message,
         }),
       });
 
-      // SendGrid returns 202 with an EMPTY body on success -- do not try
-      // to res.json() that, it'll throw. On failure it returns a JSON
-      // error body, most commonly a 403 here specifically because the
-      // sender address isn't verified yet (Single Sender Verification) --
-      // surface that distinctly since it's the most likely real-world
-      // failure as new team members are added.
-      if (sgRes.status === 202) {
-        return jsonResponse({ sent: true, channel: 'email' }, 200);
+      const resendText = await resendRes.text();
+      let resendJson: unknown;
+      try { resendJson = JSON.parse(resendText); } catch { resendJson = resendText; }
+
+      // Resend always returns a real JSON body (an {id} on success),
+      // unlike SendGrid's empty-202 -- simpler to check resendRes.ok
+      // directly rather than a specific status code.
+      if (resendRes.ok) {
+        return jsonResponse({ sent: true, channel: 'email', detail: resendJson }, 200);
       }
 
-      const sgText = await sgRes.text();
-      let sgJson: unknown;
-      try { sgJson = JSON.parse(sgText); } catch { sgJson = sgText; }
-
-      if (sgRes.status === 403) {
+      // Most likely real-world failure: the sender's DOMAIN isn't
+      // verified in Resend yet -- surfaced distinctly, same spirit as
+      // the old SendGrid Single Sender Verification 403 case, just a
+      // per-domain check instead of per-address now.
+      if (resendRes.status === 403) {
         return jsonResponse({
-          error: `SendGrid rejected this send (403) -- most likely "${senderEmail}" hasn't completed Single Sender Verification yet. Check SendGrid -> Sender Authentication.`,
-          detail: sgJson,
+          error: `Resend rejected this send (403) -- most likely the domain on "${senderEmail}" isn't verified yet. Check Resend -> Domains.`,
+          detail: resendJson,
         }, 502);
       }
+      if (resendRes.status === 401) {
+        return jsonResponse({ error: 'Resend rejected the API key (401) -- check RESEND_API_KEY in Vercel.', detail: resendJson }, 502);
+      }
 
-      return jsonResponse({ error: `SendGrid API error (${sgRes.status})`, detail: sgJson }, 502);
+      return jsonResponse({ error: `Resend API error (${resendRes.status})`, detail: resendJson }, 502);
     }
 
     return jsonResponse({ error: 'channel must be "sms" or "email".' }, 400);
