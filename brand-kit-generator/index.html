@@ -250,14 +250,59 @@
            palette, and every saved Compose variant together (added in v4/
            v8). This revision is about *navigation and discoverability* of
            that pipeline, not the pipeline itself.
+
+  v10 (this file, brand-kit-generator-v10.html)
+    - NEW: selective per-color recolor for image layers, alongside the
+           existing whole-object recolor (kept as-is, per explicit request).
+           Each swap rule eyedropper-picks a source color and a target
+           color; multiple rules can coexist on one layer, so a multi-color
+           logo can be rebuilt one color at a time (e.g. red\u2192white AND
+           black\u2192white) rather than only "flatten everything to one
+           color". Reuses the color-distance + feathered-edge technique from
+           applyChromaKey, blending toward the target color instead of
+           toward transparent (see applySingleColorSwap).
+    - NEW: "Crop / split into new layer" for image layers. A draggable,
+           resizable selection box overlays the layer on the canvas;
+           "Extract as new layer" cuts that region out of the layer's
+           CURRENT rendered image into a brand-new, independent layer
+           positioned exactly where the box was, leaving the original layer
+           untouched. Lets a single flattened upload (icon + wordmark baked
+           into one image) be pulled apart into separately movable/
+           recolorable pieces.
+    - NEW: Duplicate button on every layer row — clones a layer (any type)
+           with a small position offset, cloning bgRemoval/recolor/
+           colorSwaps explicitly so editing the copy can never affect the
+           original (same isolation fix pattern as v8's variant bug).
+    - NEW: automated orientation detection. A geometry heuristic (bounding
+           box of all layers, width:height ratio — NOT logo/content
+           understanding) surfaces a "Detected: Horizontal/Vertical" hint
+           next to the Quick Arrange buttons, suggesting the opposite one.
+           Explicitly labeled as a heuristic in both the UI copy and code
+           comments rather than presented as certain.
+    - NEW: Google Fonts expanded from 10 to 27 curated families across
+           sans/serif/mono/display/script categories (see FONT_CHOICES),
+           each rendered as a live font-preview option ("Aa Bb — Name") in
+           the dropdown rather than a plain label. Added a "custom font"
+           field beneath it that loads any Google Font by exact name on
+           demand (loadGoogleFontDynamically) — chosen over trying to
+           preload/preview the full ~1,800-family catalog, which would make
+           the picker itself slow; see the corresponding chat message for
+           the tradeoff this was weighed against.
+    - CHANGED: Step 2/3/4 description blurbs now explicitly distinguish
+           Edit/Export (produce the "initial core assets") from Compose
+           ("this is where you generate logo variations"), per explicit
+           request to make that distinction clear in the UI copy itself.
   ============================================================================
 -->
-<!-- Wordmark font choices for the lockup editor (Step 4). If this request
-     fails (offline, blocked network), the font-family stacks below fall back
-     to system fonts, so the editor still works, just with less variety. -->
+<!-- Google Fonts used by Compose text layers: the curated FONT_CHOICES list
+     (defined in the script below) is preloaded here; fonts added via the
+     "custom font" field are loaded separately, on demand, at runtime. If
+     this request fails (offline, blocked network), the font-family stacks
+     in FONT_CHOICES fall back to system fonts, so the editor still works,
+     just with less variety. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700&family=Poppins:wght@400;700&family=Source+Serif+4:wght@400;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&family=Caveat:wght@400;700&family=Archivo+Black&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Raleway:wght@400;700&family=Work+Sans:wght@400;700&family=Nunito:wght@400;700&family=DM+Sans:wght@400;700&family=Source+Serif+4:wght@400;700&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&family=Lora:wght@400;700&family=PT+Serif:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=Bebas+Neue&family=Archivo+Black&family=Anton&family=Oswald:wght@400;700&family=Righteous&family=Bungee&family=Caveat:wght@400;700&family=Pacifico&family=Dancing+Script:wght@400;700&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#EEF0F3;
@@ -640,6 +685,26 @@
   }
 
   .bg-removal-block{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;}
+
+  /* Crop-into-new-layer overlay: a dashed selection box drawn OVER the
+     target layer on the canvas, darkening everything outside it so the
+     selection reads clearly against a busy background. */
+  .crop-rect-overlay{
+    position:absolute;
+    border:2px dashed #fff;
+    box-shadow:0 0 0 1px var(--accent), 0 0 0 2000px rgba(10,14,26,.35);
+    cursor:move;
+  }
+  .crop-rect-overlay .cr-handle{
+    position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:50%;
+    background:#fff;border:2px solid var(--accent);cursor:nwse-resize;
+  }
+
+  .orientation-hint{
+    font-family:var(--mono);font-size:11px;color:var(--ink-soft);
+    padding:4px 10px;border:1px dashed var(--line);border-radius:999px;
+  }
+  .orientation-hint strong{color:var(--accent);font-weight:700;}
 </style>
 </head>
 <body>
@@ -676,7 +741,7 @@
   <div class="panel" id="panel2">
     <div class="tool-desc">
       <h2>2. Edit</h2>
-      <p>Square off the logo and, optionally, strip a solid background color before generating assets. Revisit this any time via the nav above.</p>
+      <p>Square off the logo and, optionally, strip a solid background color &mdash; this prepares the single source image your <strong>initial core assets</strong> (favicon, icon, social square) are generated from. Revisit any time via the nav above.</p>
     </div>
     <div class="card">
       <div class="edit-grid">
@@ -735,7 +800,7 @@
   <div class="panel" id="panel3">
     <div class="tool-desc">
       <h2>3. Export</h2>
-      <p>Your favicon, apple touch icon, social square, and color palette — download individually, or grab everything (including saved Compose variants) as one zip.</p>
+      <p>Your <strong>initial core assets</strong> &mdash; favicon, apple touch icon, social square, and color palette. Download individually, or grab everything as one zip, including any logo variations you've saved in Compose.</p>
     </div>
     <div class="source-row">
       <div class="source-thumb"><img id="sourceThumb" alt=""></div>
@@ -804,7 +869,7 @@
   <div class="panel" id="panel4">
     <div class="tool-desc">
       <h2>4. Compose</h2>
-      <p>Freely arrange the mark, wordmark text, and any extra images into horizontal, vertical, white, or fully custom logo variations. Works standalone too &mdash; no upload required if you'd rather start from your own images.</p>
+      <p>This is where you generate <strong>logo variations</strong> from your initial assets: horizontal, vertical, white/recolored, cropped-apart, or fully custom lockups. Save each as a named variant to include it in your final zip. Works standalone too &mdash; no upload required if you'd rather start from your own images.</p>
     </div>
     <div class="card">
       <div class="lockup-toolbar">
@@ -832,8 +897,9 @@
         <span style="font-size:12px;color:var(--ink-soft);">Quick arrange:</span>
         <button class="btn" id="arrangeHorizontalBtn" type="button">&#8596; Horizontal</button>
         <button class="btn" id="arrangeVerticalBtn" type="button">&#8597; Vertical</button>
-        <span class="hint" style="text-align:left;margin:0;">Repositions the mark and text layers as a starting point &mdash; still freely draggable after.</span>
+        <span class="orientation-hint" id="orientationHint"></span>
       </div>
+      <p class="hint" style="text-align:left;margin:0 0 12px;">Repositions the mark and text layers as a starting point &mdash; still freely draggable after.</p>
 
       <div class="lockup-layout">
         <div>
@@ -965,6 +1031,18 @@ let variants = [];
 let activeVariantId = null;
 let layerIdCounter = 1;
 let variantIdCounter = 1;
+// Fonts loaded on demand via the "custom font" field (see addCustomFont),
+// appended to the curated FONT_CHOICES list when rendering the font picker.
+let customFonts = [];
+
+/*
+ * Crop-into-new-layer tool state (see extractLayerCrop). `rect` fractions
+ * are relative to the target layer's OWN box (0..1), not the canvas —
+ * mirrors the same "store in a stable unit, convert to display px only at
+ * render time" convention used everywhere else in Compose.
+ */
+let layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+let cropRectDrag = null; // active pointer-drag on the crop rect overlay, or null when idle
 
 /*
  * ---- Step 4 additions: coordinates, undo/redo, per-layer bg removal -----
@@ -1066,11 +1144,89 @@ const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const arrangeHorizontalBtn = document.getElementById('arrangeHorizontalBtn');
 const arrangeVerticalBtn = document.getElementById('arrangeVerticalBtn');
+const orientationHintEl = document.getElementById('orientationHint');
 
 // Preset background colors offered as quick-pick swatches for the social JPG.
 // Quick-pick presets now sourced from the uploaded brand palette (color-palette.txt)
 // instead of arbitrary defaults, so the social-square background stays on-brand.
 const presets = ['#ffffff', '#003c6f', '#07a9a3', '#a1cdff'];
+
+/*
+ * Curated Google Fonts for Compose text layers, spanning distinct voices per
+ * category. NOT the full Google Fonts catalog (~1,800 families) — loading
+ * and live-previewing all of them would make the picker itself slow, which
+ * cuts against this tool's "lightweight editor" direction. Any font not
+ * listed here is still reachable via the "custom font" field in the
+ * property panel, which loads a family by name on demand (see
+ * loadGoogleFontDynamically). This list's `<link>` preload lives in <head>.
+ */
+const FONT_CHOICES = [
+  { label: 'Space Grotesk', value: "'Space Grotesk', sans-serif" },
+  { label: 'Inter', value: "'Inter', -apple-system, sans-serif" },
+  { label: 'Poppins', value: "'Poppins', sans-serif" },
+  { label: 'Montserrat', value: "'Montserrat', sans-serif" },
+  { label: 'Raleway', value: "'Raleway', sans-serif" },
+  { label: 'Work Sans', value: "'Work Sans', sans-serif" },
+  { label: 'Nunito', value: "'Nunito', sans-serif" },
+  { label: 'DM Sans', value: "'DM Sans', sans-serif" },
+  { label: 'Source Serif 4', value: "'Source Serif 4', Georgia, serif" },
+  { label: 'Playfair Display', value: "'Playfair Display', Georgia, serif" },
+  { label: 'Merriweather', value: "'Merriweather', Georgia, serif" },
+  { label: 'Lora', value: "'Lora', Georgia, serif" },
+  { label: 'PT Serif', value: "'PT Serif', Georgia, serif" },
+  { label: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
+  { label: 'Space Mono', value: "'Space Mono', monospace" },
+  { label: 'IBM Plex Mono', value: "'IBM Plex Mono', monospace" },
+  { label: 'Bebas Neue', value: "'Bebas Neue', sans-serif" },
+  { label: 'Archivo Black', value: "'Archivo Black', sans-serif" },
+  { label: 'Anton', value: "'Anton', sans-serif" },
+  { label: 'Oswald', value: "'Oswald', sans-serif" },
+  { label: 'Righteous', value: "'Righteous', sans-serif" },
+  { label: 'Bungee', value: "'Bungee', sans-serif" },
+  { label: 'Caveat', value: "'Caveat', cursive" },
+  { label: 'Pacifico', value: "'Pacifico', cursive" },
+  { label: 'Dancing Script', value: "'Dancing Script', cursive" },
+  { label: 'Fredoka', value: "'Fredoka', sans-serif" },
+  { label: 'System sans', value: "-apple-system, 'Segoe UI', sans-serif" }
+];
+
+/**
+ * Injects a Google Fonts <link> for an arbitrary family name, so any font
+ * (not just the curated FONT_CHOICES list) can be used by typing its exact
+ * name. Idempotent — checks for an existing link before adding another.
+ * No validity check is possible client-side without an API key; an invalid
+ * name just silently falls back to the generic sans-serif in the stack
+ * rather than erroring, since the browser can't load a font that doesn't exist.
+ * @param {string} name exact Google Fonts family name, e.g. "Bungee Shade"
+ */
+function loadGoogleFontDynamically(name){
+  const id = 'gf-custom-' + slugify(name);
+  if (document.getElementById(id)) return; // already loaded this session
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, '+')}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+}
+
+/**
+ * Registers a custom font (loading it if new) and applies it to the given
+ * text layer immediately.
+ * @param {string} name exact Google Fonts family name
+ * @param {object} layer a text-type layer
+ */
+function addCustomFont(name, layer){
+  const value = `'${name}', sans-serif`;
+  if (!customFonts.some(f => f.label === name)) {
+    customFonts.push({ label: name, value });
+    loadGoogleFontDynamically(name);
+  }
+  layer.font = value;
+  renderLockupStage();
+  renderPropPanel(); // rebuild the dropdown so the new font appears, selected
+  commitHistory();
+}
+
 presets.forEach(hex => {
   const b = document.createElement('button');
   b.className = 'swatch';
@@ -1174,6 +1330,9 @@ function resetAll(){
   showCoordinates = false;
   toggleCoordsBtn.classList.remove('toggled');
   layerEyedropper = { active: false, layerId: null };
+  layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+  cropRectDrag = null;
+  customFonts = [];
   history = [];
   historyIndex = -1;
   renderLockupStage();
@@ -1782,6 +1941,7 @@ function renderLockupStage(){
   lockupStage.classList.toggle('transparent-bg', canvasBg.transparent);
   lockupStage.style.background = canvasBg.transparent ? '' : canvasBg.color;
   lockupStage.innerHTML = '';
+  updateOrientationHint(); // cheap bounding-box math over a handful of layers; fine to run on every render
 
   layers.forEach(layer => {
     const el = document.createElement('div');
@@ -1873,7 +2033,65 @@ function renderLockupStage(){
 
     lockupStage.appendChild(el);
   });
+
+  // Crop-into-new-layer overlay: drawn as its own absolutely-positioned
+  // child of the stage (like the layer divs above), computed by combining
+  // the target layer's own canvas-space box with the tool's layer-relative
+  // rect fractions — same "convert to display px only here" convention.
+  if (layerCropTool.active) {
+    const cropLayer = layers.find(l => l.id === layerCropTool.layerId);
+    if (cropLayer) {
+      const rect = layerCropTool.rect;
+      const ov = document.createElement('div');
+      ov.className = 'crop-rect-overlay';
+      ov.style.left = ((cropLayer.x + rect.x * cropLayer.w) * scale) + 'px';
+      ov.style.top = ((cropLayer.y + rect.y * cropLayer.h) * scale) + 'px';
+      ov.style.width = (rect.w * cropLayer.w * scale) + 'px';
+      ov.style.height = (rect.h * cropLayer.h * scale) + 'px';
+
+      const handle = document.createElement('div');
+      handle.className = 'cr-handle';
+      ov.appendChild(handle);
+      handle.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
+        cropRectDrag = { mode: 'resize', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
+      });
+      ov.addEventListener('pointerdown', e => {
+        if (e.target === handle) return;
+        e.stopPropagation();
+        try { ov.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
+        cropRectDrag = { mode: 'move', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
+      });
+      lockupStage.appendChild(ov);
+    }
+  }
 }
+
+// Drag loop for the crop-rect overlay — a third, independent pointer-drag
+// state alongside cropDrag (Step 2) and layerDrag (moving/resizing whole
+// layers), all coexisting on the same window listeners without conflict
+// since each only acts while its own state variable is non-null. Unlike
+// freeform layer dragging, this one IS clamped to [0,1] — it's selecting a
+// sub-region of the source image, not placing an object on a canvas.
+window.addEventListener('pointermove', e => {
+  if (!cropRectDrag || !layerCropTool.active) return;
+  const cropLayer = layers.find(l => l.id === layerCropTool.layerId);
+  if (!cropLayer) { cropRectDrag = null; return; }
+  const { scale } = computeStageDisplayDims();
+  const dxFrac = (e.clientX - cropRectDrag.startX) / scale / cropLayer.w;
+  const dyFrac = (e.clientY - cropRectDrag.startY) / scale / cropLayer.h;
+  const rect = layerCropTool.rect;
+  if (cropRectDrag.mode === 'move') {
+    rect.x = clamp(cropRectDrag.orig.x + dxFrac, 0, 1 - cropRectDrag.orig.w);
+    rect.y = clamp(cropRectDrag.orig.y + dyFrac, 0, 1 - cropRectDrag.orig.h);
+  } else {
+    rect.w = clamp(cropRectDrag.orig.w + dxFrac, 0.05, 1 - cropRectDrag.orig.x);
+    rect.h = clamp(cropRectDrag.orig.h + dyFrac, 0.05, 1 - cropRectDrag.orig.y);
+  }
+  renderLockupStage();
+});
+window.addEventListener('pointerup', () => { cropRectDrag = null; });
 
 // Clicking empty canvas (not a layer) deselects whatever was selected.
 lockupStage.addEventListener('pointerdown', e => {
@@ -1994,7 +2212,14 @@ function refreshLayerSelectionStyling(){
 /** Selects a layer (or clears selection with a falsy id) and refreshes every dependent panel. */
 function selectLayer(id){
   selectedLayerId = id;
-  refreshLayerSelectionStyling();
+  // A crop-rect overlay only makes sense for the layer it was armed on —
+  // selecting something else would otherwise leave it visually orphaned.
+  let stageNeedsRebuild = false;
+  if (layerCropTool.active && layerCropTool.layerId !== id) {
+    layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+    stageNeedsRebuild = true; // the overlay element itself must be removed from the DOM, not just deactivated in state
+  }
+  if (stageNeedsRebuild) renderLockupStage(); else refreshLayerSelectionStyling();
   renderLayerList();
   renderPropPanel();
 }
@@ -2062,13 +2287,44 @@ function renderLayerList(){
     downBtn.innerHTML = '&darr;'; downBtn.title = 'Send backward';
     downBtn.addEventListener('click', () => reorderLayer(layer.id, -1));
 
+    const dupBtn = document.createElement('button');
+    dupBtn.innerHTML = '&#10697;'; dupBtn.title = 'Duplicate layer';
+    dupBtn.addEventListener('click', () => duplicateLayer(layer.id));
+
     const delBtn = document.createElement('button');
     delBtn.innerHTML = '&times;'; delBtn.title = 'Delete layer';
     delBtn.addEventListener('click', () => deleteLayer(layer.id));
 
-    row.append(icon, name, upBtn, downBtn, delBtn);
+    row.append(icon, name, upBtn, downBtn, dupBtn, delBtn);
     layerListEl.appendChild(row);
   });
+}
+
+/**
+ * Clones a layer (any type) with a small position offset so the copy is
+ * visibly distinct from the original, selects the new copy, and commits an
+ * undo/redo step. Image layers safely share their `imgEl`/`origImgEl`
+ * references with the original (see STATE comment on why that's fine); the
+ * `bgRemoval`/`recolor`/`colorSwaps` sub-objects are cloned explicitly so
+ * adjusting one copy's background removal, say, can never leak into the other.
+ * @param {number} id id of the layer to duplicate
+ */
+function duplicateLayer(id){
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  const copy = {
+    ...layer,
+    id: layerIdCounter++,
+    x: layer.x + 20,
+    y: layer.y + 20,
+    bgRemoval: layer.bgRemoval ? { ...layer.bgRemoval } : undefined,
+    recolor: layer.recolor ? { ...layer.recolor } : undefined,
+    colorSwaps: layer.colorSwaps ? layer.colorSwaps.map(s => ({ ...s, from: { ...s.from } })) : undefined
+  };
+  layers.push(copy);
+  renderLockupStage();
+  selectLayer(copy.id);
+  commitHistory();
 }
 
 /**
@@ -2180,32 +2436,54 @@ function renderPropPanel(){
     fontField.className = 'prop-field';
     fontField.innerHTML = '<label>Font</label>';
     const select = document.createElement('select');
-    // Curated set spanning distinct voices (grotesk / neutral / geometric
-    // sans, editorial / display serif, mono, condensed display, script) —
-    // still a picked list rather than a full font browser, per the
-    // "lightweight editor" direction, just a wider one than the original 4.
-    const fontChoices = [
-      { label: 'Sans — Space Grotesk', value: "'Space Grotesk', sans-serif" },
-      { label: 'Sans — Inter', value: "'Inter', -apple-system, sans-serif" },
-      { label: 'Sans — Poppins', value: "'Poppins', sans-serif" },
-      { label: 'Serif — Source Serif', value: "'Source Serif 4', Georgia, serif" },
-      { label: 'Serif — Playfair Display', value: "'Playfair Display', Georgia, serif" },
-      { label: 'Mono — JetBrains Mono', value: "'JetBrains Mono', monospace" },
-      { label: 'Display — Bebas Neue', value: "'Bebas Neue', sans-serif" },
-      { label: 'Display — Archivo Black', value: "'Archivo Black', sans-serif" },
-      { label: 'Script — Caveat', value: "'Caveat', cursive" },
-      { label: 'System sans', value: "-apple-system, 'Segoe UI', sans-serif" }
-    ];
-    fontChoices.forEach(f => {
+    // Curated set spanning distinct voices across categories — still a
+    // picked list rather than every Google Font (loading/previewing all
+    // ~1,800 would make this picker itself slow), but every option below
+    // renders as a live font-family preview, not just a plain label. Any
+    // font NOT in this list is still reachable via the "custom font" field
+    // right below, which loads it from Google Fonts on demand.
+    const allFonts = FONT_CHOICES.concat(customFonts);
+    allFonts.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f.value;
-      opt.textContent = f.label;
+      // "Aa Bb" shows the font's upper/lowercase letterforms right in the
+      // option row (most browsers render <option> text in the font set via
+      // its own inline style), so you can see how it looks without selecting it first.
+      opt.textContent = `Aa Bb \u2014 ${f.label}`;
+      opt.style.fontFamily = f.value;
       if (f.value === layer.font) opt.selected = true;
       select.appendChild(opt);
     });
     select.addEventListener('change', () => { layer.font = select.value; renderLockupStage(); commitHistory(); });
     fontField.appendChild(select);
     propFields.appendChild(fontField);
+
+    // --- custom font: load any Google Font by exact family name ---
+    const customField = document.createElement('div');
+    customField.className = 'prop-field';
+    customField.innerHTML = '<label>Or use any Google Font by name</label>';
+    const customWrap = document.createElement('div');
+    customWrap.style.display = 'flex';
+    customWrap.style.gap = '6px';
+    const customInput = document.createElement('input');
+    customInput.type = 'text';
+    customInput.placeholder = 'e.g. Bungee Shade';
+    customInput.style.width = 'auto'; // override the .prop-field input width:100% rule so flex can size it
+    customInput.style.flex = '1';
+    const customBtn = document.createElement('button');
+    customBtn.type = 'button';
+    customBtn.className = 'btn';
+    customBtn.textContent = 'Use font';
+    customBtn.addEventListener('click', () => {
+      const name = customInput.value.trim();
+      if (!name) return;
+      addCustomFont(name, layer);
+      customInput.value = '';
+    });
+    customInput.addEventListener('keydown', e => { if (e.key === 'Enter') customBtn.click(); });
+    customWrap.append(customInput, customBtn);
+    customField.appendChild(customWrap);
+    propFields.appendChild(customField);
 
     // --- size + color ---
     const row = document.createElement('div');
@@ -2246,9 +2524,106 @@ function renderPropPanel(){
     weightRow.append(cb, document.createTextNode('Bold'));
     propFields.appendChild(weightRow);
   } else {
+    renderLayerCropControls(layer);
     renderLayerBgRemovalControls(layer);
     renderLayerRecolorControls(layer);
+    renderLayerColorSwapControls(layer);
   }
+}
+
+/**
+ * Renders the "crop / split into new layer" block (image layers only): a
+ * button to arm the crop-rect overlay on the canvas, or — once armed —
+ * Extract/Cancel buttons. Lets a single flattened image (e.g. an icon and
+ * wordmark baked into one uploaded file) be pulled apart into independently
+ * movable/recolorable layers.
+ * @param {object} layer an image-type layer
+ */
+function renderLayerCropControls(layer){
+  const block = document.createElement('div');
+  block.className = 'bg-removal-block';
+  block.appendChild(Object.assign(document.createElement('p'), {
+    className: 'field-label', style: 'margin:0 0 8px;', textContent: 'Crop / split into new layer'
+  }));
+
+  const active = layerCropTool.active && layerCropTool.layerId === layer.id;
+  if (active) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    const extractBtn = document.createElement('button');
+    extractBtn.type = 'button'; extractBtn.className = 'btn primary'; extractBtn.style.flex = '1';
+    extractBtn.textContent = 'Extract as new layer';
+    extractBtn.addEventListener('click', () => extractLayerCrop(layer));
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button'; cancelBtn.className = 'btn ghost';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+      layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+      renderLockupStage();
+      renderPropPanel();
+    });
+    row.append(extractBtn, cancelBtn);
+    block.appendChild(row);
+    block.appendChild(Object.assign(document.createElement('p'), {
+      className: 'hint', style: 'margin:8px 0 0;text-align:left;',
+      textContent: 'Drag the dashed box on the canvas over the piece to pull out, then Extract. The original layer is left untouched \u2014 you\u2019ll end up with both.'
+    }));
+  } else {
+    const startBtn = document.createElement('button');
+    startBtn.type = 'button'; startBtn.className = 'btn'; startBtn.style.width = '100%';
+    startBtn.textContent = 'Crop this layer\u2026';
+    startBtn.addEventListener('click', () => {
+      layerCropTool = { active: true, layerId: layer.id, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+      renderLockupStage();
+      renderPropPanel();
+    });
+    block.appendChild(startBtn);
+  }
+  propFields.appendChild(block);
+}
+
+/**
+ * Cuts the region currently selected by the crop-rect tool out of `layer`'s
+ * CURRENT rendered image (i.e. after any background removal/recolor already
+ * applied to it — "what you see is what you crop") and adds it as a brand
+ * new, independent image layer positioned exactly where the crop box was on
+ * the canvas. The source layer is left completely unchanged.
+ * @param {object} layer the layer being cropped
+ * @returns {Promise<void>}
+ */
+async function extractLayerCrop(layer){
+  const rect = layerCropTool.rect;
+  const nw = layer.imgEl.naturalWidth, nh = layer.imgEl.naturalHeight;
+  const sx = rect.x * nw, sy = rect.y * nh, sw = rect.w * nw, sh = rect.h * nh;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(sw));
+  canvas.height = Math.max(1, Math.round(sh));
+  canvas.getContext('2d').drawImage(layer.imgEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const newImg = await canvasToImage(canvas);
+
+  const newLayer = {
+    id: layerIdCounter++, type: 'image',
+    // Positioned to land exactly where the crop box appeared on the canvas,
+    // so it visually reads as "lifting a piece out in place" rather than
+    // popping up somewhere unrelated — the user can drag it away from there.
+    x: layer.x + rect.x * layer.w,
+    y: layer.y + rect.y * layer.h,
+    w: rect.w * layer.w,
+    h: rect.h * layer.h,
+    imgEl: newImg,
+    origImgEl: newImg,
+    name: (layer.name || 'Image') + ' (crop)',
+    bgRemoval: { enabled: false, target: null, tolerance: 30 },
+    recolor: { enabled: false, color: '#ffffff' },
+    colorSwaps: []
+  };
+  layers.push(newLayer);
+  layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+  renderLockupStage();
+  selectLayer(newLayer.id);
+  commitHistory();
 }
 
 /**
@@ -2291,8 +2666,8 @@ function renderLayerBgRemovalControls(layer){
   eyedropBtnLocal.className = 'eyedrop-btn';
   eyedropBtnLocal.textContent = 'Pick color';
   eyedropBtnLocal.addEventListener('click', () => {
-    const arming = !(layerEyedropper.active && layerEyedropper.layerId === layer.id);
-    layerEyedropper = { active: arming, layerId: arming ? layer.id : null };
+    const arming = !(layerEyedropper.active && layerEyedropper.layerId === layer.id && layerEyedropper.mode === 'bgRemoval');
+    layerEyedropper = arming ? { active: true, layerId: layer.id, mode: 'bgRemoval' } : { active: false, layerId: null, mode: null };
     eyedropBtnLocal.classList.toggle('picking', arming);
   });
   eyedropRow.append(swatch, eyedropBtnLocal);
@@ -2407,6 +2782,113 @@ function renderLayerRecolorControls(layer){
 }
 
 /**
+ * Renders the "selective recolor" block (image layers only): a list of
+ * color-swap rules (each: an eyedropper-picked source color, a target
+ * color, and a tolerance), plus an "Add color swap" button. Unlike
+ * renderLayerRecolorControls' whole-object flatten, each rule here only
+ * affects pixels matching ITS OWN picked color — multiple rules let a
+ * multi-color logo be rebuilt one color at a time (e.g. red \u2192 white AND
+ * black \u2192 white, while leaving everything else alone).
+ * @param {object} layer an image-type layer
+ */
+function renderLayerColorSwapControls(layer){
+  if (!layer.colorSwaps) layer.colorSwaps = []; // defensive: older/duplicated layers from before this feature existed
+  const block = document.createElement('div');
+  block.className = 'bg-removal-block';
+  block.appendChild(Object.assign(document.createElement('p'), {
+    className: 'field-label', style: 'margin:0 0 8px;', textContent: 'Selective recolor (swap one color at a time)'
+  }));
+
+  layer.colorSwaps.forEach(swap => {
+    const row = document.createElement('div');
+    row.className = 'eyedrop-row';
+
+    const fromSwatch = document.createElement('div');
+    fromSwatch.className = 'target-swatch';
+    fromSwatch.style.background = rgbToHex(swap.from.r, swap.from.g, swap.from.b);
+    fromSwatch.title = 'Color being replaced';
+
+    const eyedropBtnLocal = document.createElement('button');
+    eyedropBtnLocal.type = 'button';
+    eyedropBtnLocal.className = 'eyedrop-btn';
+    eyedropBtnLocal.textContent = 'Pick';
+    const isArmedForThisSwap = layerEyedropper.active && layerEyedropper.layerId === layer.id
+      && layerEyedropper.mode === 'colorSwap' && layerEyedropper.swapId === swap.id;
+    eyedropBtnLocal.classList.toggle('picking', isArmedForThisSwap);
+    eyedropBtnLocal.addEventListener('click', () => {
+      const arming = !isArmedForThisSwap;
+      layerEyedropper = arming
+        ? { active: true, layerId: layer.id, mode: 'colorSwap', swapId: swap.id }
+        : { active: false, layerId: null, mode: null };
+      renderPropPanel(); // refresh all swap rows' "picking" styling together, not just this one
+    });
+
+    const arrow = document.createElement('span');
+    arrow.textContent = '\u2192';
+    arrow.style.color = 'var(--ink-soft)';
+    arrow.style.fontSize = '13px';
+
+    const toInput = document.createElement('input');
+    toInput.type = 'color';
+    toInput.value = swap.to;
+    toInput.title = 'Replacement color';
+    toInput.addEventListener('change', () => {
+      swap.to = toInput.value;
+      reprocessLayerImage(layer);
+    });
+
+    const delSwapBtn = document.createElement('button');
+    delSwapBtn.type = 'button';
+    delSwapBtn.textContent = '\u00d7';
+    delSwapBtn.title = 'Remove this swap';
+    delSwapBtn.style.cssText = 'margin-left:auto;border:none;background:none;cursor:pointer;color:var(--ink-soft);font-size:14px;';
+    delSwapBtn.addEventListener('click', () => {
+      layer.colorSwaps = layer.colorSwaps.filter(s => s.id !== swap.id);
+      reprocessLayerImage(layer);
+      renderPropPanel();
+    });
+
+    row.append(fromSwatch, eyedropBtnLocal, arrow, toInput, delSwapBtn);
+    block.appendChild(row);
+
+    const tolRow = document.createElement('div');
+    tolRow.className = 'slider-row';
+    tolRow.innerHTML = `<div class="row-top"><span>Tolerance</span><span>${swap.tolerance}</span></div>`;
+    const tolSlider = document.createElement('input');
+    tolSlider.type = 'range'; tolSlider.min = '0'; tolSlider.max = '100'; tolSlider.value = swap.tolerance;
+    tolSlider.addEventListener('input', () => {
+      swap.tolerance = Number(tolSlider.value);
+      tolRow.querySelector('.row-top span:last-child').textContent = tolSlider.value;
+    });
+    tolSlider.addEventListener('change', () => reprocessLayerImage(layer));
+    tolRow.appendChild(tolSlider);
+    block.appendChild(tolRow);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn';
+  addBtn.style.width = '100%';
+  addBtn.textContent = '+ Add color swap';
+  addBtn.addEventListener('click', () => {
+    // New rule starts targeting black with no distance tolerance until the
+    // user actually picks a color — reusing layerIdCounter for swap ids too
+    // since they only ever need to be unique within this one layer's list,
+    // never compared against actual layer ids.
+    layer.colorSwaps.push({ id: layerIdCounter++, from: { r: 0, g: 0, b: 0 }, to: '#ffffff', tolerance: 30 });
+    renderPropPanel();
+  });
+  block.appendChild(addBtn);
+
+  block.appendChild(Object.assign(document.createElement('p'), {
+    className: 'hint', style: 'margin:8px 0 0;text-align:left;',
+    textContent: 'Recolors only pixels matching the picked color, leaving the rest untouched \u2014 add multiple swaps to rebuild a multi-color logo in a new palette.'
+  }));
+
+  propFields.appendChild(block);
+}
+
+/**
  * Adds a new image layer, default-sized to fit within ~40% of the canvas's
  * shorter dimension (centered), preserving the source image's aspect ratio.
  * @param {HTMLImageElement} imgEl already-loaded image
@@ -2428,7 +2910,11 @@ function addImageLayer(imgEl, name){
     // Solid recolor ("make it white" and similar knockout variants) — see
     // applyRecolor(). Applied AFTER background removal in reprocessLayerImage,
     // so a recolored logo can still sit on a transparent background.
-    recolor: { enabled: false, color: '#ffffff' }
+    recolor: { enabled: false, color: '#ffffff' },
+    // Selective per-color swaps (see applySingleColorSwap) — a list rather
+    // than a single rule, so a multi-color logo can be rebuilt in a new
+    // palette one color at a time.
+    colorSwaps: []
   };
   layers.push(layer);
   // Structural change (a brand-new DOM node is needed), so this is one of
@@ -2492,6 +2978,51 @@ function estimateTextWidth(layer){
   const ctx = document.createElement('canvas').getContext('2d');
   ctx.font = `${layer.weight === 'bold' ? 'bold ' : ''}${layer.size}px ${layer.font}`;
   return ctx.measureText(layer.text).width;
+}
+
+/**
+ * Detects whether the current composition reads as "horizontal" or
+ * "vertical" using a simple, honest heuristic: the aspect ratio of the
+ * bounding box around every layer's current position and size. This is
+ * geometry, not logo understanding — it has no idea what a mark or a
+ * wordmark IS, it just measures how wide vs. tall the arranged content is.
+ * Works well for the common case (a mark next to or above/below text) and
+ * is clearly labeled as a heuristic in the UI rather than presented as
+ * certain.
+ * @returns {'horizontal'|'vertical'|'square'|null} null when there's nothing to measure
+ */
+function detectOrientation(){
+  if (layers.length === 0) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  layers.forEach(l => {
+    // Text layers don't carry a stored width; approximate one the same way
+    // arrangeComposition's vertical centering does, so the bounding box
+    // still accounts for text layers reasonably rather than treating them
+    // as zero-width points.
+    const w = l.type === 'image' ? l.w : estimateTextWidth(l);
+    const h = l.type === 'image' ? l.h : l.size;
+    minX = Math.min(minX, l.x); minY = Math.min(minY, l.y);
+    maxX = Math.max(maxX, l.x + w); maxY = Math.max(maxY, l.y + h);
+  });
+  const w = maxX - minX, h = maxY - minY;
+  if (w <= 0 || h <= 0) return null;
+  const ratio = w / h;
+  if (ratio > 1.25) return 'horizontal';
+  if (ratio < 0.8) return 'vertical';
+  return 'square';
+}
+
+/** Refreshes the small hint badge next to the Quick Arrange buttons with the current detected orientation. */
+function updateOrientationHint(){
+  if (!orientationHintEl) return;
+  const detected = detectOrientation();
+  if (!detected) { orientationHintEl.textContent = ''; return; }
+  if (detected === 'square') {
+    orientationHintEl.innerHTML = 'Detected layout: <strong>square / mixed</strong>';
+  } else {
+    const other = detected === 'horizontal' ? 'Vertical' : 'Horizontal';
+    orientationHintEl.innerHTML = `Detected layout: <strong>${detected[0].toUpperCase()}${detected.slice(1)}</strong> \u2014 try "${other}" for the other variant`;
+  }
 }
 
 /**
@@ -2671,7 +3202,8 @@ saveVariantBtn.addEventListener('click', () => {
     layers: layers.map(l => ({
       ...l,
       bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
-      recolor: l.recolor ? { ...l.recolor } : undefined
+      recolor: l.recolor ? { ...l.recolor } : undefined,
+      colorSwaps: l.colorSwaps ? l.colorSwaps.map(s => ({ ...s, from: { ...s.from } })) : undefined
     }))
   };
   variants.push(variant);
@@ -2689,7 +3221,8 @@ function loadVariant(id){
   layers = variant.layers.map(l => ({
     ...l,
     bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
-    recolor: l.recolor ? { ...l.recolor } : undefined
+    recolor: l.recolor ? { ...l.recolor } : undefined,
+      colorSwaps: l.colorSwaps ? l.colorSwaps.map(s => ({ ...s, from: { ...s.from } })) : undefined
   }));
   canvasSize = { ...variant.canvasSize };
   canvasBg = { ...variant.bg };
@@ -2810,22 +3343,33 @@ function sampleLayerEyedropper(layer, e){
   const el = document.querySelector(`.lockup-layer[data-layer-id="${layer.id}"]`);
   if (!el) return;
   const rect = el.getBoundingClientRect();
-  // Map the click from on-screen layer pixels to the ORIGINAL image's
-  // natural pixel coordinates (the two can differ in both scale and
-  // aspect-adjusted size), then sample via a small 1x1 draw — cheaper than
-  // getImageData over the whole image just to read one pixel.
+  // Background-removal picks always read the untouched original (matches
+  // pre-v10 behavior); a color-swap pick reads the layer's CURRENT rendered
+  // image instead, since the user is pointing at what's on screen right now
+  // (which may already have background removal or a prior swap applied).
+  const sourceImg = layerEyedropper.mode === 'colorSwap' ? layer.imgEl : layer.origImgEl;
+  // Map the click from on-screen layer pixels to the source image's natural
+  // pixel coordinates (the two can differ in both scale and aspect-adjusted
+  // size), then sample via a small 1x1 draw — cheaper than getImageData over
+  // the whole image just to read one pixel.
   const fracX = clamp((e.clientX - rect.left) / rect.width, 0, 1);
   const fracY = clamp((e.clientY - rect.top) / rect.height, 0, 1);
-  const nx = Math.round(fracX * (layer.origImgEl.naturalWidth - 1));
-  const ny = Math.round(fracY * (layer.origImgEl.naturalHeight - 1));
+  const nx = Math.round(fracX * (sourceImg.naturalWidth - 1));
+  const ny = Math.round(fracY * (sourceImg.naturalHeight - 1));
 
   const sampleCanvas = document.createElement('canvas');
   sampleCanvas.width = 1; sampleCanvas.height = 1;
-  sampleCanvas.getContext('2d').drawImage(layer.origImgEl, -nx, -ny);
+  sampleCanvas.getContext('2d').drawImage(sourceImg, -nx, -ny);
   const p = sampleCanvas.getContext('2d').getImageData(0, 0, 1, 1).data;
-  layer.bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
 
-  layerEyedropper = { active: false, layerId: null };
+  if (layerEyedropper.mode === 'colorSwap') {
+    const swap = (layer.colorSwaps || []).find(s => s.id === layerEyedropper.swapId);
+    if (swap) swap.from = { r: p[0], g: p[1], b: p[2] };
+  } else {
+    layer.bgRemoval.target = { r: p[0], g: p[1], b: p[2] };
+  }
+
+  layerEyedropper = { active: false, layerId: null, mode: null };
   reprocessLayerImage(layer);
   renderPropPanel(); // refresh the swatch color + un-arm the eyedropper button styling
 }
@@ -2851,7 +3395,7 @@ async function reprocessLayerImage(layer){
   const ctx = canvas.getContext('2d');
   ctx.drawImage(layer.origImgEl, 0, 0);
 
-  const needsPixelWork = (layer.bgRemoval.enabled && layer.bgRemoval.target) || layer.recolor.enabled;
+  const needsPixelWork = (layer.bgRemoval.enabled && layer.bgRemoval.target) || layer.recolor.enabled || (layer.colorSwaps && layer.colorSwaps.length > 0);
   if (needsPixelWork) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     if (layer.bgRemoval.enabled && layer.bgRemoval.target) {
@@ -2860,6 +3404,12 @@ async function reprocessLayerImage(layer){
     if (layer.recolor.enabled) {
       applyRecolor(imageData, layer.recolor.color);
     }
+    // Selective swaps run last and in list order, so — unlike the whole-
+    // object recolor above, which would flatten everything to one color
+    // first — they can target individual colors within artwork that's
+    // still multi-colored (e.g. turn just the red accent white while a
+    // black outline stays black).
+    (layer.colorSwaps || []).forEach(swap => applySingleColorSwap(imageData, swap));
     ctx.putImageData(imageData, 0, 0);
   }
 
@@ -2891,6 +3441,37 @@ function applyRecolor(imageData, colorHex){
   }
 }
 
+/**
+ * Recolors only pixels close to `swap.from` to `swap.to`, leaving every
+ * other color in the image untouched — the targeted counterpart to
+ * applyRecolor's "flatten everything" approach. Same color-distance +
+ * feathered-edge technique as applyChromaKey, but blends toward the target
+ * color instead of toward transparent, so an edge pixel partway between two
+ * colors ends up partway recolored rather than a hard cutoff.
+ * @param {ImageData} imageData
+ * @param {{from:{r:number,g:number,b:number}, to:string, tolerance:number}} swap
+ */
+function applySingleColorSwap(imageData, swap){
+  const { r, g, b } = swap.from;
+  const target = hexToRgb(swap.to);
+  const inner = swap.tolerance * 2.2;
+  const outer = inner + 40;
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue; // fully transparent — nothing to swap
+    const dr = data[i] - r, dg = data[i + 1] - g, db = data[i + 2] - b;
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+    if (dist <= inner) {
+      data[i] = target.r; data[i + 1] = target.g; data[i + 2] = target.b;
+    } else if (dist < outer) {
+      const t = 1 - (dist - inner) / (outer - inner); // 1 = fully target color, 0 = fully original
+      data[i] = Math.round(data[i] * (1 - t) + target.r * t);
+      data[i + 1] = Math.round(data[i + 1] * (1 - t) + target.g * t);
+      data[i + 2] = Math.round(data[i + 2] * (1 - t) + target.b * t);
+    }
+  }
+}
+
 /** @param {string} hex e.g. "#a1cdff" @returns {{r:number,g:number,b:number}} */
 function hexToRgb(hex){
   const clean = hex.replace('#', '');
@@ -2919,7 +3500,8 @@ function snapshotState(){
     layers: layers.map(l => ({
       ...l,
       bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
-      recolor: l.recolor ? { ...l.recolor } : undefined
+      recolor: l.recolor ? { ...l.recolor } : undefined,
+      colorSwaps: l.colorSwaps ? l.colorSwaps.map(s => ({ ...s, from: { ...s.from } })) : undefined
     })),
     canvasSize: { ...canvasSize },
     canvasBg: { ...canvasBg },
@@ -2952,7 +3534,8 @@ function restoreSnapshot(snap){
   layers = snap.layers.map(l => ({
     ...l,
     bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
-    recolor: l.recolor ? { ...l.recolor } : undefined
+    recolor: l.recolor ? { ...l.recolor } : undefined,
+      colorSwaps: l.colorSwaps ? l.colorSwaps.map(s => ({ ...s, from: { ...s.from } })) : undefined
   }));
   canvasSize = { ...snap.canvasSize };
   canvasBg = { ...snap.canvasBg };
