@@ -193,6 +193,63 @@
            meaningful. Keyboard shortcuts are scoped to Step 4 and disabled
            while focus is in a text field, so native browser undo still
            works normally for editing text there.
+
+  v8 (this file, brand-kit-generator-v8.html)
+    - NEW: custom zip filename. A "File name (optional)" field on Step 3
+           builds the final zip as "{your-text}-brand-kit.zip" (slugified),
+           falling back to plain "brand-kit.zip" when left empty. Live
+           preview shows the exact resulting filename as you type.
+    - NEW: one-click "Arrange Horizontal" / "Arrange Vertical" quick actions
+           in Compose. Repositions the first image layer (the mark) and any
+           text layers into a clean side-by-side or stacked starting layout
+           and resizes the canvas to a matching aspect ratio — a fast path
+           to the classic horizontal-logo / vertical-logo variant pair.
+           Purely a one-click starting point: every layer stays fully
+           freeform-draggable afterward, nothing is locked or constrained.
+    - NEW: per-layer recolor ("make it white") tool, alongside background
+           removal in each image layer's property panel. Flattens all
+           opaque pixels to one solid color (white/black presets, or any
+           custom color) while preserving shape and transparency/feathering
+           — the standard technique for producing a white (or black)
+           alternate logo for use on dark/light backgrounds. Chains with
+           background removal in reprocessLayerImage() (bg removal runs
+           first, then recolor), always re-derived from the untouched
+           original so repeated adjustments never degrade the image.
+    - FIXED: saving or loading a Compose variant only shallow-copied each
+           layer, which correctly isolated primitive fields (x, y, text,
+           etc.) but left a layer's `bgRemoval` and `recolor` sub-objects
+           shared by reference between the live editor and the saved
+           variant. Practically: toggling background removal or recolor on
+           the live layer after saving a variant would silently also alter
+           that saved variant. Undo/redo snapshots had the same latent bug
+           for `bgRemoval` even before `recolor` existed. Fixed by
+           explicitly cloning both sub-objects everywhere a layer is
+           copied (save variant, load variant, undo/redo snapshot/restore).
+
+  v9 (this file, brand-kit-generator-v9.html)
+    - CHANGED: the step pills are now a real nav, not just a linear progress
+           readout. Each is independently clickable once its prerequisite
+           exists — Edit once an image is uploaded, Export once it's been
+           processed, Compose from the very start (it can build a
+           composition entirely from its own Add Image/Add Text tools, no
+           prior step required). goToStep()/updateStepNav() recompute
+           availability from actual state (originalImg/currentImg) rather
+           than pure step order, so jumping around doesn't mis-mark earlier
+           steps as "done" just because their number is lower.
+    - NEW: a short description block ("N. StepName" + one-line blurb) at the
+           top of every panel, so landing on a step directly out of wizard
+           order still explains what that tool does — addresses "each tool
+           page should have a description."
+    - NEW: the "Download all as .zip" button label now dynamically lists
+           what it contains, e.g. "Download all as .zip (3 core assets + 2
+           logo variations)" — makes the already-existing "everything ships
+           together" behavior (core assets + every saved Compose variant,
+           bundled into one zip) visible instead of implicit.
+    - NOTE: no architecture change was needed for "start from a logo, get
+           the full kit" — Step 3's zip already bundled core assets, the
+           palette, and every saved Compose variant together (added in v4/
+           v8). This revision is about *navigation and discoverability* of
+           that pipeline, not the pipeline itself.
   ============================================================================
 -->
 <!-- Wordmark font choices for the lockup editor (Step 4). If this request
@@ -248,7 +305,10 @@
     padding:7px 12px 7px 8px;
     border-radius:999px;border:1px solid var(--line);
     background:var(--card);
+    cursor:pointer; /* pills are a real nav now, not just a progress readout */
+    transition:border-color .12s, color .12s;
   }
+  .step-pill:hover:not(.disabled):not(.active){border-color:var(--ink-soft);}
   .step-pill .num{
     width:18px;height:18px;border-radius:50%;
     background:var(--line);color:#fff;
@@ -259,6 +319,18 @@
   .step-pill.done .num{background:var(--accent);}
   .step-pill.active{color:var(--ink);border-color:var(--ink);background:var(--accent-soft);}
   .step-pill.active .num{background:var(--ink);}
+  /* A step whose prerequisite state doesn't exist yet (e.g. Export before
+     anything's been processed) — visibly inert rather than clickable but
+     silently doing nothing, so it's clear *why* it's not going anywhere. */
+  .step-pill.disabled{opacity:.45;cursor:not-allowed;pointer-events:none;}
+
+  /* ---------------- per-step description header ---------------- */
+  /* "Each tool page should have a description" — a short, consistent
+     title+blurb at the top of every panel, so landing on a step directly
+     (via the nav, out of wizard order) still explains what it does. */
+  .tool-desc{margin-bottom:16px;}
+  .tool-desc h2{font-size:16px;font-weight:700;margin:0 0 4px;letter-spacing:-0.005em;}
+  .tool-desc p{font-size:13px;color:var(--ink-soft);margin:0;max-width:640px;line-height:1.5;}
 
   /* ---------------- generic panel ---------------- */
   .panel{display:none;}
@@ -431,6 +503,22 @@
   .all-btn:hover{background:#2e3a63;}
   .all-btn:disabled{opacity:.4;cursor:default;}
 
+  .zip-name-row{
+    display:flex;align-items:center;gap:0;
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;
+    margin-bottom:8px;background:var(--card);
+  }
+  .zip-name-row input{
+    flex:1;min-width:0;border:none;height:38px;padding:0 10px;
+    font-family:var(--sans);font-size:13px;background:transparent;color:var(--ink);
+  }
+  .zip-name-row input:focus{outline:none;}
+  .zip-name-suffix{
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);
+    padding:0 10px;white-space:nowrap;border-left:1px solid var(--line);
+    height:38px;display:flex;align-items:center;background:var(--paper);
+  }
+
   .hint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:10px;}
 
   /* ============================================================
@@ -570,6 +658,10 @@
 
   <!-- ======================= STEP 1: UPLOAD ======================= -->
   <div class="panel active" id="panel1">
+    <div class="tool-desc">
+      <h2>1. Upload</h2>
+      <p>Start here with any logo image. Nothing leaves your browser — cropping, background removal, and every export happen locally.</p>
+    </div>
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept="image/*">
       <div class="dz-icon">
@@ -582,6 +674,10 @@
 
   <!-- ======================= STEP 2: EDIT (crop + background removal) ======================= -->
   <div class="panel" id="panel2">
+    <div class="tool-desc">
+      <h2>2. Edit</h2>
+      <p>Square off the logo and, optionally, strip a solid background color before generating assets. Revisit this any time via the nav above.</p>
+    </div>
     <div class="card">
       <div class="edit-grid">
         <div>
@@ -637,6 +733,10 @@
 
   <!-- ======================= STEP 3: EXPORT ======================= -->
   <div class="panel" id="panel3">
+    <div class="tool-desc">
+      <h2>3. Export</h2>
+      <p>Your favicon, apple touch icon, social square, and color palette — download individually, or grab everything (including saved Compose variants) as one zip.</p>
+    </div>
     <div class="source-row">
       <div class="source-thumb"><img id="sourceThumb" alt=""></div>
       <div>
@@ -685,6 +785,10 @@
     <div class="palette-grid" id="paletteGrid"><p class="palette-empty">Analyzing image&hellip;</p></div>
     <p class="hint" style="margin:-2px 0 22px;">Click a swatch to copy its hex code.</p>
 
+    <div class="zip-name-row">
+      <input type="text" id="zipNameInput" placeholder="e.g. Acme Co (optional)">
+      <span class="zip-name-suffix" id="zipNameSuffix">brand-kit.zip</span>
+    </div>
     <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
     <p class="hint">Everything runs in your browser &mdash; the image is never uploaded anywhere.</p>
 
@@ -698,6 +802,10 @@
        version, a badge, etc.), then save each arrangement as a named
        variant and export it as its own PNG. -->
   <div class="panel" id="panel4">
+    <div class="tool-desc">
+      <h2>4. Compose</h2>
+      <p>Freely arrange the mark, wordmark text, and any extra images into horizontal, vertical, white, or fully custom logo variations. Works standalone too &mdash; no upload required if you'd rather start from your own images.</p>
+    </div>
     <div class="card">
       <div class="lockup-toolbar">
         <div class="dim-field">Canvas
@@ -718,6 +826,13 @@
         </label>
         <button class="btn" id="addTextBtn" type="button">Add text</button>
         <button class="btn" id="addMarkBtn" type="button">Add processed mark</button>
+      </div>
+
+      <div class="lockup-toolbar" style="margin-top:-4px;">
+        <span style="font-size:12px;color:var(--ink-soft);">Quick arrange:</span>
+        <button class="btn" id="arrangeHorizontalBtn" type="button">&#8596; Horizontal</button>
+        <button class="btn" id="arrangeVerticalBtn" type="button">&#8597; Vertical</button>
+        <span class="hint" style="text-align:left;margin:0;">Repositions the mark and text layers as a starting point &mdash; still freely draggable after.</span>
       </div>
 
       <div class="lockup-layout">
@@ -746,9 +861,10 @@
             <p class="field-label">Saved variants</p>
             <div id="variantList"><p class="layer-empty">No variants saved yet.</p></div>
             <div class="save-variant-row">
-              <input type="text" id="variantNameInput" placeholder="e.g. Horizontal, light bg">
+              <input type="text" id="variantNameInput" placeholder="e.g. Horizontal, White vertical">
               <button class="btn primary" id="saveVariantBtn" type="button">Save</button>
             </div>
+            <p class="hint" style="text-align:left;margin:8px 0 0;">Tip: save a Horizontal, a Vertical, and a White version here &mdash; all of them ship in the Step 3 zip alongside your core assets.</p>
           </div>
         </div>
       </div>
@@ -915,6 +1031,16 @@ const backToEditBtn = document.getElementById('backToEditBtn');
 const startOverBtn = document.getElementById('startOverBtn');
 
 const colorPicker = document.getElementById('colorPicker');
+const zipNameInput = document.getElementById('zipNameInput');
+const zipNameSuffix = document.getElementById('zipNameSuffix');
+
+// Live preview of the resulting zip filename: "your-text-brand-kit.zip",
+// or just "brand-kit.zip" if the field is left empty. slugify() is defined
+// later in this file but that's fine — function declarations are hoisted.
+zipNameInput.addEventListener('input', () => {
+  const custom = zipNameInput.value.trim();
+  zipNameSuffix.textContent = custom ? `${slugify(custom)}-brand-kit.zip` : 'brand-kit.zip';
+});
 const socialStage = document.getElementById('socialStage');
 const swatchRow = document.getElementById('swatchRow');
 
@@ -938,6 +1064,8 @@ const exportCurrentBtn = document.getElementById('exportCurrentBtn');
 const toggleCoordsBtn = document.getElementById('toggleCoordsBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
+const arrangeHorizontalBtn = document.getElementById('arrangeHorizontalBtn');
+const arrangeVerticalBtn = document.getElementById('arrangeVerticalBtn');
 
 // Preset background colors offered as quick-pick swatches for the social JPG.
 // Quick-pick presets now sourced from the uploaded brand palette (color-palette.txt)
@@ -957,18 +1085,51 @@ presets.forEach(hex => {
  * ============================================================================
  * STEP NAVIGATION
  * ============================================================================
- * Simple 3-panel wizard. goToStep() is the single source of truth for which
- * panel is visible and how the step pills are styled, so every "back" /
- * "continue" / "start over" action just calls this instead of touching
- * classList directly in five places.
+ * A guided wizard by default (Continue/Back buttons drive first-time use),
+ * but each step is also independently reachable via the pill nav once its
+ * prerequisite exists — so returning to Edit, jumping straight to Export, or
+ * using Compose standalone don't require re-walking the whole sequence.
+ * Availability rules (see updateStepNav): Upload is always reachable;
+ * Edit needs an uploaded image (`originalImg`); Export needs a processed
+ * working image (`currentImg`); Compose has no prerequisite at all — it can
+ * build a composition entirely from its own "Add image"/"Add text" tools.
  */
+
+/** Shows the given panel and syncs pill active/done/disabled styling to current state. */
 function goToStep(n){
   [panel1, panel2, panel3, panel4].forEach((p, i) => p.classList.toggle('active', i === n - 1));
-  [pill1, pill2, pill3, pill4].forEach((p, i) => {
-    p.classList.toggle('active', i === n - 1);
-    p.classList.toggle('done', i < n - 1);
+  updateStepNav(n);
+}
+
+/**
+ * Recomputes which step pills are clickable and which are styled "done",
+ * based on real editor state rather than pure step order — e.g. after
+ * jumping directly to Compose, Edit/Export shouldn't look "done" just
+ * because their pill number is lower.
+ * @param {number} currentStepNum the panel currently showing (1-4)
+ */
+function updateStepNav(currentStepNum){
+  const steps = [
+    { pill: pill1, num: 1, available: true },
+    { pill: pill2, num: 2, available: !!originalImg },
+    { pill: pill3, num: 3, available: !!currentImg },
+    { pill: pill4, num: 4, available: true } // Compose works standalone, no prerequisite
+  ];
+  steps.forEach(s => {
+    const isActive = s.num === currentStepNum;
+    s.pill.classList.toggle('active', isActive);
+    s.pill.classList.toggle('disabled', !s.available);
+    // "Done" here just means "reachable and not the one you're currently
+    // on" — a lightweight visual cue, not a strict "you finished this"
+    // claim, since steps can be revisited/edited indefinitely.
+    s.pill.classList.toggle('done', s.available && !isActive);
   });
 }
+
+pill1.addEventListener('click', () => goToStep(1));
+pill2.addEventListener('click', () => { if (originalImg) goToStep(2); });
+pill3.addEventListener('click', () => { if (currentImg) goToStep(3); });
+pill4.addEventListener('click', () => goToStep(4));
 
 /*
  * Fully resets the tool back to the upload screen: clears every piece of
@@ -991,11 +1152,14 @@ function resetAll(){
   toleranceSlider.value = 30;
   toleranceOut.textContent = '30';
   fileInput.value = '';
+  zipNameInput.value = '';
+  zipNameSuffix.textContent = 'brand-kit.zip';
 
   document.getElementById('dlApple').disabled = true;
   document.getElementById('dlFavicon').disabled = true;
   document.getElementById('dlSocial').disabled = true;
   document.getElementById('dlAll').disabled = true;
+  document.getElementById('dlAll').textContent = 'Download all as .zip';
 
   // Lockup editor (Step 4) state — reset alongside everything else so
   // "start over" is truly a clean slate rather than leaving orphaned layers
@@ -1456,6 +1620,7 @@ function renderAll(){
     blobs.apple = b;
     document.getElementById('dlApple').disabled = false;
     document.getElementById('dlAll').disabled = false;
+    updateDlAllLabel();
   }, 'image/png');
   cFavicon.toBlob(b => {
     blobs.favicon = b;
@@ -2082,6 +2247,7 @@ function renderPropPanel(){
     propFields.appendChild(weightRow);
   } else {
     renderLayerBgRemovalControls(layer);
+    renderLayerRecolorControls(layer);
   }
 }
 
@@ -2171,6 +2337,76 @@ function renderLayerBgRemovalControls(layer){
 }
 
 /**
+ * Renders the per-layer recolor block (image layers only): a toggle, a
+ * color input (defaulting to white — the common "alternate white logo"
+ * case), and a couple of quick-pick swatches. Applies applyRecolor() via
+ * reprocessLayerImage() on any change.
+ * @param {object} layer an image-type layer
+ */
+function renderLayerRecolorControls(layer){
+  const block = document.createElement('div');
+  block.className = 'bg-removal-block'; // same visual treatment (top divider), different content
+
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'toggle-row';
+  toggleRow.innerHTML = '<p class="field-label" style="margin:0;">Recolor (e.g. make white)</p>';
+  const switchLabel = document.createElement('label');
+  switchLabel.className = 'switch';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = layer.recolor.enabled;
+  switchLabel.append(cb, Object.assign(document.createElement('span'), { className: 'track' }), Object.assign(document.createElement('span'), { className: 'thumb' }));
+  toggleRow.appendChild(switchLabel);
+  block.appendChild(toggleRow);
+
+  const controls = document.createElement('div');
+  controls.style.display = layer.recolor.enabled ? 'block' : 'none';
+
+  const colorRow = document.createElement('div');
+  colorRow.className = 'eyedrop-row'; // reuse the same row layout (swatch/control side by side)
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = layer.recolor.color;
+  colorInput.addEventListener('change', () => {
+    layer.recolor.color = colorInput.value;
+    reprocessLayerImage(layer);
+  });
+  colorRow.appendChild(colorInput);
+
+  // Quick presets: white (the most common "alternate logo" case, per the
+  // reference brand-kit pattern this feature was requested from) and black,
+  // one click instead of using the color picker for the two most common cases.
+  ['#ffffff', '#000000'].forEach(hex => {
+    const preset = document.createElement('button');
+    preset.type = 'button';
+    preset.className = 'swatch';
+    preset.style.background = hex;
+    preset.title = hex === '#ffffff' ? 'White' : 'Black';
+    preset.addEventListener('click', () => {
+      colorInput.value = hex;
+      layer.recolor.color = hex;
+      reprocessLayerImage(layer);
+    });
+    colorRow.appendChild(preset);
+  });
+  controls.appendChild(colorRow);
+  block.appendChild(controls);
+
+  cb.addEventListener('change', () => {
+    layer.recolor.enabled = cb.checked;
+    controls.style.display = layer.recolor.enabled ? 'block' : 'none';
+    reprocessLayerImage(layer);
+  });
+
+  block.appendChild(Object.assign(document.createElement('p'), {
+    className: 'hint', style: 'margin:8px 0 0;text-align:left;',
+    textContent: 'Flattens the artwork to one solid color while keeping its shape and transparency \u2014 handy for a white (or black) alternate logo.'
+  }));
+
+  propFields.appendChild(block);
+}
+
+/**
  * Adds a new image layer, default-sized to fit within ~40% of the canvas's
  * shorter dimension (centered), preserving the source image's aspect ratio.
  * @param {HTMLImageElement} imgEl already-loaded image
@@ -2188,7 +2424,11 @@ function addImageLayer(imgEl, name){
     // "never mutate the source" pattern as originalImg/rawCanvas in Step 2 —
     // rather than compounding chroma-key passes on top of each other.
     origImgEl: imgEl,
-    bgRemoval: { enabled: false, target: null, tolerance: 30 }
+    bgRemoval: { enabled: false, target: null, tolerance: 30 },
+    // Solid recolor ("make it white" and similar knockout variants) — see
+    // applyRecolor(). Applied AFTER background removal in reprocessLayerImage,
+    // so a recolored logo can still sit on a transparent background.
+    recolor: { enabled: false, color: '#ffffff' }
   };
   layers.push(layer);
   // Structural change (a brand-new DOM node is needed), so this is one of
@@ -2229,6 +2469,93 @@ addMarkBtn.addEventListener('click', () => {
   if (!currentImg) { alert('Finish Steps 1\u20133 first to generate a processed mark.'); return; }
   addImageLayer(currentImg, 'Processed mark');
 });
+
+/*
+ * ---- Quick arrange: horizontal / vertical --------------------------------
+ * One-click starting layouts, NOT a constraint on freeform placement — after
+ * arranging, every layer is still individually draggable/resizable exactly
+ * as before. This exists because manually re-positioning a mark + wordmark
+ * into a clean side-by-side vs stacked layout by hand, every single time, is
+ * tedious busywork the tool can just do — matching the common "horizontal
+ * logo" / "vertical logo" variant pair most brand kits ship.
+ */
+
+/**
+ * Estimates a text layer's rendered width in canvas px using an offscreen
+ * 2D context's measureText — needed to center text layers horizontally when
+ * arranging vertically (there's no DOM element to read a real width from
+ * until after render, and this needs to run before positions are set).
+ * @param {object} layer a text-type layer
+ * @returns {number}
+ */
+function estimateTextWidth(layer){
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${layer.weight === 'bold' ? 'bold ' : ''}${layer.size}px ${layer.font}`;
+  return ctx.measureText(layer.text).width;
+}
+
+/**
+ * Repositions the current layers into a clean horizontal (mark left, text
+ * stacked to its right) or vertical (mark top, text stacked below) starting
+ * layout, resizing the canvas to a sensible aspect ratio for that
+ * orientation. Preserves each layer's own aspect ratio; only its position
+ * (and, for the mark, its overall scale) changes.
+ * @param {'horizontal'|'vertical'} orientation
+ */
+function arrangeComposition(orientation){
+  if (layers.length === 0) { alert('Add at least one layer first.'); return; }
+  // "The mark" = the first image layer in z-order, which is virtually always
+  // the seeded processed mark (or the first image added) — good enough for
+  // a lightweight heuristic rather than requiring the user to designate one.
+  const markLayer = layers.find(l => l.type === 'image');
+  const textLayers = layers.filter(l => l.type === 'text');
+
+  if (orientation === 'horizontal') {
+    canvasSize = { w: 900, h: 280 };
+    const pad = canvasSize.h * 0.16;
+    let textStartX = pad;
+    if (markLayer) {
+      const markH = canvasSize.h - pad * 2;
+      const markW = markH * (markLayer.w / markLayer.h); // preserve aspect ratio
+      markLayer.w = markW; markLayer.h = markH;
+      markLayer.x = pad; markLayer.y = pad;
+      textStartX = markLayer.x + markLayer.w + pad;
+    }
+    // Stack text layers vertically, centered as a block, to the right of the mark.
+    const lineGap = 1.15;
+    const totalTextH = textLayers.reduce((sum, t) => sum + t.size * lineGap, 0);
+    let curY = (canvasSize.h - totalTextH) / 2;
+    textLayers.forEach(t => { t.x = textStartX; t.y = curY; curY += t.size * lineGap; });
+  } else {
+    canvasSize = { w: 420, h: 560 };
+    const pad = canvasSize.w * 0.14;
+    let curY = pad * 0.8;
+    if (markLayer) {
+      const markW = canvasSize.w - pad * 2;
+      const markH = markW * (markLayer.h / markLayer.w); // preserve aspect ratio
+      markLayer.w = markW; markLayer.h = markH;
+      markLayer.x = (canvasSize.w - markW) / 2;
+      markLayer.y = curY;
+      curY = markLayer.y + markLayer.h + pad * 0.6;
+    }
+    // Stack text layers below the mark, each horizontally centered.
+    const lineGap = 1.15;
+    textLayers.forEach(t => {
+      t.x = (canvasSize.w - estimateTextWidth(t)) / 2;
+      t.y = curY;
+      curY += t.size * lineGap;
+    });
+  }
+
+  canvasWInput.value = canvasSize.w;
+  canvasHInput.value = canvasSize.h;
+  renderLockupStage();
+  renderPropPanel();
+  commitHistory();
+}
+
+arrangeHorizontalBtn.addEventListener('click', () => arrangeComposition('horizontal'));
+arrangeVerticalBtn.addEventListener('click', () => arrangeComposition('vertical'));
 
 goToLockupsBtn.addEventListener('click', () => {
   canvasWInput.value = canvasSize.w;
@@ -2335,9 +2662,17 @@ saveVariantBtn.addEventListener('click', () => {
     name,
     canvasSize: { ...canvasSize },
     bg: { ...canvasBg },
-    // Shallow copy is deliberate and sufficient here — see the STATE comment
-    // above for why sharing `imgEl` references across live/saved layers is safe.
-    layers: layers.map(l => ({ ...l }))
+    // Top-level fields (x/y/w/h/text/font/etc. and the imgEl reference) are
+    // safe to share via a shallow copy — see the STATE comment above. But
+    // bgRemoval/recolor are themselves objects, so `{...l}` alone would
+    // copy a *reference* to the same nested object, not its contents —
+    // later toggling background removal on the live layer would silently
+    // also change this saved variant. Clone those two fields explicitly.
+    layers: layers.map(l => ({
+      ...l,
+      bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
+      recolor: l.recolor ? { ...l.recolor } : undefined
+    }))
   };
   variants.push(variant);
   activeVariantId = variant.id;
@@ -2348,7 +2683,14 @@ saveVariantBtn.addEventListener('click', () => {
 function loadVariant(id){
   const variant = variants.find(v => v.id === id);
   if (!variant) return;
-  layers = variant.layers.map(l => ({ ...l })); // copy again so live edits don't mutate the saved version
+  // Same nested-object cloning as above, mirrored here — loading a variant
+  // must not leave the live layers sharing bgRemoval/recolor objects with
+  // the saved copy either, or editing after loading would corrupt it too.
+  layers = variant.layers.map(l => ({
+    ...l,
+    bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
+    recolor: l.recolor ? { ...l.recolor } : undefined
+  }));
   canvasSize = { ...variant.canvasSize };
   canvasBg = { ...variant.bg };
   activeVariantId = variant.id;
@@ -2425,6 +2767,23 @@ function renderVariantList(){
     row.append(thumb, name, renameBtn, dlBtn, delBtn);
     variantListEl.appendChild(row);
   });
+  updateDlAllLabel();
+}
+
+/**
+ * Keeps the Step 3 "Download all" button's label honest about what it
+ * actually contains — makes the "everything ships together" behavior
+ * visible instead of implicit, since core assets and Compose variants are
+ * produced in different steps but bundled into one zip.
+ */
+function updateDlAllLabel(){
+  const dlAllBtn = document.getElementById('dlAll');
+  if (!dlAllBtn || dlAllBtn.disabled) return;
+  const coreCount = [blobs.apple, blobs.favicon, blobs.social].filter(Boolean).length;
+  const variantCount = variants.length;
+  const parts = [`${coreCount} core asset${coreCount === 1 ? '' : 's'}`];
+  if (variantCount > 0) parts.push(`${variantCount} logo variation${variantCount === 1 ? '' : 's'}`);
+  dlAllBtn.textContent = `Download all as .zip (${parts.join(' + ')})`;
 }
 
 /*
@@ -2472,10 +2831,16 @@ function sampleLayerEyedropper(layer, e){
 }
 
 /**
- * Re-derives `layer.imgEl` from `layer.origImgEl`, applying the chroma-key
- * background removal if enabled. Always starts from the original so this is
- * safe to call repeatedly (e.g. once per tolerance-slider release) without
- * degrading the image.
+ * Re-derives `layer.imgEl` from `layer.origImgEl`, applying background
+ * removal and/or a solid recolor if either is enabled. Always starts from
+ * the untouched original, so this is safe to call repeatedly (e.g. once per
+ * tolerance-slider release, or every time the recolor color changes)
+ * without ever degrading the image through repeated passes.
+ * Order matters: background removal runs first (so recolor only affects
+ * pixels that are actually part of the artwork, not a background that's
+ * about to be cut away), then recolor flattens whatever remains opaque to a
+ * single solid color — e.g. turning a full-color mark into a clean white
+ * knockout version for use on dark backgrounds.
  * @param {object} layer an image-type layer
  * @returns {Promise<void>}
  */
@@ -2486,9 +2851,15 @@ async function reprocessLayerImage(layer){
   const ctx = canvas.getContext('2d');
   ctx.drawImage(layer.origImgEl, 0, 0);
 
-  if (layer.bgRemoval.enabled && layer.bgRemoval.target) {
+  const needsPixelWork = (layer.bgRemoval.enabled && layer.bgRemoval.target) || layer.recolor.enabled;
+  if (needsPixelWork) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    applyChromaKey(imageData, layer.bgRemoval.target, layer.bgRemoval.tolerance);
+    if (layer.bgRemoval.enabled && layer.bgRemoval.target) {
+      applyChromaKey(imageData, layer.bgRemoval.target, layer.bgRemoval.tolerance);
+    }
+    if (layer.recolor.enabled) {
+      applyRecolor(imageData, layer.recolor.color);
+    }
     ctx.putImageData(imageData, 0, 0);
   }
 
@@ -2498,6 +2869,36 @@ async function reprocessLayerImage(layer){
   layer.imgEl = await canvasToImage(canvas);
   renderLockupStage();
   commitHistory();
+}
+
+/**
+ * Flattens every non-transparent pixel to a single solid color, leaving
+ * alpha untouched — turns any logo mark into a silhouette/knockout version
+ * (typically white, for use on dark backgrounds, but any color works).
+ * Mutates `imageData` in place, same convention as applyChromaKey.
+ * @param {ImageData} imageData
+ * @param {string} colorHex e.g. "#ffffff"
+ */
+function applyRecolor(imageData, colorHex){
+  const { r, g, b } = hexToRgb(colorHex);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue; // fully transparent pixel — nothing to recolor
+    data[i] = r; data[i + 1] = g; data[i + 2] = b;
+    // alpha (data[i+3]) intentionally left as-is, including partially
+    // transparent/feathered edge pixels from a prior background removal —
+    // preserves soft edges instead of hard-cutting them.
+  }
+}
+
+/** @param {string} hex e.g. "#a1cdff" @returns {{r:number,g:number,b:number}} */
+function hexToRgb(hex){
+  const clean = hex.replace('#', '');
+  return {
+    r: parseInt(clean.substring(0, 2), 16),
+    g: parseInt(clean.substring(2, 4), 16),
+    b: parseInt(clean.substring(4, 6), 16)
+  };
 }
 
 /*
@@ -2515,7 +2916,11 @@ async function reprocessLayerImage(layer){
 /** Captures the current editor state as a plain, independent snapshot. See STATE comment for why shallow-copying layers (sharing imgEl references) is safe here. */
 function snapshotState(){
   return {
-    layers: layers.map(l => ({ ...l, bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined })),
+    layers: layers.map(l => ({
+      ...l,
+      bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
+      recolor: l.recolor ? { ...l.recolor } : undefined
+    })),
     canvasSize: { ...canvasSize },
     canvasBg: { ...canvasBg },
     selectedLayerId
@@ -2544,7 +2949,11 @@ function commitHistory(){
 
 /** Applies a previously-captured snapshot back onto the live editor state. */
 function restoreSnapshot(snap){
-  layers = snap.layers.map(l => ({ ...l, bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined }));
+  layers = snap.layers.map(l => ({
+    ...l,
+    bgRemoval: l.bgRemoval ? { ...l.bgRemoval } : undefined,
+    recolor: l.recolor ? { ...l.recolor } : undefined
+  }));
   canvasSize = { ...snap.canvasSize };
   canvasBg = { ...snap.canvasBg };
   selectedLayerId = snap.selectedLayerId;
@@ -2640,8 +3049,14 @@ document.getElementById('dlAll').addEventListener('click', async () => {
     zip.file(`lockups/${slugify(variant.name)}.png`, base64, { base64: true });
   });
   const content = await zip.generateAsync({ type: 'blob' });
-  download(content, 'brand-kit.zip');
+  const custom = zipNameInput.value.trim();
+  const filename = custom ? `${slugify(custom)}-brand-kit.zip` : 'brand-kit.zip';
+  download(content, filename);
 });
+
+// Set the correct initial pill states on page load (Edit/Export start
+// disabled since there's no uploaded/processed image yet).
+updateStepNav(1);
 </script>
 </body>
 </html>
