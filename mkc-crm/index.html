@@ -734,6 +734,16 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </div>
       <div class="form-group"><label>Activity Date</label><input type="date" id="act-date"></div>
       <div class="form-group"><label>Note</label><textarea class="form-textarea" id="act-note" rows="4" placeholder="Describe what happened…"></textarea></div>
+      <div class="form-group">
+        <div style="font-size:12px;color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="toggleEmailPaste()">📋 <span id="email-paste-toggle-label">Paste an email to summarize into this note</span></div>
+        <div id="email-paste-box" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-main)">
+          <textarea class="form-textarea" id="act-raw-email" rows="5" placeholder="Paste the full email here -- headers, signature and all, doesn't need to be cleaned up first" style="font-size:12px"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button class="btn btn-secondary btn-sm" id="summarize-email-btn" onclick="summarizeEmailIntoNote()">✨ Summarize into Note</button>
+            <span id="summarize-email-status" style="font-size:12px;color:var(--text-secondary)"></span>
+          </div>
+        </div>
+      </div>
       <div class="form-group"><label>Attachment <span style="font-size:10px;color:var(--text-muted)">(optional)</span></label>
         <input type="file" id="act-file" onchange="document.getElementById('act-file-name').textContent=this.files[0]?('Selected: '+this.files[0].name):''">
         <div id="act-file-name" style="font-size:11.5px;color:var(--text-muted);margin-top:4px"></div>
@@ -3079,6 +3089,8 @@ async function openProfile(taskId,type){
     S.currentEntry={task,type,comments:comments.comments||[]};
     S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
     S.selectedMagnetId=null;
+    S.customDraftResult=null;
+    S.customSituationText=null;
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
     updatePfActivityBadge();
@@ -3382,6 +3394,13 @@ const PERSONALIZE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/personalize
 // api/send-message.ts. Sends AS the currently logged-in team member,
 // resolved via resolveSenderIdentity() below.
 const SEND_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/send-message';
+// api/compose-message.ts -- free-form "describe the situation, get a
+// draft" tool, distinct from Personalize with AI (which needs an
+// existing template to start from).
+const COMPOSE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/compose-message';
+// api/summarize-email.ts -- condenses a pasted raw email for fast
+// manual activity logging.
+const SUMMARIZE_EMAIL_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/summarize-email';
 
 const CRM_ACTIONS={
   lead:{
@@ -3439,6 +3458,9 @@ const CRM_ACTIONS={
     ],
     'Complete':[
       {id:'completed_intro',label:'Completed Intro Call',type:'internal'}
+    ],
+    'Custom':[
+      {id:'write_custom_message',label:'Write Custom Message',type:'custom',structure:'Describe the situation, AI drafts it'}
     ]
   },
   pipeline:{
@@ -3487,13 +3509,16 @@ const CRM_ACTIONS={
       {id:'completed_discovery',label:'Completed Discovery Call',type:'internal'},
       {id:'completed_walkthrough',label:'Completed Walkthrough',type:'internal'},
       {id:'completed_offer',label:'Completed Offer Presentation',type:'internal'}
+    ],
+    'Custom':[
+      {id:'write_custom_message_deal',label:'Write Custom Message',type:'custom',structure:'Describe the situation, AI drafts it'}
     ]
   }
 };
 
 const GROUP_COLORS={
   'Appointments':'#818cf8','Follow-Up':'#3b82f6','Nurture':'#06b6d4','Reactivation':'#ef4444','Complete':'#22c55e',
-  'Presentation Follow-Up':'#8b5cf6','Sales Follow-Up':'#f59e0b'
+  'Presentation Follow-Up':'#8b5cf6','Sales Follow-Up':'#f59e0b','Custom':'#ec4899'
 };
 
 function findActionById(id,groups){
@@ -3539,6 +3564,29 @@ function renderMessagePreview(action,vars){
         <button class="btn btn-primary btn-sm" onclick="logActionSent()">✓ Log &amp; Mark Done</button>
         <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
       </div>`;
+  }
+  if(action.type==='custom'){
+    const hasDraft=!!S.customDraftResult;
+    let html=`<h4>${esc(action.label)}</h4>
+      ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
+      <div class="form-group"><label>Describe the situation</label>
+        <textarea id="custom-situation" class="msg-draft" style="min-height:80px" placeholder="e.g. They asked for a refund on their last invoice and haven't heard back in 3 days...">${esc(S.customSituationText||'')}</textarea>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-secondary btn-sm" onclick="fillCustomPreset('support')">Client support request</button>
+        <button class="btn btn-secondary btn-sm" onclick="fillCustomPreset('neededitem')">Needed item after convo</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="custom-generate-btn" onclick="generateCustomDraft('${action.id}')">✨ Generate Draft</button>
+      <div id="custom-draft-status" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`;
+    if(hasDraft){
+      // Recurse as an ordinary message action, same trick as the magnet
+      // picker above -- the AI-generated text becomes the "template"
+      // directly (no {{tokens}} in it, so renderTemplate passes it
+      // through unchanged), which gets Copy/Personalize/Send/Log for free.
+      const virtualAction={...action,type:undefined,template:S.customDraftResult.message,vars:[]};
+      html+=`<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">${renderMessagePreview(virtualAction,vars)}</div>`;
+    }
+    return html;
   }
   if(action.type==='magnet'){
     const magnets=(S.ref.leadMagnets||[]).filter(m=>m.status==='active/published');
@@ -3598,13 +3646,15 @@ function renderPfActions(task,type,cf,body){
   const actionHtml=Object.entries(groups).map(([grp,actions])=>`
     <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${esc(grp)}</div>
     ${actions.map(a=>{
-      const missing=(a.type==='internal'||a.type==='magnet')?[]:(a.vars||[]).filter(v=>!vars[v]);
+      const missing=(a.type==='internal'||a.type==='magnet'||a.type==='custom')?[]:(a.vars||[]).filter(v=>!vars[v]);
       const missingLabels=missing.map(v=>MSG_VAR_LABELS[v]||v).join(', ');
       const readyBadge=a.type==='internal'
         ?'<span style="color:var(--text-muted);font-size:12px">internal</span>'
         :a.type==='magnet'
           ?'<span style="color:var(--text-muted);font-size:12px">pick magnet</span>'
-          :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
+          :a.type==='custom'
+            ?'<span style="color:var(--text-muted);font-size:12px">describe situation</span>'
+            :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
       return `<div class="action-option${S.selectedAction===a.id?' selected':''}" onclick="selectAction(this,'${a.id}')" data-action="${a.id}">
         <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
         <div class="action-name">${esc(a.label)}</div>
@@ -3653,12 +3703,80 @@ function selectAction(el,actionId){
   el.classList.add('selected');
   S.selectedAction=actionId;
   S.selectedMagnetId=null; // fresh action pick, don't carry over a magnet chosen for a previous selection
+  S.customDraftResult=null;
+  S.customSituationText=null;
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const action=findActionById(actionId,groups);
   const sec=document.getElementById('msg-preview-section');
   if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
+}
+
+function fillCustomPreset(kind){
+  const presets={
+    support:'The client reached out with a support request: ',
+    neededitem:'Following up after our conversation -- we still need the client to send over: '
+  };
+  const ta=document.getElementById('custom-situation');
+  if(ta){ta.value=presets[kind]||'';ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+}
+
+// Generates a from-scratch draft via api/compose-message.ts, given the
+// admin's own free-text description of the situation plus real entry
+// context. Distinct from personalizeWithAI, which needs an existing
+// template to start from -- this one starts from nothing but the
+// situation itself.
+async function generateCustomDraft(actionId){
+  if(!S.currentEntry)return;
+  const ta=document.getElementById('custom-situation');
+  const situation=ta?ta.value.trim():'';
+  const statusEl=document.getElementById('custom-draft-status');
+  if(!situation){if(statusEl)statusEl.textContent='Describe the situation first.';return;}
+
+  const btn=document.getElementById('custom-generate-btn');
+  if(btn)btn.disabled=true;
+  if(statusEl)statusEl.textContent='✨ Drafting…';
+
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const vars=buildMsgVars(task,type,cf);
+  const leadType=cf['lead/contact type']||'';
+  const leadSourceNotes=cf['lead source notes']||cf['source details']||cf['source activity']||'';
+
+  try{
+    const res=await fetch(COMPOSE_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        situation,
+        entryName:vars.fullName,
+        firstName:vars.firstName,
+        leadType,
+        leadSource:vars.leadSource,
+        leadSourceNotes,
+        lastAction:vars.lastAction,
+        recentActivity:getRecentActivitySummary(),
+        channel:'sms'
+      })
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.message){
+      if(statusEl)statusEl.textContent='Failed: '+(data.error||`HTTP ${res.status}`);
+      if(btn)btn.disabled=false;
+      return;
+    }
+    S.customDraftResult={message:data.message,subject:data.subject||''};
+    S.customSituationText=situation; // preserved so re-rendering doesn't lose what they typed
+    const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+    const action=findActionById(actionId,groups);
+    const sec=document.getElementById('msg-preview-section');
+    if(sec&&action)sec.innerHTML=renderMessagePreview(action,vars);
+  }catch(e){
+    if(statusEl)statusEl.textContent='Failed: '+e.message;
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 function selectLeadMagnetForAction(magnetId){
@@ -3915,7 +4033,7 @@ async function sendViaChannel(channel){
     if(!identity.senderEmail)return showToast('Your SendGrid sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
     if(!recipientEmail)return showToast('This entry has no email address on file.','error');
     confirmMsg=`Send this as an email to ${recipientEmail} from ${identity.senderEmail}? This sends immediately and cannot be undone.`;
-    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:action.label};
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:(action.type==='custom'&&S.customDraftResult?.subject)||action.label};
   }
   if(!confirm(confirmMsg))return;
 
@@ -4508,6 +4626,15 @@ function openActivityModal(){
   S.selectedHash='';
   document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('act-note').value='';
+  // Reset email-paste-summarize box (Section 12)
+  const rawEmailEl=document.getElementById('act-raw-email');
+  if(rawEmailEl)rawEmailEl.value='';
+  const pasteBox=document.getElementById('email-paste-box');
+  if(pasteBox)pasteBox.style.display='none';
+  const pasteLabel=document.getElementById('email-paste-toggle-label');
+  if(pasteLabel)pasteLabel.textContent='Paste an email to summarize into this note';
+  const summarizeStatus=document.getElementById('summarize-email-status');
+  if(summarizeStatus)summarizeStatus.textContent='';
   // Default activity date to today
   const today=toDateLocal(Date.now());
   const dateEl=document.getElementById('act-date');
@@ -4534,6 +4661,52 @@ function toggleActTaskFields(show){
 function selHash(el,tag){
   document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');S.selectedHash=tag;
+}
+
+function toggleEmailPaste(){
+  const box=document.getElementById('email-paste-box');
+  const label=document.getElementById('email-paste-toggle-label');
+  const opening=box.style.display==='none';
+  box.style.display=opening?'block':'none';
+  label.textContent=opening?'Hide paste box':'Paste an email to summarize into this note';
+}
+
+// Condenses a raw pasted email (via api/summarize-email.ts) straight
+// into the activity Note field, and auto-selects #email -- built
+// because incoming email isn't auto-captured (Zoho free tier), so this
+// makes the manual logging step fast instead of a retype-everything chore.
+async function summarizeEmailIntoNote(){
+  const raw=document.getElementById('act-raw-email').value.trim();
+  const statusEl=document.getElementById('summarize-email-status');
+  if(!raw){statusEl.textContent='Paste the email content first.';return;}
+  const btn=document.getElementById('summarize-email-btn');
+  btn.disabled=true;
+  statusEl.textContent='✨ Summarizing…';
+  try{
+    const res=await fetch(SUMMARIZE_EMAIL_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rawEmail:raw,entryName:S.currentEntry?.task?.name||''})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.summary){
+      statusEl.textContent='Failed: '+(data.error||`HTTP ${res.status}`);
+      btn.disabled=false;
+      return;
+    }
+    document.getElementById('act-note').value=data.summary;
+    // Auto-select #email -- this whole tool exists specifically for
+    // logging incoming email, no reason to make them click it manually too.
+    document.querySelectorAll('.hash-chip').forEach(c=>c.classList.remove('selected'));
+    const emailChip=[...document.querySelectorAll('.hash-chip')].find(c=>c.textContent.trim()==='#email');
+    if(emailChip)emailChip.classList.add('selected');
+    S.selectedHash='#email';
+    statusEl.textContent='✓ Note filled in below -- review before posting.';
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }finally{
+    btn.disabled=false;
+  }
 }
 async function submitActivity(){
   if(!S.currentEntry)return;
