@@ -1375,9 +1375,30 @@ async function authFetch(path,method='GET',params=null){
     opts.body=JSON.stringify(params);
   }
   const r=await fetch(url,opts);
+  if(r.status===401){
+    handleSessionExpired();
+    throw new Error('Session expired — please log back in.');
+  }
   if(!r.ok)throw new Error(`Worker ${r.status}: ${await r.text()}`);
   const ct=r.headers.get('content-type')||'';
   return ct.includes('application/json')?r.json():r.text();
+}
+
+// Every authenticated Worker call goes through authFetch above, so this
+// is the ONE place a 401 can ever be noticed -- no need to catch it at
+// every individual call site across the app. Guarded against firing more
+// than once per expiry, since several requests are often in flight at
+// the same moment the token actually dies (e.g. loading all four lists
+// in parallel), which would otherwise mean multiple redundant toasts and
+// login-screen triggers instead of one clean transition.
+function handleSessionExpired(){
+  if(S._sessionExpiredHandled)return;
+  S._sessionExpiredHandled=true;
+  sessionStorage.clear();
+  S.creds.sessionToken='';
+  S.user=null;
+  showToast('Your session timed out — please log back in.','error');
+  showLogin();
 }
 async function fetchAllTasks(listId){
   let page=0,all=[];
@@ -1563,6 +1584,7 @@ async function attemptLogin(){
     }
     S.user=data.user;
     S.creds.sessionToken=data.token;
+    S._sessionExpiredHandled=false; // fresh valid session -- a future expiry should be able to trigger the handler again
     sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
     sessionStorage.setItem('mkc_session_token',data.token);
     document.getElementById('login-overlay').style.display='none';
