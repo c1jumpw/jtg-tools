@@ -3623,9 +3623,14 @@ function renderMessagePreview(action,vars){
   const tokenValues={};
   (action.vars||[]).forEach(v=>{tokenValues[v]=vars[v]?vars[v]:`[[${MSG_VAR_LABELS[v]||v}]]`;});
   S.currentDraftTokens=tokenValues;
+  // Default subject -- same logic sendViaChannel used to compute
+  // silently at send time. Now shown up front so it's actually
+  // previewed/editable before an email goes out, not just assumed.
+  const defaultSubject=(action.type==='custom'&&S.customDraftResult?.subject)||action.label;
   return `<h4>${esc(action.label)}</h4>
     ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
     ${quickFillHtmlFor(missing)}
+    <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px;color:var(--text-muted)">Email Subject <span style="font-weight:400">(only used if you Send via Email)</span></label><input type="text" id="msg-subject" class="form-select" value="${esc(defaultSubject)}"></div>
     <textarea id="msg-draft" class="msg-draft">${esc(rendered)}</textarea>
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
@@ -4033,7 +4038,8 @@ async function sendViaChannel(channel){
     if(!identity.senderEmail)return showToast('Your SendGrid sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
     if(!recipientEmail)return showToast('This entry has no email address on file.','error');
     confirmMsg=`Send this as an email to ${recipientEmail} from ${identity.senderEmail}? This sends immediately and cannot be undone.`;
-    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:(action.type==='custom'&&S.customDraftResult?.subject)||action.label};
+    const subject=document.getElementById('msg-subject')?.value?.trim()||(action.type==='custom'&&S.customDraftResult?.subject)||action.label;
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject};
   }
   if(!confirm(confirmMsg))return;
 
