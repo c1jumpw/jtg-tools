@@ -1175,12 +1175,17 @@ const SUB_BRANCHES={
 const S={
   creds:{...APP_CONFIG,
     // Session token from POST /auth/login (see attemptLogin below) --
-    // stored via sessionStorage (lives and dies with the browser tab,
-    // same lifecycle as mkc_session/S.user just below) and expires
-    // server-side after 8h regardless of how long the tab stays open.
-    // This is now the ONLY credential the Activity Inbox needs client-side
-    // (v1.7.0) -- no separate Worker URL/admin token to configure.
-    sessionToken:sessionStorage.getItem('mkc_session_token')||''},
+    // stored via localStorage (survives closing the tab/browser; only
+    // the Worker's own 8h server-side expiry actually ends it now) --
+    // same lifecycle as mkc_session/S.user just below. Was sessionStorage
+    // until this was deliberately changed: closing the tab used to force
+    // a fresh login regardless of how much of the 8 hours was left,
+    // which is a stricter and less convenient boundary than the real
+    // one that already existed (the signed token's own expiry, enforced
+    // server-side either way). This is now the ONLY credential the
+    // Activity Inbox needs client-side (v1.7.0) -- no separate Worker
+    // URL/admin token to configure.
+    sessionToken:localStorage.getItem('mkc_session_token')||''},
   user:null,
   entries:{leads:[],pipeline:[],contacts:[],accounts:[]},
   filtered:{leads:[],pipeline:[],contacts:[],accounts:[]},
@@ -1394,7 +1399,9 @@ async function authFetch(path,method='GET',params=null){
 function handleSessionExpired(){
   if(S._sessionExpiredHandled)return;
   S._sessionExpiredHandled=true;
-  sessionStorage.clear();
+  localStorage.removeItem('mkc_session');
+  localStorage.removeItem('mkc_session_token');
+  sessionStorage.clear(); // still fine to blanket-clear -- only the legacy mkc_cu token and similar live here now
   S.creds.sessionToken='';
   S.user=null;
   showToast('Your session timed out — please log back in.','error');
@@ -1491,8 +1498,8 @@ function getSubBranchOI(branch,sbName){
 // INIT & AUTH
 // ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
-  const saved=sessionStorage.getItem('mkc_session');
-  const savedTok=sessionStorage.getItem('mkc_session_token');
+  const saved=localStorage.getItem('mkc_session');
+  const savedTok=localStorage.getItem('mkc_session_token');
   const tok=sessionStorage.getItem('mkc_cu');
   if(tok)S.creds.cuToken=tok;
   // Both mkc_session (S.user) AND mkc_session_token (the Worker-issued
@@ -1559,7 +1566,7 @@ function showLoginErr(msg){const el=document.getElementById('login-error');el.te
  * On success: stores S.user + S.creds.sessionToken from the Worker's
  * response (note there's no `row` field anymore -- the old S.user
  * carried the ENTIRE raw sheet row, passcode included, into
- * sessionStorage; the Worker's response only ever includes the handful
+ * localStorage; the Worker's response only ever includes the handful
  * of non-sensitive fields the rest of the app actually uses).
  * On failure: shows whatever generic message the Worker returned --
  * see handleLogin's doc comment for why it's deliberately the same
@@ -1585,8 +1592,8 @@ async function attemptLogin(){
     S.user=data.user;
     S.creds.sessionToken=data.token;
     S._sessionExpiredHandled=false; // fresh valid session -- a future expiry should be able to trigger the handler again
-    sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
-    sessionStorage.setItem('mkc_session_token',data.token);
+    localStorage.setItem('mkc_session',JSON.stringify(S.user));
+    localStorage.setItem('mkc_session_token',data.token);
     document.getElementById('login-overlay').style.display='none';
     updateUserUI();init();
     resolveClickupUserId(); // fire-and-forget: needed for "My Work" assignee matching (Section 11-H)
@@ -2219,7 +2226,7 @@ async function resolveClickupUserId(){
     const match=email?members.find(m=>(m.user?.email||'').toLowerCase().trim()===email):null;
     if(match){
       S.user.clickupId=match.user.id;
-      sessionStorage.setItem('mkc_session',JSON.stringify(S.user));
+      localStorage.setItem('mkc_session',JSON.stringify(S.user));
     }
   }catch(e){console.warn('resolveClickupUserId failed:',e.message);}
 }
@@ -3112,6 +3119,8 @@ async function openProfile(taskId,type){
     S.selectedAction=null; // fresh entry, don't carry over a prior draft selection
     S.selectedMagnetId=null;
     S.customDraftResult=null;
+    S.customDraftOptions=null;
+    S.customChannelMode=null;
     S.customSituationText=null;
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
@@ -3589,6 +3598,8 @@ function renderMessagePreview(action,vars){
   }
   if(action.type==='custom'){
     const hasDraft=!!S.customDraftResult;
+    const hasOptions=!!S.customDraftOptions;
+    const mode=S.customChannelMode||'sms';
     let html=`<h4>${esc(action.label)}</h4>
       ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
       <div class="form-group"><label>Describe the situation</label>
@@ -3598,8 +3609,34 @@ function renderMessagePreview(action,vars){
         <button class="btn btn-secondary btn-sm" onclick="fillCustomPreset('support')">Client support request</button>
         <button class="btn btn-secondary btn-sm" onclick="fillCustomPreset('neededitem')">Needed item after convo</button>
       </div>
+      <div class="form-group" style="margin-bottom:10px"><label style="font-size:11px;color:var(--text-muted)">Generate as</label>
+        <div style="display:flex;gap:14px;margin-top:4px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="custom-channel" value="sms" ${mode==='sms'?'checked':''}> Text</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="custom-channel" value="email" ${mode==='email'?'checked':''}> Email</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="custom-channel" value="both" ${mode==='both'?'checked':''}> Both</label>
+        </div>
+      </div>
       <button class="btn btn-primary btn-sm" id="custom-generate-btn" onclick="generateCustomDraft('${action.id}')">✨ Generate Draft</button>
       <div id="custom-draft-status" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`;
+    if(hasOptions){
+      // "Both" produced two real, independently-generated versions (not
+      // one text truncated into the other) -- shown side by side so the
+      // difference in length/tone is actually visible before picking.
+      // Picking one collapses back into the exact same single-draft flow
+      // everything else already uses -- no separate dual-send UI to build.
+      html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Text version</div>
+          <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.sms)}</div>
+          <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('sms')">Use this version</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Email version</div>
+          <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.email)}</div>
+          <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('email')">Use this version</button>
+        </div>
+      </div>`;
+    }
     if(hasDraft){
       // Recurse as an ordinary message action, same trick as the magnet
       // picker above -- the AI-generated text becomes the "template"
@@ -3732,11 +3769,31 @@ function selectAction(el,actionId){
   S.selectedAction=actionId;
   S.selectedMagnetId=null; // fresh action pick, don't carry over a magnet chosen for a previous selection
   S.customDraftResult=null;
+  S.customDraftOptions=null;
+  S.customChannelMode=null;
   S.customSituationText=null;
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const action=findActionById(actionId,groups);
+  const sec=document.getElementById('msg-preview-section');
+  if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
+}
+
+// Collapses the "Both" comparison view down into the exact same single-
+// draft flow every other action already uses -- picking a version is the
+// only thing this does; Copy/Personalize/Send/Log all just work from here.
+function useCustomDraftOption(which){
+  if(!S.customDraftOptions||!S.currentEntry)return;
+  S.customDraftResult={
+    message:which==='sms'?S.customDraftOptions.sms:S.customDraftOptions.email,
+    subject:which==='email'?S.customDraftOptions.emailSubject:''
+  };
+  S.customDraftOptions=null;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(S.selectedAction,groups);
   const sec=document.getElementById('msg-preview-section');
   if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
 }
@@ -3762,43 +3819,63 @@ async function generateCustomDraft(actionId){
   const statusEl=document.getElementById('custom-draft-status');
   if(!situation){if(statusEl)statusEl.textContent='Describe the situation first.';return;}
 
+  const channelMode=document.querySelector('input[name="custom-channel"]:checked')?.value||'sms';
+  S.customChannelMode=channelMode; // remembered so re-renders keep the same radio selected
+
   const btn=document.getElementById('custom-generate-btn');
   if(btn)btn.disabled=true;
-  if(statusEl)statusEl.textContent='✨ Drafting…';
+  if(statusEl)statusEl.textContent=channelMode==='both'?'✨ Drafting both versions…':'✨ Drafting…';
 
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
   const vars=buildMsgVars(task,type,cf);
   const leadType=cf['lead/contact type']||'';
   const leadSourceNotes=cf['lead source notes']||cf['source details']||cf['source activity']||'';
+  const baseBody={
+    situation,
+    entryName:vars.fullName,
+    firstName:vars.firstName,
+    leadType,
+    leadSource:vars.leadSource,
+    leadSourceNotes,
+    lastAction:vars.lastAction,
+    recentActivity:getRecentActivitySummary()
+  };
+
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(actionId,groups);
+  const sec=document.getElementById('msg-preview-section');
 
   try{
-    const res=await fetch(COMPOSE_ENDPOINT,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        situation,
-        entryName:vars.fullName,
-        firstName:vars.firstName,
-        leadType,
-        leadSource:vars.leadSource,
-        leadSourceNotes,
-        lastAction:vars.lastAction,
-        recentActivity:getRecentActivitySummary(),
-        channel:'sms'
-      })
-    });
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok||!data.message){
-      if(statusEl)statusEl.textContent='Failed: '+(data.error||`HTTP ${res.status}`);
-      if(btn)btn.disabled=false;
-      return;
+    if(channelMode==='both'){
+      // Two independent generations, not one truncated into the other --
+      // a real text-length draft and a real email-length draft, each
+      // properly suited to its own channel.
+      const[smsRes,emailRes]=await Promise.all([
+        fetch(COMPOSE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...baseBody,channel:'sms'})}),
+        fetch(COMPOSE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...baseBody,channel:'email'})})
+      ]);
+      const smsData=await smsRes.json().catch(()=>({}));
+      const emailData=await emailRes.json().catch(()=>({}));
+      if(!smsRes.ok||!smsData.message||!emailRes.ok||!emailData.message){
+        if(statusEl)statusEl.textContent='Failed to generate one or both versions.';
+        if(btn)btn.disabled=false;
+        return;
+      }
+      S.customDraftOptions={sms:smsData.message,email:emailData.message,emailSubject:emailData.subject||''};
+      S.customDraftResult=null;
+    }else{
+      const res=await fetch(COMPOSE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...baseBody,channel:channelMode})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||!data.message){
+        if(statusEl)statusEl.textContent='Failed: '+(data.error||`HTTP ${res.status}`);
+        if(btn)btn.disabled=false;
+        return;
+      }
+      S.customDraftResult={message:data.message,subject:data.subject||''};
+      S.customDraftOptions=null;
     }
-    S.customDraftResult={message:data.message,subject:data.subject||''};
     S.customSituationText=situation; // preserved so re-rendering doesn't lose what they typed
-    const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
-    const action=findActionById(actionId,groups);
-    const sec=document.getElementById('msg-preview-section');
     if(sec&&action)sec.innerHTML=renderMessagePreview(action,vars);
   }catch(e){
     if(statusEl)statusEl.textContent='Failed: '+e.message;
@@ -5667,7 +5744,7 @@ async function testSheets(){
     showToast('Google Sheets connected.','success');
   }catch(e){el.className='conn-status err';el.textContent='● Failed';showToast('Sheets: '+e.message,'error');}
 }
-function signOut(){if(!confirm('Sign out?'))return;sessionStorage.clear();location.reload();}
+function signOut(){if(!confirm('Sign out?'))return;localStorage.removeItem('mkc_session');localStorage.removeItem('mkc_session_token');sessionStorage.clear();location.reload();}
 
 function toggleUserMenu(evt){
   evt.stopPropagation();
