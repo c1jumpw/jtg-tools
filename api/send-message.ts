@@ -42,6 +42,45 @@ function jsonResponse(body: unknown, status: number) {
 
 const truncate = (s: unknown, max = 2000) => (typeof s === 'string' ? s.slice(0, max) : '');
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Builds the email as simple HTML (needed for the bolded signature name --
+// Resend's plain `text` field can't bold anything) with a matching plain-
+// text fallback for clients/spam filters that prefer it. Signature is
+// deliberately NOT a stored field anywhere -- it's assembled here from
+// data that already exists (name/role from the login session, phone/
+// email from the same Team Directory lookup that already resolves send
+// identity), so there's nothing new to keep in sync or forget to update.
+function buildEmailContent(message: string, signature?: { name?: string; role?: string; phone?: string; email?: string }) {
+  const bodyHtml = escapeHtml(message).replace(/\n/g, '<br>');
+  const bodyText = message;
+  let sigHtml = '';
+  let sigText = '';
+  if (signature && (signature.name || signature.role || signature.phone || signature.email)) {
+    const htmlLines: string[] = [];
+    const textLines: string[] = [];
+    if (signature.name) { htmlLines.push(`<strong>${escapeHtml(signature.name)}</strong>`); textLines.push(signature.name); }
+    if (signature.role) { htmlLines.push(escapeHtml(signature.role)); textLines.push(signature.role); }
+    if (signature.phone) { htmlLines.push(escapeHtml(signature.phone)); textLines.push(signature.phone); }
+    if (signature.email) { htmlLines.push(escapeHtml(signature.email)); textLines.push(signature.email); }
+    sigHtml = `<br><br>${htmlLines.join('<br>')}`;
+    sigText = `\n\n${textLines.join('\n')}`;
+  }
+  return {
+    html: `<div style="font-family:sans-serif;font-size:14px;color:#111;line-height:1.5">${bodyHtml}${sigHtml}</div>`,
+    text: `${bodyText}${sigText}`,
+  };
+}
+
+// Deliberately well under Resend's documented 40MB total-request limit --
+// this runs on a Vercel Edge Function, which has its own (tighter, and
+// not precisely documented for every plan/config) request body ceiling.
+// Safer to promise a smaller number that reliably works than advertise
+// Resend's full limit and have it fail unpredictably for a bigger file.
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024; // 8MB raw file size
+
 // Very loose E.164-ish check -- good enough to fail fast on an obviously
 // empty/malformed number before spending a Quo credit on a call that will
 // just reject it anyway. Not trying to be a full phone validator here.
@@ -140,6 +179,33 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonResponse({ error: 'Your sender email could not be found (check the Team Directory sheet, column Q) -- cannot send as you specifically.' }, 400);
       }
 
+      // Signature is optional and entirely assembled from data the
+      // frontend already has (login session + the same sheet lookup that
+      // resolves send identity) -- nothing new to store or keep in sync.
+      const sig = body.signature as { name?: unknown; role?: unknown; phone?: unknown; email?: unknown } | undefined;
+      const signature = sig ? {
+        name: truncate(sig.name, 100),
+        role: truncate(sig.role, 100),
+        phone: truncate(sig.phone, 30),
+        email: truncate(sig.email, 200),
+      } : undefined;
+      const { html, text } = buildEmailContent(message, signature);
+
+      // Single attachment only, base64-encoded by the frontend, capped
+      // well under Resend's own limit for the reason noted above.
+      let attachments: { filename: string; content: string }[] | undefined;
+      const att = body.attachment as { filename?: unknown; contentBase64?: unknown } | undefined;
+      if (att && typeof att.contentBase64 === 'string' && att.contentBase64) {
+        const approxBytes = Math.floor(att.contentBase64.length * 0.75); // base64 -> raw byte estimate
+        if (approxBytes > MAX_ATTACHMENT_BYTES) {
+          return jsonResponse({ error: `Attachment is too large (max ${(MAX_ATTACHMENT_BYTES / 1024 / 1024).toFixed(0)}MB) -- for bigger files, send through a regular mail client instead.` }, 400);
+        }
+        attachments = [{
+          filename: truncate(att.filename, 200) || 'attachment',
+          content: att.contentBase64,
+        }];
+      }
+
       const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -150,7 +216,9 @@ export default async function handler(req: Request): Promise<Response> {
           from: `${senderName} <${senderEmail}>`,
           to: [recipientEmail],
           subject,
-          text: message,
+          html,
+          text,
+          ...(attachments ? { attachments } : {}),
         }),
       });
 
