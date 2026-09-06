@@ -3631,6 +3631,7 @@ function renderMessagePreview(action,vars){
     ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
     ${quickFillHtmlFor(missing)}
     <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px;color:var(--text-muted)">Email Subject <span style="font-weight:400">(only used if you Send via Email)</span></label><input type="text" id="msg-subject" class="form-select" value="${esc(defaultSubject)}"></div>
+    <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px;color:var(--text-muted)">Attachment <span style="font-weight:400">(optional, email only, max 8MB — bigger files: use a regular mail client)</span></label><input type="file" id="msg-attachment" class="form-select"></div>
     <textarea id="msg-draft" class="msg-draft">${esc(rendered)}</textarea>
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
@@ -4015,6 +4016,21 @@ function resolveSenderIdentity(){
 // flow the manual button uses, so a real send always ends up logged
 // without a second click. Copy and manual Log as Sent both stay
 // available regardless; this is additive, not a replacement path.
+// Reads a File as base64, stripping the data: URL prefix -- Resend wants
+// raw base64 content, not a full data URL.
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const result=reader.result;
+      const base64=typeof result==='string'?result.split(',')[1]||'':'';
+      resolve(base64);
+    };
+    reader.onerror=()=>reject(new Error('File could not be read.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function sendViaChannel(channel){
   if(!S.currentEntry||!S.selectedAction)return;
   const{task,type}=S.currentEntry;
@@ -4035,11 +4051,29 @@ async function sendViaChannel(channel){
     confirmMsg=`Send this as a text to ${recipientPhone} from your Quo number? This sends immediately and cannot be undone.`;
     payload={channel:'sms',message,recipientPhone,senderQuoFrom:identity.senderQuoFrom};
   }else{
-    if(!identity.senderEmail)return showToast('Your SendGrid sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
+    if(!identity.senderEmail)return showToast('Your Resend sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
     if(!recipientEmail)return showToast('This entry has no email address on file.','error');
     confirmMsg=`Send this as an email to ${recipientEmail} from ${identity.senderEmail}? This sends immediately and cannot be undone.`;
     const subject=document.getElementById('msg-subject')?.value?.trim()||(action.type==='custom'&&S.customDraftResult?.subject)||action.label;
-    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject};
+    // Signature assembled from data that already exists -- name/role
+    // come straight from the login session, phone/email from the same
+    // sheet lookup that already resolves send identity. Nothing new to
+    // store or keep in sync.
+    const signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject,signature};
+
+    const attFile=document.getElementById('msg-attachment')?.files?.[0];
+    if(attFile){
+      if(attFile.size>8*1024*1024){
+        return showToast('Attachment is too large (max 8MB) — for bigger files, send through a regular mail client instead.','error');
+      }
+      try{
+        const base64=await fileToBase64(attFile);
+        payload.attachment={filename:attFile.name,contentBase64:base64};
+      }catch(e){
+        return showToast('Could not read the attached file: '+e.message,'error');
+      }
+    }
   }
   if(!confirm(confirmMsg))return;
 
