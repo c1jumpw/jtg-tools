@@ -292,6 +292,20 @@
            Edit/Export (produce the "initial core assets") from Compose
            ("this is where you generate logo variations"), per explicit
            request to make that distinction clear in the UI copy itself.
+
+  v11 (this file, brand-kit-generator-v11.html)
+    - NEW: shape selector (Freeform / Square / Circle) for the "crop / split
+           into new layer" tool. Square and Circle constrain the resize drag
+           to equal REAL PIXEL width/height (converted through the layer's
+           own aspect ratio, since a plain fraction-of-width == fraction-of-
+           height comparison isn't square unless the layer itself happens to
+           be square — see enforceCropShapeConstraint). Circle additionally
+           clips the extracted result to a circular alpha mask at extraction
+           time, so the new layer is an actual circular cutout, not just a
+           square bounding box with a circular-looking overlay. The chosen
+           shape persists across crop sessions on the same layer (only
+           "Start over" resets it to Freeform) so doing several same-shaped
+           crops in a row doesn't require reselecting it each time.
   ============================================================================
 -->
 <!-- Google Fonts used by Compose text layers: the curated FONT_CHOICES list
@@ -699,6 +713,10 @@
     position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:50%;
     background:#fff;border:2px solid var(--accent);cursor:nwse-resize;
   }
+  /* Only reads as a true circle because 'circle' mode also forces the
+     selection's real pixel width and height equal (see the resize-drag
+     handler) — border-radius alone can't fix an ellipse into a circle. */
+  .crop-rect-overlay.shape-circle{border-radius:50%;}
 
   .orientation-hint{
     font-family:var(--mono);font-size:11px;color:var(--ink-soft);
@@ -1040,8 +1058,13 @@ let customFonts = [];
  * are relative to the target layer's OWN box (0..1), not the canvas —
  * mirrors the same "store in a stable unit, convert to display px only at
  * render time" convention used everywhere else in Compose.
+ * `shape`: 'freeform' (any rectangle), 'square' (resize is constrained to
+ * equal real pixel width/height), or 'circle' (same square constraint,
+ * plus the extracted result is clipped to a circular alpha mask). Persists
+ * across crop sessions on the same layer (only reset by "Start over") so
+ * doing several same-shaped crops in a row doesn't require reselecting it.
  */
-let layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+let layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: 'freeform' };
 let cropRectDrag = null; // active pointer-drag on the crop rect overlay, or null when idle
 
 /*
@@ -1330,7 +1353,7 @@ function resetAll(){
   showCoordinates = false;
   toggleCoordsBtn.classList.remove('toggled');
   layerEyedropper = { active: false, layerId: null };
-  layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+  layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: 'freeform' };
   cropRectDrag = null;
   customFonts = [];
   history = [];
@@ -2043,7 +2066,7 @@ function renderLockupStage(){
     if (cropLayer) {
       const rect = layerCropTool.rect;
       const ov = document.createElement('div');
-      ov.className = 'crop-rect-overlay';
+      ov.className = 'crop-rect-overlay' + (layerCropTool.shape === 'circle' ? ' shape-circle' : '');
       ov.style.left = ((cropLayer.x + rect.x * cropLayer.w) * scale) + 'px';
       ov.style.top = ((cropLayer.y + rect.y * cropLayer.h) * scale) + 'px';
       ov.style.width = (rect.w * cropLayer.w * scale) + 'px';
@@ -2085,9 +2108,22 @@ window.addEventListener('pointermove', e => {
   if (cropRectDrag.mode === 'move') {
     rect.x = clamp(cropRectDrag.orig.x + dxFrac, 0, 1 - cropRectDrag.orig.w);
     rect.y = clamp(cropRectDrag.orig.y + dyFrac, 0, 1 - cropRectDrag.orig.h);
-  } else {
+  } else if (layerCropTool.shape === 'freeform') {
     rect.w = clamp(cropRectDrag.orig.w + dxFrac, 0.05, 1 - cropRectDrag.orig.x);
     rect.h = clamp(cropRectDrag.orig.h + dyFrac, 0.05, 1 - cropRectDrag.orig.y);
+  } else {
+    // Square/circle: rect fractions alone don't guarantee square OUTPUT
+    // pixels unless the layer's own box happens to be square, since a
+    // fraction of width and the same fraction of height cover different
+    // real pixel spans whenever layer.w !== layer.h. Convert through the
+    // layer's aspect ratio so the extracted result is a true square.
+    const avgDeltaFrac = (dxFrac + dyFrac) / 2; // average both axes for smoother diagonal drag
+    let newW = clamp(cropRectDrag.orig.w + avgDeltaFrac, 0.05, 1 - cropRectDrag.orig.x);
+    let newH = newW * cropLayer.w / cropLayer.h; // equal real-pixel width & height
+    const maxH = 1 - cropRectDrag.orig.y;
+    if (newH > maxH) { newH = maxH; newW = newH * cropLayer.h / cropLayer.w; }
+    rect.w = newW;
+    rect.h = newH;
   }
   renderLockupStage();
 });
@@ -2216,7 +2252,7 @@ function selectLayer(id){
   // selecting something else would otherwise leave it visually orphaned.
   let stageNeedsRebuild = false;
   if (layerCropTool.active && layerCropTool.layerId !== id) {
-    layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+    layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
     stageNeedsRebuild = true; // the overlay element itself must be removed from the DOM, not just deactivated in state
   }
   if (stageNeedsRebuild) renderLockupStage(); else refreshLayerSelectionStyling();
@@ -2533,10 +2569,10 @@ function renderPropPanel(){
 
 /**
  * Renders the "crop / split into new layer" block (image layers only): a
- * button to arm the crop-rect overlay on the canvas, or — once armed —
- * Extract/Cancel buttons. Lets a single flattened image (e.g. an icon and
- * wordmark baked into one uploaded file) be pulled apart into independently
- * movable/recolorable layers.
+ * Freeform/Square/Circle shape selector, then a button to arm the crop-rect
+ * overlay on the canvas, or — once armed — Extract/Cancel buttons. Lets a
+ * single flattened image (e.g. an icon and wordmark baked into one uploaded
+ * file) be pulled apart into independently movable/recolorable layers.
  * @param {object} layer an image-type layer
  */
 function renderLayerCropControls(layer){
@@ -2545,6 +2581,22 @@ function renderLayerCropControls(layer){
   block.appendChild(Object.assign(document.createElement('p'), {
     className: 'field-label', style: 'margin:0 0 8px;', textContent: 'Crop / split into new layer'
   }));
+
+  // Shape selector — always visible (not just while a crop is in progress)
+  // so it can be set before starting, or changed live mid-crop to reshape
+  // the current selection immediately.
+  const shapeRow = document.createElement('div');
+  shapeRow.style.cssText = 'display:flex;gap:6px;margin-bottom:10px;';
+  [['freeform', 'Freeform'], ['square', 'Square'], ['circle', 'Circle']].forEach(([value, label]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn' + (layerCropTool.shape === value ? ' toggled' : '');
+    btn.style.cssText = 'flex:1;font-size:11.5px;padding:6px 4px;';
+    btn.textContent = label;
+    btn.addEventListener('click', () => setCropShape(layer, value));
+    shapeRow.appendChild(btn);
+  });
+  block.appendChild(shapeRow);
 
   const active = layerCropTool.active && layerCropTool.layerId === layer.id;
   if (active) {
@@ -2559,7 +2611,7 @@ function renderLayerCropControls(layer){
     cancelBtn.type = 'button'; cancelBtn.className = 'btn ghost';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', () => {
-      layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+      layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
       renderLockupStage();
       renderPropPanel();
     });
@@ -2567,20 +2619,58 @@ function renderLayerCropControls(layer){
     block.appendChild(row);
     block.appendChild(Object.assign(document.createElement('p'), {
       className: 'hint', style: 'margin:8px 0 0;text-align:left;',
-      textContent: 'Drag the dashed box on the canvas over the piece to pull out, then Extract. The original layer is left untouched \u2014 you\u2019ll end up with both.'
+      textContent: layerCropTool.shape === 'circle'
+        ? 'Drag the dashed circle over the piece to pull out, then Extract. The original layer is left untouched.'
+        : 'Drag the dashed box on the canvas over the piece to pull out, then Extract. The original layer is left untouched \u2014 you\u2019ll end up with both.'
     }));
   } else {
     const startBtn = document.createElement('button');
     startBtn.type = 'button'; startBtn.className = 'btn'; startBtn.style.width = '100%';
     startBtn.textContent = 'Crop this layer\u2026';
     startBtn.addEventListener('click', () => {
-      layerCropTool = { active: true, layerId: layer.id, rect: { x: 0.25, y: 0, w: 0.5, h: 1 } };
+      layerCropTool = { active: true, layerId: layer.id, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: layerCropTool.shape };
+      enforceCropShapeConstraint(layer); // the default rect above isn't guaranteed square — fix it up immediately if needed
       renderLockupStage();
       renderPropPanel();
     });
     block.appendChild(startBtn);
   }
   propFields.appendChild(block);
+}
+
+/**
+ * Sets the crop tool's shape mode and, if a crop is already in progress on
+ * this layer, immediately reshapes the current selection to match (rather
+ * than waiting for the next resize drag) so switching shape mid-crop feels responsive.
+ * @param {object} layer
+ * @param {'freeform'|'square'|'circle'} shape
+ */
+function setCropShape(layer, shape){
+  layerCropTool.shape = shape;
+  if (layerCropTool.active && layerCropTool.layerId === layer.id) {
+    enforceCropShapeConstraint(layer);
+  }
+  renderLockupStage();
+  renderPropPanel();
+}
+
+/**
+ * Adjusts `layerCropTool.rect` so its real pixel width equals its real
+ * pixel height (a no-op for 'freeform'). Converts through the layer's own
+ * aspect ratio (see the resize-drag handler for why a plain fraction
+ * comparison isn't enough) and re-clamps to stay within the layer's bounds.
+ * @param {object} layer
+ */
+function enforceCropShapeConstraint(layer){
+  if (layerCropTool.shape === 'freeform') return;
+  const rect = layerCropTool.rect;
+  let newH = rect.w * layer.w / layer.h;
+  const maxH = 1 - rect.y;
+  if (newH > maxH) {
+    newH = maxH;
+    rect.w = Math.max(0.05, newH * layer.h / layer.w);
+  }
+  rect.h = newH;
 }
 
 /**
@@ -2600,7 +2690,26 @@ async function extractLayerCrop(layer){
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(sw));
   canvas.height = Math.max(1, Math.round(sh));
-  canvas.getContext('2d').drawImage(layer.imgEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext('2d');
+
+  if (layerCropTool.shape === 'circle') {
+    // Clip to a circle BEFORE drawing, so everything outside it never gets
+    // painted and stays transparent in the resulting PNG. Safe to assume a
+    // true circle (not an ellipse) here because 'circle' mode already
+    // constrains the selection to equal real pixel width/height — see
+    // enforceCropShapeConstraint and the resize-drag handler.
+    ctx.save();
+    ctx.beginPath();
+    const r = Math.min(canvas.width, canvas.height) / 2;
+    ctx.arc(canvas.width / 2, canvas.height / 2, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(layer.imgEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  } else {
+    ctx.drawImage(layer.imgEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  }
+
   const newImg = await canvasToImage(canvas);
 
   const newLayer = {
@@ -2614,13 +2723,13 @@ async function extractLayerCrop(layer){
     h: rect.h * layer.h,
     imgEl: newImg,
     origImgEl: newImg,
-    name: (layer.name || 'Image') + ' (crop)',
+    name: (layer.name || 'Image') + (layerCropTool.shape === 'circle' ? ' (circle crop)' : ' (crop)'),
     bgRemoval: { enabled: false, target: null, tolerance: 30 },
     recolor: { enabled: false, color: '#ffffff' },
     colorSwaps: []
   };
   layers.push(newLayer);
-  layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect };
+  layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
   renderLockupStage();
   selectLayer(newLayer.id);
   commitHistory();
