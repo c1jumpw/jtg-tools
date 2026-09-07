@@ -80,6 +80,25 @@ export default async function handler(req: Request): Promise<Response> {
     const recentActivity = typeof body.recentActivity === 'string' ? body.recentActivity.slice(0, 1500) : '';
     const channel = truncate(body.channel, 10) === 'email' ? 'email' : 'sms'; // affects expected length/formality
 
+    const TONE_GUIDANCE: Record<string, string> = {
+      'Friendly': 'Warm and personable, like talking to someone you genuinely like working with.',
+      'Straight Forward': 'Direct, no fluff or hedging -- get to the point in the first sentence.',
+      'Urgent': 'Convey real time-sensitivity and prompt quick action, without sounding alarmist or fake-scarce.',
+      'Informative/Metric': 'Fact- and data-driven -- lead with specifics/numbers where the situation gives you any, educational rather than salesy.',
+      'Quick (2-liner disruptor)': 'EXACTLY one to two short lines, total. A punchy, pattern-interrupting opener designed to make a busy person actually stop and react -- not a full message, a hook.',
+      'Funny disruptor': 'Genuinely witty or unexpected in angle -- humor should still clearly relate to the real situation, not be a generic joke bolted on.',
+    };
+    const MODIFIER_GUIDANCE: Record<string, string> = {
+      'Informal': 'Casual language, contractions, relaxed grammar -- like texting a friend, not writing a memo.',
+      'Emoji Heavy': 'Include relevant emojis noticeably throughout (not just one at the end) -- but they should fit the content, not feel randomly inserted.',
+      'Chat Thread': 'Write as if this continues an ongoing back-and-forth conversation already in progress -- skip a cold-open greeting, jump straight in like the next message in a thread.',
+      'Formal': 'Professional and polished -- full sentences, no contractions or slang, appropriate for a business relationship that expects that register.',
+    };
+    const tonality = truncate(body.tonality, 50);
+    const modifiers = Array.isArray(body.modifiers)
+      ? body.modifiers.filter((m): m is string => typeof m === 'string' && !!MODIFIER_GUIDANCE[m]).slice(0, 4)
+      : [];
+
     const prompt = `You are drafting an outbound message for a CRM admin to review, edit, and send themselves -- you are NOT sending anything. The admin has described a specific situation in their own words; write the actual message that addresses it.
 
 SITUATION, IN THE ADMIN'S OWN WORDS (this is the primary instruction -- follow it):
@@ -95,6 +114,8 @@ ${leadSource ? `- Lead source: ${leadSource}` : ''}
 ${leadSourceNotes ? `- Lead source notes: ${leadSourceNotes}` : ''}
 ${lastAction ? `- Last recorded action: ${lastAction}` : ''}
 ${recentActivity ? `\nRECENT ACTIVITY LOG (most recent first -- stay consistent with this, don't repeat or contradict something that already happened):\n${recentActivity}` : ''}
+${tonality && TONE_GUIDANCE[tonality] ? `\nREQUIRED TONE -- ${tonality}: ${TONE_GUIDANCE[tonality]}` : ''}
+${modifiers.length ? `\nSTYLE MODIFIERS TO APPLY:\n${modifiers.map(m => `- ${m}: ${MODIFIER_GUIDANCE[m]}`).join('\n')}` : ''}
 
 INTENDED CHANNEL: ${channel === 'email' ? 'Email -- can be a little longer, include a natural greeting and sign-off.' : 'Text/SMS -- keep it short, one to three sentences, no formal greeting needed.'}
 
