@@ -3645,33 +3645,61 @@ function renderMessagePreview(action,vars){
       <button class="btn btn-primary btn-sm" id="custom-generate-btn" onclick="generateCustomDraft('${action.id}')">✨ Generate Draft</button>
       <div id="custom-draft-status" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`;
     if(hasOptions){
-      // "Both" produces two real, independently-generated versions (not
-      // one truncated into the other). Each can now be sent on its own
-      // channel directly from here -- genuinely both, not "pick one and
-      // lose the other." "Edit & refine instead" is still there for
-      // anyone who wants to Personalize/attach/schedule one further
-      // before sending, which collapses into the normal single-draft
-      // flow exactly as before.
+      // Two genuinely independent panels -- editing, personalizing,
+      // sending, or scheduling one never touches or removes the other.
+      // No "pick one" collapse step anymore; each side just stays fully
+      // usable until it's individually sent.
       const smsSent=!!S.customBothSent?.sms;
       const emailSent=!!S.customBothSent?.email;
       html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Text version</div>
-          <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.sms)}</div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">📱 Text version</div>
           ${smsSent?'<div style="font-size:12px;color:var(--success);font-weight:600">✓ Sent</div>':`
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('sms')">📱 Send via Quo</button>
-            <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('sms')">Edit &amp; refine instead</button>
-          </div>`}
+          <textarea id="custom-both-draft-sms" class="msg-draft" style="min-height:90px;font-size:12.5px" oninput="if(S.customDraftOptions)S.customDraftOptions.sms=this.value">${esc(S.customDraftOptions.sms)}</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-secondary btn-sm" onclick="copyCustomBothDraft('sms')">📋 Copy</button>
+            <button class="btn btn-secondary btn-sm" id="custom-both-personalize-sms" onclick="personalizeCustomBothDraft('sms')">✨ Personalize</button>
+            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('sms')">Send via Quo</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleCustomBothSchedule('sms')">🕐 Schedule</button>
+          </div>
+          <div id="custom-both-schedule-sms" style="display:none;margin-top:8px;padding:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-sms"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
+                <select id="custom-both-sched-mode-sms" class="form-select">
+                  <option value="confirm">Confirm before sending</option>
+                  <option value="auto">Send automatically</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="submitCustomBothSchedule('sms')">Schedule It</button>
+          </div>
+          <div id="custom-both-status-sms" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`}
         </div>
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Email version</div>
-          <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.email)}</div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">✉️ Email version</div>
           ${emailSent?'<div style="font-size:12px;color:var(--success);font-weight:600">✓ Sent</div>':`
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('email')">✉️ Send via Email</button>
-            <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('email')">Edit &amp; refine instead</button>
-          </div>`}
+          <input type="text" id="custom-both-subject-email" class="form-select" style="margin-bottom:6px;font-size:12.5px" value="${esc(S.customDraftOptions.emailSubject||'')}" placeholder="Subject" oninput="if(S.customDraftOptions)S.customDraftOptions.emailSubject=this.value">
+          <textarea id="custom-both-draft-email" class="msg-draft" style="min-height:90px;font-size:12.5px" oninput="if(S.customDraftOptions)S.customDraftOptions.email=this.value">${esc(S.customDraftOptions.email)}</textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-secondary btn-sm" onclick="copyCustomBothDraft('email')">📋 Copy</button>
+            <button class="btn btn-secondary btn-sm" id="custom-both-personalize-email" onclick="personalizeCustomBothDraft('email')">✨ Personalize</button>
+            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('email')">Send via Email</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleCustomBothSchedule('email')">🕐 Schedule</button>
+          </div>
+          <div id="custom-both-schedule-email" style="display:none;margin-top:8px;padding:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-email"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
+                <select id="custom-both-sched-mode-email" class="form-select">
+                  <option value="confirm">Confirm before sending</option>
+                  <option value="auto">Send automatically</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="submitCustomBothSchedule('email')">Schedule It</button>
+          </div>
+          <div id="custom-both-status-email" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`}
         </div>
       </div>`;
     }
@@ -3745,7 +3773,7 @@ function renderMessagePreview(action,vars){
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
       <button class="btn btn-secondary btn-sm" id="ai-personalize-btn" onclick="personalizeWithAI('${action.id}')">✨ Personalize with AI</button>
-      <button class="btn btn-secondary btn-sm" id="draft-revert-btn" onclick="toggleDraftRevert()">↩ Revert to Original</button>
+      <button class="btn btn-secondary btn-sm" id="draft-revert-btn" onclick="toggleDraftRevert()">${S.customDraftResult!=null?'↩ Start Over':'↩ Revert to Original'}</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('sms')">📱 Send via Quo</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('email')">✉️ Send via Email</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleSchedulePanel()">🕐 Schedule Send</button>
@@ -3868,7 +3896,8 @@ async function sendCustomBothVersion(channel){
   const{task}=S.currentEntry;
   const cf=getCF(task);
   const identity=resolveSenderIdentity();
-  const message=channel==='sms'?S.customDraftOptions.sms:S.customDraftOptions.email;
+  const ta=document.getElementById(`custom-both-draft-${channel}`);
+  const message=ta?ta.value:(channel==='sms'?S.customDraftOptions.sms:S.customDraftOptions.email);
   let payload,confirmMsg;
 
   if(channel==='sms'){
@@ -3883,7 +3912,8 @@ async function sendCustomBothVersion(channel){
     if(!recipientEmail)return showToast('This entry has no email address on file.','error');
     confirmMsg=`Send this email version to ${recipientEmail}? This sends immediately and cannot be undone.`;
     const signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
-    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:S.customDraftOptions.emailSubject||'Following up',signature};
+    const subject=document.getElementById('custom-both-subject-email')?.value?.trim()||S.customDraftOptions.emailSubject||'Following up';
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject,signature};
   }
   if(!confirm(confirmMsg))return;
 
@@ -3912,19 +3942,137 @@ async function sendCustomBothVersion(channel){
   }
 }
 
-function useCustomDraftOption(which){
-  if(!S.customDraftOptions||!S.currentEntry)return;
-  S.customDraftResult={
-    message:which==='sms'?S.customDraftOptions.sms:S.customDraftOptions.email,
-    subject:which==='email'?S.customDraftOptions.emailSubject:''
-  };
-  S.customDraftOptions=null;
+function copyCustomBothDraft(channel){
+  const ta=document.getElementById(`custom-both-draft-${channel}`);
+  if(!ta)return;
+  ta.select();
+  const done=()=>showToast('Message copied.','success');
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(ta.value).then(done).catch(()=>{document.execCommand('copy');done();});
+  else{document.execCommand('copy');done();}
+}
+
+// Refines just one side's draft in place -- reuses the same
+// personalize-message.ts endpoint as everywhere else, scoped to
+// whichever channel's textarea was clicked. Never touches the other
+// channel's content at all.
+async function personalizeCustomBothDraft(channel){
+  if(!S.currentEntry)return;
+  const ta=document.getElementById(`custom-both-draft-${channel}`);
+  const statusEl=document.getElementById(`custom-both-status-${channel}`);
+  const btn=document.getElementById(`custom-both-personalize-${channel}`);
+  if(!ta||!statusEl)return;
+
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
-  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
-  const action=findActionById(S.selectedAction,groups);
-  const sec=document.getElementById('msg-preview-section');
-  if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
+  const vars=buildMsgVars(task,type,cf);
+  const leadType=cf['lead/contact type']||'';
+  const leadSourceNotes=cf['lead source notes']||cf['source details']||cf['source activity']||'';
+
+  if(btn)btn.disabled=true;
+  statusEl.textContent='✨ Personalizing…';
+  try{
+    const res=await fetch(PERSONALIZE_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        actionLabel:'Custom Message',
+        structure:'',
+        baseMessage:ta.value,
+        leadType,
+        leadSource:vars.leadSource,
+        leadSourceNotes,
+        firstName:vars.firstName,
+        lastAction:vars.lastAction,
+        recentActivity:getRecentActivitySummary()
+      })
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.message){
+      statusEl.textContent='Failed: '+(data.error||`HTTP ${res.status}`);
+      if(btn)btn.disabled=false;
+      return;
+    }
+    ta.value=data.message;
+    if(S.customDraftOptions)S.customDraftOptions[channel]=data.message;
+    statusEl.textContent='✓ Personalized.';
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
+function toggleCustomBothSchedule(channel){
+  const panel=document.getElementById(`custom-both-schedule-${channel}`);
+  if(!panel)return;
+  const opening=panel.style.display==='none';
+  panel.style.display=opening?'block':'none';
+  if(opening){
+    const dtInput=document.getElementById(`custom-both-sched-datetime-${channel}`);
+    if(dtInput&&!dtInput.value){
+      const d=new Date(Date.now()+60*60*1000);
+      d.setSeconds(0,0);
+      const pad=n=>String(n).padStart(2,'0');
+      const localVal=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      dtInput.value=localVal;
+      dtInput.min=localVal;
+    }
+  }
+}
+
+// Schedules one side of a Both draft independently -- same Worker
+// endpoint as the main Schedule Send flow, just reading from this
+// channel's own namespaced fields instead of the shared #msg-draft ones.
+async function submitCustomBothSchedule(channel){
+  if(!S.currentEntry)return;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const ta=document.getElementById(`custom-both-draft-${channel}`);
+  const statusEl=document.getElementById(`custom-both-status-${channel}`);
+  if(!ta||!statusEl)return;
+
+  const dtVal=document.getElementById(`custom-both-sched-datetime-${channel}`)?.value;
+  const mode=document.getElementById(`custom-both-sched-mode-${channel}`)?.value||'confirm';
+  if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
+  const scheduledDate=new Date(dtVal);
+  if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
+    statusEl.textContent='Scheduled time must be at least a minute in the future.';
+    return;
+  }
+
+  const identity=resolveSenderIdentity();
+  const payload={
+    entryTaskId:task.id,
+    entryType:type,
+    entryName:task.name||'',
+    channel,
+    message:ta.value,
+    actionLabel:'Custom Message',
+    mode,
+    scheduledFor:scheduledDate.toISOString(),
+    createdByMkcId:S.user?.mkcId||'',
+    createdByName:S.user?.name||''
+  };
+  if(channel==='sms'){
+    payload.recipientPhone=normalizePhoneE164(cf.phone||cf['primary contact phone']||cf['primary phone']||'');
+    payload.senderQuoFrom=identity.senderQuoFrom;
+  }else{
+    payload.recipientEmail=cf['primary contact email']||cf.email||'';
+    payload.senderEmail=identity.senderEmail;
+    payload.senderName=identity.senderName;
+    payload.subject=document.getElementById('custom-both-subject-email')?.value?.trim()||'Following up';
+    payload.signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+  }
+
+  statusEl.textContent='Scheduling…';
+  try{
+    await authFetch('/api/scheduled-messages','POST',payload);
+    statusEl.textContent='✓ Scheduled for '+scheduledDate.toLocaleString();
+    showToast('Message scheduled — see it in the Outbox tab.','success');
+    updatePfOutboxBadge(task.id);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }
 }
 
 function fillCustomPreset(kind){
@@ -4156,7 +4304,31 @@ async function generateCatchUpSummary(){
 function toggleDraftRevert(){
   const ta=document.getElementById('msg-draft');
   const btn=document.getElementById('draft-revert-btn');
-  if(!ta||!btn||S.originalDraftText==null)return;
+  if(!ta||!btn)return;
+
+  // Custom Message has no non-AI starting point -- the very first draft
+  // is already AI output, so toggling between two AI texts doesn't give
+  // you a genuine "original" the way a template render does for every
+  // other action. The real original for Custom Message is the situation
+  // you described -- so revert here means discard the draft and go back
+  // to that, not swap between two AI-generated versions.
+  if(S.selectedAction&&S.currentEntry){
+    const groups=(S.currentEntry.type==='leads'||S.currentEntry.type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+    const currentAction=findActionById(S.selectedAction,groups);
+    if(currentAction?.type==='custom'){
+      if(!confirm('Discard this draft and go back to editing the situation description?'))return;
+      S.customDraftResult=null;
+      S.customDraftOptions=null;
+      S.customBothSent=null;
+      const{task,type}=S.currentEntry;
+      const cf=getCF(task);
+      const sec=document.getElementById('msg-preview-section');
+      if(sec)sec.innerHTML=renderMessagePreview(currentAction,buildMsgVars(task,type,cf));
+      return;
+    }
+  }
+
+  if(S.originalDraftText==null)return;
   if(ta.value===S.originalDraftText){
     // Already showing the original -- offer to jump to the personalized
     // version if one exists, otherwise say so plainly instead of doing
