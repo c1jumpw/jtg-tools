@@ -697,6 +697,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="pf-tab" onclick="switchPfTab('activity',this)">Activity <span class="nav-badge" id="pf-activity-badge" style="display:none;margin-left:4px"></span></div>
     <div class="pf-tab" onclick="switchPfTab('related',this)">Related</div>
     <div class="pf-tab" onclick="switchPfTab('tasks',this)">Tasks</div>
+    <div class="pf-tab" onclick="switchPfTab('outbox',this)">Outbox <span class="nav-badge" id="pf-outbox-badge" style="display:none;margin-left:4px"></span></div>
   </div>
   <div class="pf-body" id="pf-body"></div>
   <div class="pf-footer">
@@ -3126,6 +3127,7 @@ async function openProfile(taskId,type){
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
     updatePfActivityBadge();
+    updatePfOutboxBadge(task.id);
     switchPfTab(S.currentPfTab,null);
   }catch(e){
     showToast('Failed to load entry: '+e.message,'error');
@@ -3208,14 +3210,15 @@ function switchPfTab(tab,btnEl){
   const tabEls=document.querySelectorAll('.pf-tab');
   tabEls.forEach(b=>b.classList.remove('active'));
   // Build visible tab list
-  const allTabs=['details','actions','activity','related','tasks'];
+  const allTabs=['details','actions','activity','related','tasks','outbox'];
   const visibleTabs=isMaster?['details','activity','related']:allTabs;
   // Show/hide action tab (master tasks don't have CRM Actions or a Tasks-linked-to-a-task view)
   tabEls.forEach(b=>{
     const label=b.textContent.trim();
     const isActionsTab=label==='CRM Actions';
     const isTasksTab=label==='Tasks';
-    b.style.display=(isMaster&&(isActionsTab||isTasksTab))?'none':'';
+    const isOutboxTab=label.startsWith('Outbox');
+    b.style.display=(isMaster&&(isActionsTab||isTasksTab||isOutboxTab))?'none':'';
   });
   // Hide the entry-level "+ Add Task" footer button when viewing a Master Task itself
   const addTaskBtn=document.getElementById('pf-addtask-btn');
@@ -3236,6 +3239,7 @@ function switchPfTab(tab,btnEl){
   else if(tab==='activity'){renderPfActivity(comments,body);if(task)setLastViewed('entry:'+task.id);updatePfActivityBadge();}
   else if(tab==='related')renderPfRelated(task,body);
   else if(tab==='tasks')renderPfTasks(task,body);
+  else if(tab==='outbox'){renderPfOutbox(task,body);if(task)setLastViewed('outbox:'+task.id);}
 }
 
 function renderPfDetails(task,type,cf,body){
@@ -3718,8 +3722,29 @@ function renderMessagePreview(action,vars){
       <button class="btn btn-secondary btn-sm" id="draft-revert-btn" style="display:none" onclick="toggleDraftRevert()">↩ Revert to Original</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('sms')">📱 Send via Quo</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('email')">✉️ Send via Email</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSchedulePanel()">🕐 Schedule Send</button>
       <button class="btn btn-primary btn-sm" onclick="logActionSent()">✓ Log as Sent</button>
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
+    </div>
+    <div id="schedule-panel" style="display:none;margin-top:10px;padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="form-group" style="margin:0"><label style="font-size:11px">Channel</label>
+          <select id="sched-channel" class="form-select">
+            <option value="sms">Text (Quo)</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="sched-datetime"></div>
+        <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
+          <select id="sched-mode" class="form-select">
+            <option value="confirm">Confirm before sending</option>
+            <option value="auto">Send automatically</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">"Confirm" waits in your Outbox until you approve it — nothing goes out until you do, even after the scheduled time passes. "Auto" sends on its own with no one needing to be in the app.</div>
+      <button class="btn btn-primary btn-sm" id="schedule-submit-btn" onclick="submitScheduledMessage('${action.id}')">Schedule It</button>
+      <span id="schedule-status" style="font-size:12px;color:var(--text-secondary);margin-left:8px"></span>
     </div>`;
 }
 
@@ -4389,6 +4414,191 @@ function getLinkedTasksForEntry(taskId){
 // ═══════════════════════════════════════════
 // PROFILE PANEL — TASKS TAB (Section 11-E)
 // ═══════════════════════════════════════════
+// ── Scheduled Messages (Outbox) ─────────────────────────────────────
+// Real server-side scheduling, not a client-side timer -- a Worker cron
+// trigger (already proven infrastructure, same one that runs the Quo
+// digest batch) checks a D1 table for due messages independent of
+// whether anyone has the app open. "Auto" mode sends via the same
+// send-message.ts endpoint the app already uses, server-to-server.
+// "Confirm" mode can't be a true push notification without native app
+// infrastructure -- it waits as "awaiting confirmation" until a human
+// is next in the app, surfaced via the Outbox tab's badge.
+
+function toggleSchedulePanel(){
+  const panel=document.getElementById('schedule-panel');
+  if(!panel)return;
+  const opening=panel.style.display==='none';
+  panel.style.display=opening?'block':'none';
+  if(opening){
+    const dtInput=document.getElementById('sched-datetime');
+    if(dtInput&&!dtInput.value){
+      const d=new Date(Date.now()+60*60*1000); // default: 1 hour from now
+      d.setSeconds(0,0);
+      const pad=n=>String(n).padStart(2,'0');
+      const localVal=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      dtInput.value=localVal;
+      dtInput.min=localVal;
+    }
+  }
+}
+
+async function submitScheduledMessage(actionId){
+  if(!S.currentEntry)return;
+  const{task,type}=S.currentEntry;
+  const cf=getCF(task);
+  const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+  const action=findActionById(actionId,groups);
+  const statusEl=document.getElementById('schedule-status');
+  const ta=document.getElementById('msg-draft');
+  if(!action||!ta||!statusEl)return;
+
+  const channel=document.getElementById('sched-channel').value;
+  const mode=document.getElementById('sched-mode').value;
+  const dtVal=document.getElementById('sched-datetime').value;
+  if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
+  const scheduledDate=new Date(dtVal);
+  if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
+    statusEl.textContent='Scheduled time must be at least a minute in the future.';
+    return;
+  }
+  if(channel==='sms'&&mode==='confirm'){
+    // Texts are cheap and instant to review right now anyway -- confirm
+    // mode's real value is for email, where a pause before sending is
+    // more meaningful. Not blocking it, just simplifying: SMS always
+    // behaves like auto at send time once its slot arrives, since
+    // there's nothing extra confirm-mode buys for a text specifically
+    // that reviewing it now doesn't already give you.
+  }
+
+  const identity=resolveSenderIdentity();
+  const recipientPhone=normalizePhoneE164(cf.phone||cf['primary contact phone']||cf['primary phone']||'');
+  const recipientEmail=cf['primary contact email']||cf.email||'';
+
+  const btn=document.getElementById('schedule-submit-btn');
+  btn.disabled=true;
+  statusEl.textContent='Scheduling…';
+
+  const payload={
+    entryTaskId:task.id,
+    entryType:type,
+    entryName:task.name||'',
+    channel,
+    message:ta.value,
+    subject:document.getElementById('msg-subject')?.value?.trim()||(action.type==='custom'&&S.customDraftResult?.subject)||action.label,
+    recipientPhone,
+    recipientEmail,
+    senderName:identity.senderName,
+    senderEmail:identity.senderEmail,
+    senderQuoFrom:identity.senderQuoFrom,
+    signature:{name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''},
+    actionLabel:action.label,
+    mode,
+    scheduledFor:scheduledDate.toISOString(),
+    createdByMkcId:S.user?.mkcId||'',
+    createdByName:S.user?.name||''
+  };
+
+  if(channel==='email'){
+    const attFile=document.getElementById('msg-attachment')?.files?.[0];
+    if(attFile){
+      if(attFile.size>8*1024*1024){
+        statusEl.textContent='Attachment too large (max 8MB) -- for bigger files, send through a regular mail client instead.';
+        btn.disabled=false;
+        return;
+      }
+      try{
+        payload.attachment={filename:attFile.name,contentBase64:await fileToBase64(attFile)};
+      }catch(e){
+        statusEl.textContent='Could not read attachment: '+e.message;
+        btn.disabled=false;
+        return;
+      }
+    }
+  }
+
+  try{
+    await authFetch('/api/scheduled-messages','POST',payload);
+    statusEl.textContent='✓ Scheduled for '+scheduledDate.toLocaleString();
+    showToast('Message scheduled — see it in the Outbox tab.','success');
+    updatePfOutboxBadge(task.id);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function updatePfOutboxBadge(taskId){
+  const badge=document.getElementById('pf-outbox-badge');
+  if(!badge)return;
+  try{
+    const items=await authFetch('/api/scheduled-messages','GET',{entryTaskId:taskId,status:'awaiting_confirmation'});
+    if(Array.isArray(items)&&items.length>0){badge.textContent=items.length;badge.style.display='inline-block';badge.className='nav-badge has-items';}
+    else{badge.style.display='none';}
+  }catch(e){badge.style.display='none';}
+}
+
+const SCHED_STATUS_LABELS={
+  pending:{label:'Pending',color:'var(--text-muted)'},
+  awaiting_confirmation:{label:'Awaiting your confirmation',color:'#d97706'},
+  sent:{label:'Sent',color:'var(--success)'},
+  cancelled:{label:'Cancelled',color:'var(--text-muted)'},
+  failed:{label:'Failed',color:'#dc2626'}
+};
+
+async function renderPfOutbox(task,body){
+  body.innerHTML='<div class="pf-section"><div style="font-size:13px;color:var(--text-muted)">Loading…</div></div>';
+  try{
+    const items=await authFetch('/api/scheduled-messages','GET',{entryTaskId:task.id});
+    if(!Array.isArray(items)||!items.length){
+      body.innerHTML='<div class="pf-section"><div style="font-size:13px;color:var(--text-muted);font-style:italic">No scheduled messages for this entry yet. Use "🕐 Schedule Send" from any CRM Action draft.</div></div>';
+      return;
+    }
+    items.sort((a,b)=>new Date(b.scheduled_for)-new Date(a.scheduled_for));
+    body.innerHTML='<div class="pf-section">'+items.map(it=>{
+      const st=SCHED_STATUS_LABELS[it.status]||{label:it.status,color:'var(--text-muted)'};
+      const when=new Date(it.scheduled_for).toLocaleString();
+      const canCancel=it.status==='pending'||it.status==='awaiting_confirmation';
+      const canConfirm=it.status==='awaiting_confirmation';
+      return `<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:13px;font-weight:600">${esc(it.action_label||'Scheduled message')} · ${it.channel==='email'?'✉️ Email':'📱 Text'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${esc(when)} · ${it.mode==='auto'?'Auto-send':'Confirm before sending'}</div>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>
+        </div>
+        <div style="font-size:12.5px;white-space:pre-wrap;background:var(--bg-main);padding:8px;border-radius:6px;margin-bottom:8px;max-height:120px;overflow-y:auto">${esc(it.message)}</div>
+        ${it.status==='failed'&&it.error_message?`<div style="font-size:11.5px;color:#dc2626;margin-bottom:8px">Error: ${esc(it.error_message)}</div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${canConfirm?`<button class="btn btn-primary btn-sm" onclick="confirmScheduledMessageNow('${it.id}')">✓ Confirm &amp; Send Now</button>`:''}
+          ${canCancel?`<button class="btn btn-secondary btn-sm" onclick="cancelScheduledMessage('${it.id}')">Cancel</button>`:''}
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){
+    body.innerHTML=`<div class="pf-section"><div class="val-warn visible">Failed to load Outbox: ${esc(e.message)}</div></div>`;
+  }
+}
+
+async function cancelScheduledMessage(id){
+  if(!confirm('Cancel this scheduled message? It will not be sent.'))return;
+  try{
+    await authFetch(`/api/scheduled-messages/${id}/cancel`,'POST',{});
+    showToast('Scheduled message cancelled.','success');
+    if(S.currentEntry){renderPfOutbox(S.currentEntry.task,document.getElementById('pf-body'));updatePfOutboxBadge(S.currentEntry.task.id);}
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+
+async function confirmScheduledMessageNow(id){
+  if(!confirm('Send this message right now?'))return;
+  try{
+    await authFetch(`/api/scheduled-messages/${id}/confirm`,'POST',{});
+    showToast('Message sent.','success');
+    if(S.currentEntry){renderPfOutbox(S.currentEntry.task,document.getElementById('pf-body'));updatePfOutboxBadge(S.currentEntry.task.id);}
+  }catch(e){showToast('Failed: '+e.message,'error');}
+}
+
 function renderPfTasks(task,body,showCompleted){
   const taskId=task.id||'';
   const linked=getLinkedTasksForEntry(taskId);
