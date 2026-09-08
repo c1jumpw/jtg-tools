@@ -3663,15 +3663,8 @@ function renderMessagePreview(action,vars){
             <button class="btn btn-secondary btn-sm" onclick="toggleCustomBothSchedule('sms')">🕐 Schedule</button>
           </div>
           <div id="custom-both-schedule-sms" style="display:none;margin-top:8px;padding:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-sms"></div>
-              <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
-                <select id="custom-both-sched-mode-sms" class="form-select">
-                  <option value="confirm">Confirm before sending</option>
-                  <option value="auto">Send automatically</option>
-                </select>
-              </div>
-            </div>
+            <div class="form-group" style="margin:0 0 6px"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-sms"></div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:8px" id="custom-both-tz-sms"></div>
             <button class="btn btn-primary btn-sm" onclick="submitCustomBothSchedule('sms')">Schedule It</button>
           </div>
           <div id="custom-both-status-sms" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`}
@@ -3688,15 +3681,8 @@ function renderMessagePreview(action,vars){
             <button class="btn btn-secondary btn-sm" onclick="toggleCustomBothSchedule('email')">🕐 Schedule</button>
           </div>
           <div id="custom-both-schedule-email" style="display:none;margin-top:8px;padding:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-email"></div>
-              <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
-                <select id="custom-both-sched-mode-email" class="form-select">
-                  <option value="confirm">Confirm before sending</option>
-                  <option value="auto">Send automatically</option>
-                </select>
-              </div>
-            </div>
+            <div class="form-group" style="margin:0 0 6px"><label style="font-size:11px">Send at</label><input type="datetime-local" id="custom-both-sched-datetime-email"></div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:8px" id="custom-both-tz-email"></div>
             <button class="btn btn-primary btn-sm" onclick="submitCustomBothSchedule('email')">Schedule It</button>
           </div>
           <div id="custom-both-status-email" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`}
@@ -3781,7 +3767,7 @@ function renderMessagePreview(action,vars){
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
     </div>
     <div id="schedule-panel" style="display:none;margin-top:10px;padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
         <div class="form-group" style="margin:0"><label style="font-size:11px">Channel</label>
           <select id="sched-channel" class="form-select">
             <option value="sms">Text (Quo)</option>
@@ -3789,14 +3775,8 @@ function renderMessagePreview(action,vars){
           </select>
         </div>
         <div class="form-group" style="margin:0"><label style="font-size:11px">Send at</label><input type="datetime-local" id="sched-datetime"></div>
-        <div class="form-group" style="margin:0"><label style="font-size:11px">Mode</label>
-          <select id="sched-mode" class="form-select">
-            <option value="confirm">Confirm before sending</option>
-            <option value="auto">Send automatically</option>
-          </select>
-        </div>
       </div>
-      <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">"Confirm" waits in your Outbox until you approve it — nothing goes out until you do, even after the scheduled time passes. "Auto" sends on its own with no one needing to be in the app.</div>
+      <div id="sched-tz-label" style="font-size:11px;color:var(--text-muted);margin-bottom:10px"></div>
       <button class="btn btn-primary btn-sm" id="schedule-submit-btn" onclick="submitScheduledMessage('${action.id}')">Schedule It</button>
       <span id="schedule-status" style="font-size:12px;color:var(--text-secondary);margin-left:8px"></span>
     </div>`;
@@ -4017,6 +3997,8 @@ function toggleCustomBothSchedule(channel){
       dtInput.value=localVal;
       dtInput.min=localVal;
     }
+    const tzLabel=document.getElementById(`custom-both-tz-${channel}`);
+    if(tzLabel)tzLabel.textContent='Times are in your device\'s timezone: '+detectedTimezoneLabel();
   }
 }
 
@@ -4032,7 +4014,6 @@ async function submitCustomBothSchedule(channel){
   if(!ta||!statusEl)return;
 
   const dtVal=document.getElementById(`custom-both-sched-datetime-${channel}`)?.value;
-  const mode=document.getElementById(`custom-both-sched-mode-${channel}`)?.value||'confirm';
   if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
   const scheduledDate=new Date(dtVal);
   if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
@@ -4048,7 +4029,7 @@ async function submitCustomBothSchedule(channel){
     channel,
     message:ta.value,
     actionLabel:'Custom Message',
-    mode,
+    mode:'auto',
     scheduledFor:scheduledDate.toISOString(),
     createdByMkcId:S.user?.mkcId||'',
     createdByName:S.user?.name||''
@@ -4692,6 +4673,19 @@ function getLinkedTasksForEntry(taskId){
 // infrastructure -- it waits as "awaiting confirmation" until a human
 // is next in the app, surfaced via the Outbox tab's badge.
 
+// Purely informational -- the underlying scheduling logic already uses
+// the browser's local time correctly (new Date() on a timezone-less
+// datetime-local string is interpreted as local time, not UTC). This
+// just makes that explicit so there's never ambiguity about which zone
+// a chosen time actually means.
+function detectedTimezoneLabel(){
+  try{
+    const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const short=new Intl.DateTimeFormat(undefined,{timeZoneName:'short'}).formatToParts(new Date()).find(p=>p.type==='timeZoneName')?.value||'';
+    return short?`${zone} (${short})`:zone;
+  }catch(e){return'your local timezone';}
+}
+
 function toggleSchedulePanel(){
   const panel=document.getElementById('schedule-panel');
   if(!panel)return;
@@ -4707,6 +4701,8 @@ function toggleSchedulePanel(){
       dtInput.value=localVal;
       dtInput.min=localVal;
     }
+    const tzLabel=document.getElementById('sched-tz-label');
+    if(tzLabel)tzLabel.textContent='Times are in your device\'s timezone: '+detectedTimezoneLabel();
   }
 }
 
@@ -4721,21 +4717,12 @@ async function submitScheduledMessage(actionId){
   if(!action||!ta||!statusEl)return;
 
   const channel=document.getElementById('sched-channel').value;
-  const mode=document.getElementById('sched-mode').value;
   const dtVal=document.getElementById('sched-datetime').value;
   if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
   const scheduledDate=new Date(dtVal);
   if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
     statusEl.textContent='Scheduled time must be at least a minute in the future.';
     return;
-  }
-  if(channel==='sms'&&mode==='confirm'){
-    // Texts are cheap and instant to review right now anyway -- confirm
-    // mode's real value is for email, where a pause before sending is
-    // more meaningful. Not blocking it, just simplifying: SMS always
-    // behaves like auto at send time once its slot arrives, since
-    // there's nothing extra confirm-mode buys for a text specifically
-    // that reviewing it now doesn't already give you.
   }
 
   const identity=resolveSenderIdentity();
@@ -4760,7 +4747,7 @@ async function submitScheduledMessage(actionId){
     senderQuoFrom:identity.senderQuoFrom,
     signature:{name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''},
     actionLabel:action.label,
-    mode,
+    mode:'auto',
     scheduledFor:scheduledDate.toISOString(),
     createdByMkcId:S.user?.mkcId||'',
     createdByName:S.user?.name||''
@@ -4827,19 +4814,19 @@ async function renderPfOutbox(task,body){
       const st=SCHED_STATUS_LABELS[it.status]||{label:it.status,color:'var(--text-muted)'};
       const when=new Date(it.scheduled_for).toLocaleString();
       const canCancel=it.status==='pending'||it.status==='awaiting_confirmation';
-      const canConfirm=it.status==='awaiting_confirmation';
+      const canSendNow=it.status==='pending'||it.status==='awaiting_confirmation';
       return `<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;flex-wrap:wrap">
           <div>
             <div style="font-size:13px;font-weight:600">${esc(it.action_label||'Scheduled message')} · ${it.channel==='email'?'✉️ Email':'📱 Text'}</div>
-            <div style="font-size:12px;color:var(--text-muted)">${esc(when)} · ${it.mode==='auto'?'Auto-send':'Confirm before sending'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${esc(when)}</div>
           </div>
           <span style="font-size:11px;font-weight:600;color:${st.color};white-space:nowrap">${st.label}</span>
         </div>
         <div style="font-size:12.5px;white-space:pre-wrap;background:var(--bg-main);padding:8px;border-radius:6px;margin-bottom:8px;max-height:120px;overflow-y:auto">${esc(it.message)}</div>
         ${it.status==='failed'&&it.error_message?`<div style="font-size:11.5px;color:#dc2626;margin-bottom:8px">Error: ${esc(it.error_message)}</div>`:''}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${canConfirm?`<button class="btn btn-primary btn-sm" onclick="confirmScheduledMessageNow('${it.id}')">✓ Confirm &amp; Send Now</button>`:''}
+          ${canSendNow?`<button class="btn btn-primary btn-sm" onclick="confirmScheduledMessageNow('${it.id}')">▶ Send Now</button>`:''}
           ${canCancel?`<button class="btn btn-secondary btn-sm" onclick="cancelScheduledMessage('${it.id}')">Cancel</button>`:''}
         </div>
       </div>`;
