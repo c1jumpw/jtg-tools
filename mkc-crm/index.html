@@ -3121,8 +3121,10 @@ async function openProfile(taskId,type){
     S.selectedMagnetId=null;
     S.customDraftResult=null;
     S.customDraftOptions=null;
+    S.customBothSent=null;
     S.customChannelMode=null;
-    S.draftBeforeAI=null;
+    S.originalDraftText=null;
+    S.lastPersonalizedText=null;
     S.customSituationText=null;
     S.currentDraftTokens=null;
     renderPfHeader(task,type);
@@ -3643,21 +3645,33 @@ function renderMessagePreview(action,vars){
       <button class="btn btn-primary btn-sm" id="custom-generate-btn" onclick="generateCustomDraft('${action.id}')">✨ Generate Draft</button>
       <div id="custom-draft-status" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>`;
     if(hasOptions){
-      // "Both" produced two real, independently-generated versions (not
-      // one text truncated into the other) -- shown side by side so the
-      // difference in length/tone is actually visible before picking.
-      // Picking one collapses back into the exact same single-draft flow
-      // everything else already uses -- no separate dual-send UI to build.
+      // "Both" produces two real, independently-generated versions (not
+      // one truncated into the other). Each can now be sent on its own
+      // channel directly from here -- genuinely both, not "pick one and
+      // lose the other." "Edit & refine instead" is still there for
+      // anyone who wants to Personalize/attach/schedule one further
+      // before sending, which collapses into the normal single-draft
+      // flow exactly as before.
+      const smsSent=!!S.customBothSent?.sms;
+      const emailSent=!!S.customBothSent?.email;
       html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Text version</div>
           <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.sms)}</div>
-          <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('sms')">Use this version</button>
+          ${smsSent?'<div style="font-size:12px;color:var(--success);font-weight:600">✓ Sent</div>':`
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('sms')">📱 Send via Quo</button>
+            <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('sms')">Edit &amp; refine instead</button>
+          </div>`}
         </div>
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Email version</div>
           <div style="font-size:13px;white-space:pre-wrap;margin-bottom:8px;max-height:160px;overflow-y:auto">${esc(S.customDraftOptions.email)}</div>
-          <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('email')">Use this version</button>
+          ${emailSent?'<div style="font-size:12px;color:var(--success);font-weight:600">✓ Sent</div>':`
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="sendCustomBothVersion('email')">✉️ Send via Email</button>
+            <button class="btn btn-secondary btn-sm" onclick="useCustomDraftOption('email')">Edit &amp; refine instead</button>
+          </div>`}
         </div>
       </div>`;
     }
@@ -3706,6 +3720,18 @@ function renderMessagePreview(action,vars){
   const tokenValues={};
   (action.vars||[]).forEach(v=>{tokenValues[v]=vars[v]?vars[v]:`[[${MSG_VAR_LABELS[v]||v}]]`;});
   S.currentDraftTokens=tokenValues;
+  // Stable revert anchor: set fresh every time a NEW draft renders (new
+  // action picked, new magnet applied, freshly generated custom draft --
+  // anywhere renderTemplate produces a brand new starting point). This
+  // is what makes "revert to original" available from the moment a
+  // draft first appears, not just after Personalize with AI has run --
+  // manually editing the textarea, or running Personalize multiple
+  // times, never touches this value, so it's always a reliable way back
+  // to what was originally generated. lastPersonalizedText resets to
+  // null here too, so a stale "Use AI Version" from a PREVIOUS action's
+  // personalize pass can't leak into this one.
+  S.originalDraftText=rendered;
+  S.lastPersonalizedText=null;
   // Default subject -- same logic sendViaChannel used to compute
   // silently at send time. Now shown up front so it's actually
   // previewed/editable before an email goes out, not just assumed.
@@ -3719,7 +3745,7 @@ function renderMessagePreview(action,vars){
     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-secondary btn-sm" onclick="copyGeneratedMessage()">📋 Copy</button>
       <button class="btn btn-secondary btn-sm" id="ai-personalize-btn" onclick="personalizeWithAI('${action.id}')">✨ Personalize with AI</button>
-      <button class="btn btn-secondary btn-sm" id="draft-revert-btn" style="display:none" onclick="toggleDraftRevert()">↩ Revert to Original</button>
+      <button class="btn btn-secondary btn-sm" id="draft-revert-btn" onclick="toggleDraftRevert()">↩ Revert to Original</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('sms')">📱 Send via Quo</button>
       <button class="btn btn-secondary btn-sm" onclick="sendViaChannel('email')">✉️ Send via Email</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleSchedulePanel()">🕐 Schedule Send</button>
@@ -3816,8 +3842,10 @@ function selectAction(el,actionId){
   S.selectedMagnetId=null; // fresh action pick, don't carry over a magnet chosen for a previous selection
   S.customDraftResult=null;
   S.customDraftOptions=null;
+  S.customBothSent=null;
   S.customChannelMode=null;
-  S.draftBeforeAI=null;
+  S.originalDraftText=null;
+  S.lastPersonalizedText=null;
   S.customSituationText=null;
   const{task,type}=S.currentEntry;
   const cf=getCF(task);
@@ -3830,6 +3858,60 @@ function selectAction(el,actionId){
 // Collapses the "Both" comparison view down into the exact same single-
 // draft flow every other action already uses -- picking a version is the
 // only thing this does; Copy/Personalize/Send/Log all just work from here.
+// Sends one version from the "Both" comparison view directly and
+// independently -- reads straight from S.customDraftOptions, not from
+// any shared textarea, so sending the text version has zero effect on
+// the email version's availability (and vice versa). This is what makes
+// "generate both" actually mean both, not "generate two, keep one."
+async function sendCustomBothVersion(channel){
+  if(!S.customDraftOptions||!S.currentEntry)return;
+  const{task}=S.currentEntry;
+  const cf=getCF(task);
+  const identity=resolveSenderIdentity();
+  const message=channel==='sms'?S.customDraftOptions.sms:S.customDraftOptions.email;
+  let payload,confirmMsg;
+
+  if(channel==='sms'){
+    const recipientPhone=normalizePhoneE164(cf.phone||cf['primary contact phone']||cf['primary phone']||'');
+    if(!identity.senderQuoFrom)return showToast('Your Quo number couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
+    if(!recipientPhone)return showToast('This entry has no phone number on file.','error');
+    confirmMsg=`Send this text version to ${recipientPhone}? This sends immediately and cannot be undone.`;
+    payload={channel:'sms',message,recipientPhone,senderQuoFrom:identity.senderQuoFrom};
+  }else{
+    const recipientEmail=cf['primary contact email']||cf.email||'';
+    if(!identity.senderEmail)return showToast('Your Resend sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
+    if(!recipientEmail)return showToast('This entry has no email address on file.','error');
+    confirmMsg=`Send this email version to ${recipientEmail}? This sends immediately and cannot be undone.`;
+    const signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+    payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject:S.customDraftOptions.emailSubject||'Following up',signature};
+  }
+  if(!confirm(confirmMsg))return;
+
+  try{
+    const res=await fetch(SEND_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.sent){
+      showToast('Send failed: '+(data.error||`HTTP ${res.status}`),'error');
+      return;
+    }
+    showToast(`${channel==='sms'?'Text':'Email'} sent.`,'success');
+    // Same clearer Custom Message log phrasing used elsewhere, distinguishing which channel this particular send used.
+    try{
+      const logBody=`[LOG] Custom Message (Outgoing, ${channel==='sms'?'text':'email'}) — ${S.user?.name||'Admin'} | ${getTS()}\n\n${message}`;
+      await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:logBody,notify_all:false});
+    }catch(e){ /* a logging failure shouldn't undo an already-successful send */ }
+
+    if(!S.customBothSent)S.customBothSent={};
+    S.customBothSent[channel]=true;
+    const groups=(S.currentEntry.type==='leads'||S.currentEntry.type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
+    const action=findActionById(S.selectedAction,groups);
+    const sec=document.getElementById('msg-preview-section');
+    if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,S.currentEntry.type,cf));
+  }catch(e){
+    showToast('Send failed: '+e.message,'error');
+  }
+}
+
 function useCustomDraftOption(which){
   if(!S.customDraftOptions||!S.currentEntry)return;
   S.customDraftResult={
@@ -3919,6 +4001,7 @@ async function generateCustomDraft(actionId){
         return;
       }
       S.customDraftOptions={sms:smsData.message,email:emailData.message,emailSubject:emailData.subject||''};
+      S.customBothSent=null;
       S.customDraftResult=null;
     }else{
       const res=await fetch(COMPOSE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...baseBody,channel:channelMode})});
@@ -4073,11 +4156,24 @@ async function generateCatchUpSummary(){
 function toggleDraftRevert(){
   const ta=document.getElementById('msg-draft');
   const btn=document.getElementById('draft-revert-btn');
-  if(!ta||!btn||S.draftBeforeAI==null)return;
-  const current=ta.value;
-  ta.value=S.draftBeforeAI;
-  S.draftBeforeAI=current;
-  btn.textContent=btn.textContent.includes('Original')?'↩ Use AI Draft':'↩ Revert to Original';
+  if(!ta||!btn||S.originalDraftText==null)return;
+  if(ta.value===S.originalDraftText){
+    // Already showing the original -- offer to jump to the personalized
+    // version if one exists, otherwise say so plainly instead of doing
+    // nothing with no explanation.
+    if(S.lastPersonalizedText!=null){
+      ta.value=S.lastPersonalizedText;
+      btn.textContent='↩ Revert to Original';
+    }else{
+      showToast('This already is the original draft.','info');
+    }
+  }else{
+    // Showing something other than the original (a personalize pass, or
+    // a manual edit) -- always safe to jump back, regardless of how it
+    // got changed.
+    ta.value=S.originalDraftText;
+    btn.textContent=S.lastPersonalizedText!=null?'↩ Use AI Version':'↩ Revert to Original';
+  }
 }
 
 async function personalizeWithAI(actionId){
@@ -4127,9 +4223,9 @@ async function personalizeWithAI(actionId){
       return;
     }
     ta.value=data.message;
-    S.draftBeforeAI=baseMessage; // what it looked like before this personalize -- revertible
+    S.lastPersonalizedText=data.message; // S.originalDraftText stays untouched -- that's the whole point of it being a stable anchor
     const revertBtn=document.getElementById('draft-revert-btn');
-    if(revertBtn){revertBtn.style.display='inline-block';revertBtn.textContent='↩ Revert to Original';}
+    if(revertBtn)revertBtn.textContent='↩ Revert to Original';
     showToast('Draft personalized.','success');
   }catch(e){
     showToast('AI personalize failed: '+e.message,'error');
