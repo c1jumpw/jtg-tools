@@ -3433,20 +3433,20 @@ const PERSONALIZE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/personalize
 // resolved via resolveSenderIdentity() below.
 const SEND_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/send-message';
 
-// Worker's cron only checks for due messages every 30 minutes, on a
-// fixed schedule -- not "30 minutes after you hit Schedule." Worst
-// case, you submit right after a tick just fired, so up to ~30 minutes
-// could pass before the next check even happens. 35 gives a small
-// buffer past that bare minimum. Shared by both scheduling entry points
-// (the main panel and the Both-mode independent panels) so the rule and
-// its explanation only ever live in one place.
-const MIN_SCHEDULE_LEAD_MINUTES=35;
+// Worker's cron only checks for due messages every 5 minutes, on a
+// fixed schedule -- not "5 minutes after you hit Schedule." Worst case,
+// you submit right after a tick just fired, so up to ~5 minutes could
+// pass before the next check even happens. 10 gives a small buffer past
+// that bare minimum. Shared by both scheduling entry points (the main
+// panel and the Both-mode independent panels) so the rule and its
+// explanation only ever live in one place.
+const MIN_SCHEDULE_LEAD_MINUTES=10;
 function validateScheduleTime(dtVal){
   if(!dtVal)return{ok:false,error:'Pick a date/time first.'};
   const scheduledDate=new Date(dtVal);
   const minMs=Date.now()+MIN_SCHEDULE_LEAD_MINUTES*60*1000;
   if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<minMs){
-    return{ok:false,error:`Scheduled time must be at least ${MIN_SCHEDULE_LEAD_MINUTES} minutes from now — the system only checks for due messages every 30 minutes, so anything closer risks looking "stuck" until the next check.`};
+    return{ok:false,error:`Scheduled time must be at least ${MIN_SCHEDULE_LEAD_MINUTES} minutes from now — the system only checks for due messages every 5 minutes, so anything closer risks looking "stuck" until the next check.`};
   }
   return{ok:true,scheduledDate};
 }
