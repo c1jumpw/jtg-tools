@@ -3891,7 +3891,7 @@ async function sendCustomBothVersion(channel){
     if(!identity.senderEmail)return showToast('Your Resend sender email couldn\'t be found on the Team Directory sheet — cannot send as you specifically.','error');
     if(!recipientEmail)return showToast('This entry has no email address on file.','error');
     confirmMsg=`Send this email version to ${recipientEmail}? This sends immediately and cannot be undone.`;
-    const signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+    const signature={name:S.user?.name||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
     const subject=document.getElementById('custom-both-subject-email')?.value?.trim()||S.customDraftOptions.emailSubject||'Following up';
     payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject,signature};
   }
@@ -4042,7 +4042,7 @@ async function submitCustomBothSchedule(channel){
     payload.senderEmail=identity.senderEmail;
     payload.senderName=identity.senderName;
     payload.subject=document.getElementById('custom-both-subject-email')?.value?.trim()||'Following up';
-    payload.signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+    payload.signature={name:S.user?.name||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
   }
 
   statusEl.textContent='Scheduling…';
@@ -4481,7 +4481,7 @@ async function sendViaChannel(channel){
     // come straight from the login session, phone/email from the same
     // sheet lookup that already resolves send identity. Nothing new to
     // store or keep in sync.
-    const signature={name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
+    const signature={name:S.user?.name||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''};
     payload={channel:'email',message,recipientEmail,senderEmail:identity.senderEmail,senderName:identity.senderName,subject,signature};
 
     const attFile=document.getElementById('msg-attachment')?.files?.[0];
@@ -4745,7 +4745,7 @@ async function submitScheduledMessage(actionId){
     senderName:identity.senderName,
     senderEmail:identity.senderEmail,
     senderQuoFrom:identity.senderQuoFrom,
-    signature:{name:S.user?.name||'',role:S.user?.role||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''},
+    signature:{name:S.user?.name||'',phone:identity.senderQuoFrom||'',email:identity.senderEmail||''},
     actionLabel:action.label,
     mode:'auto',
     scheduledFor:scheduledDate.toISOString(),
