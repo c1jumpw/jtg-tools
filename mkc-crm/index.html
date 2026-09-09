@@ -3432,6 +3432,24 @@ const PERSONALIZE_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/personalize
 // api/send-message.ts. Sends AS the currently logged-in team member,
 // resolved via resolveSenderIdentity() below.
 const SEND_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/send-message';
+
+// Worker's cron only checks for due messages every 30 minutes, on a
+// fixed schedule -- not "30 minutes after you hit Schedule." Worst
+// case, you submit right after a tick just fired, so up to ~30 minutes
+// could pass before the next check even happens. 35 gives a small
+// buffer past that bare minimum. Shared by both scheduling entry points
+// (the main panel and the Both-mode independent panels) so the rule and
+// its explanation only ever live in one place.
+const MIN_SCHEDULE_LEAD_MINUTES=35;
+function validateScheduleTime(dtVal){
+  if(!dtVal)return{ok:false,error:'Pick a date/time first.'};
+  const scheduledDate=new Date(dtVal);
+  const minMs=Date.now()+MIN_SCHEDULE_LEAD_MINUTES*60*1000;
+  if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<minMs){
+    return{ok:false,error:`Scheduled time must be at least ${MIN_SCHEDULE_LEAD_MINUTES} minutes from now — the system only checks for due messages every 30 minutes, so anything closer risks looking "stuck" until the next check.`};
+  }
+  return{ok:true,scheduledDate};
+}
 // api/compose-message.ts -- free-form "describe the situation, get a
 // draft" tool, distinct from Personalize with AI (which needs an
 // existing template to start from).
@@ -4014,12 +4032,9 @@ async function submitCustomBothSchedule(channel){
   if(!ta||!statusEl)return;
 
   const dtVal=document.getElementById(`custom-both-sched-datetime-${channel}`)?.value;
-  if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
-  const scheduledDate=new Date(dtVal);
-  if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
-    statusEl.textContent='Scheduled time must be at least a minute in the future.';
-    return;
-  }
+  const validation=validateScheduleTime(dtVal);
+  if(!validation.ok){statusEl.textContent=validation.error;return;}
+  const scheduledDate=validation.scheduledDate;
 
   const identity=resolveSenderIdentity();
   const payload={
@@ -4718,12 +4733,9 @@ async function submitScheduledMessage(actionId){
 
   const channel=document.getElementById('sched-channel').value;
   const dtVal=document.getElementById('sched-datetime').value;
-  if(!dtVal){statusEl.textContent='Pick a date/time first.';return;}
-  const scheduledDate=new Date(dtVal);
-  if(isNaN(scheduledDate.getTime())||scheduledDate.getTime()<=Date.now()+60*1000){
-    statusEl.textContent='Scheduled time must be at least a minute in the future.';
-    return;
-  }
+  const validation=validateScheduleTime(dtVal);
+  if(!validation.ok){statusEl.textContent=validation.error;return;}
+  const scheduledDate=validation.scheduledDate;
 
   const identity=resolveSenderIdentity();
   const recipientPhone=normalizePhoneE164(cf.phone||cf['primary contact phone']||cf['primary phone']||'');
