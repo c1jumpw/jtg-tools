@@ -740,6 +740,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="act-response-type" value="No Answer" onchange="toggleResponseText()"> No Answer</label>
           <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="act-response-type" value="No Response" onchange="toggleResponseText()"> No Response</label>
           <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="act-response-type" value="Got a Response" onchange="toggleResponseText()"> Got a Response</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="act-response-type" value="Other" onchange="toggleResponseText()"> Other</label>
         </div>
         <textarea id="act-response-text" class="form-textarea" rows="2" style="display:none" placeholder="What did they say?"></textarea>
       </div>
@@ -977,6 +978,42 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('edit-profile-modal')">Cancel</button>
       <button class="btn btn-primary" id="edit-profile-submit-btn" onclick="submitEditProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- MARK AS CLOSED/WON: logs deposit/balance terms as a structured comment (no custom fields exist for these yet), with an explicit Archive step using the one confirmed status value -->
+<div id="closedwon-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Mark as Closed/Won</h3><button class="pf-close" onclick="closeModal('closedwon-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400"><input type="checkbox" id="cw-deposit-made" onchange="toggleDepositAmount()"> Deposit made</label></div>
+      <div class="form-group" id="cw-deposit-amount-group" style="display:none"><label>Deposit Amount</label><input type="text" id="cw-deposit-amount" class="form-select" placeholder="$"></div>
+      <div class="form-group"><label>Remaining Balance Amount</label><input type="text" id="cw-balance-amount" class="form-select" placeholder="$"></div>
+      <div class="form-group"><label>Remaining Balance Terms <span style="font-weight:400;color:var(--text-muted);font-size:11px">(a due date, or terms like "Net 30")</span></label><input type="text" id="cw-balance-terms" class="form-select" placeholder="e.g. Due 10/15/2026, or Net 30"></div>
+      <div class="form-group"><label>Notes <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional)</span></label><textarea class="form-textarea" id="cw-notes" rows="3"></textarea></div>
+      <div id="closedwon-status" style="font-size:12.5px;color:var(--text-secondary)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('closedwon-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="submitClosedWon(false)">Log Details</button>
+      <button class="btn btn-primary" onclick="submitClosedWon(true)">Log &amp; Archive</button>
+    </div>
+  </div>
+</div>
+
+<!-- MARK AS CLOSED/LOST -->
+<div id="closedlost-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Mark as Closed/Lost</h3><button class="pf-close" onclick="closeModal('closedlost-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Reason <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional, but useful for later reference)</span></label><textarea class="form-textarea" id="cl-reason" rows="4" placeholder="Why did this deal not close?"></textarea></div>
+      <div id="closedlost-status" style="font-size:12.5px;color:var(--text-secondary)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('closedlost-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="submitClosedLost(false)">Log Details</button>
+      <button class="btn btn-primary" onclick="submitClosedLost(true)">Log &amp; Archive</button>
     </div>
   </div>
 </div>
@@ -2411,6 +2448,84 @@ function resolveLinkedEntry(cf,lookup){
 // this can touch every task in the list, so it's deliberately slow and
 // safe over fast and rate-limit-risky. Never overwrites a task that
 // already has an Account set.
+function openClosedWonModal(){
+  document.getElementById('cw-deposit-made').checked=false;
+  document.getElementById('cw-deposit-amount-group').style.display='none';
+  document.getElementById('cw-deposit-amount').value='';
+  document.getElementById('cw-balance-amount').value='';
+  document.getElementById('cw-balance-terms').value='';
+  document.getElementById('cw-notes').value='';
+  document.getElementById('closedwon-status').textContent='';
+  document.getElementById('closedwon-modal').style.display='flex';
+}
+
+function toggleDepositAmount(){
+  document.getElementById('cw-deposit-amount-group').style.display=
+    document.getElementById('cw-deposit-made').checked?'block':'none';
+}
+
+// Logs deposit/balance details as a structured comment -- no custom
+// fields exist for these yet (confirmed), so this is the honest,
+// buildable version rather than guessing field IDs that don't exist.
+// "Archive" is the only status transition this ever performs, using the
+// one confirmed status value ("Archived") -- it does NOT attempt any
+// Closed Won/Lost intermediate status, since that value was never
+// confirmed and this avoids guessing at it.
+async function submitClosedWon(archive){
+  if(!S.currentEntry)return;
+  const{task}=S.currentEntry;
+  const depositMade=document.getElementById('cw-deposit-made').checked;
+  const depositAmount=document.getElementById('cw-deposit-amount').value.trim();
+  const balanceAmount=document.getElementById('cw-balance-amount').value.trim();
+  const balanceTerms=document.getElementById('cw-balance-terms').value.trim();
+  const notes=document.getElementById('cw-notes').value.trim();
+  const statusEl=document.getElementById('closedwon-status');
+
+  const lines=[`[LOG] Closed/Won — ${S.user?.name||'Admin'} | ${getTS()}`,`Deposit made: ${depositMade?'Yes':'No'}`];
+  if(depositMade&&depositAmount)lines.push(`Deposit amount: ${depositAmount}`);
+  if(balanceAmount)lines.push(`Remaining balance: ${balanceAmount}`);
+  if(balanceTerms)lines.push(`Balance terms: ${balanceTerms}`);
+  if(notes)lines.push(`Notes: ${notes}`);
+
+  statusEl.textContent=archive?'Logging & archiving…':'Logging…';
+  try{
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:lines.join('\n'),notify_all:false});
+    if(archive)await cuFetch(`/task/${task.id}`,'PUT',{status:'Archived'});
+    showToast(archive?'Logged and archived.':'Details logged.','success');
+    closeModal('closedwon-modal');
+    openProfile(task.id,S.currentEntry.type);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }
+}
+
+function openClosedLostModal(){
+  document.getElementById('cl-reason').value='';
+  document.getElementById('closedlost-status').textContent='';
+  document.getElementById('closedlost-modal').style.display='flex';
+}
+
+async function submitClosedLost(archive){
+  if(!S.currentEntry)return;
+  const{task}=S.currentEntry;
+  const reason=document.getElementById('cl-reason').value.trim();
+  const statusEl=document.getElementById('closedlost-status');
+
+  const lines=[`[LOG] Closed/Lost — ${S.user?.name||'Admin'} | ${getTS()}`];
+  if(reason)lines.push(`Reason: ${reason}`);
+
+  statusEl.textContent=archive?'Logging & archiving…':'Logging…';
+  try{
+    await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:lines.join('\n'),notify_all:false});
+    if(archive)await cuFetch(`/task/${task.id}`,'PUT',{status:'Archived'});
+    showToast(archive?'Logged and archived.':'Details logged.','success');
+    closeModal('closedlost-modal');
+    openProfile(task.id,S.currentEntry.type);
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }
+}
+
 function openEditProfileModal(){
   document.getElementById('user-menu').style.display='none';
   ['ep-current-passcode','ep-new-passcode','ep-confirm-passcode','ep-pubemail','ep-pubphone','ep-persemail','ep-persphone','ep-address']
@@ -3570,7 +3685,9 @@ const CRM_ACTIONS={
     'Complete':[
       {id:'completed_discovery',label:'Completed Discovery Call',type:'internal'},
       {id:'completed_walkthrough',label:'Completed Walkthrough',type:'internal'},
-      {id:'completed_offer',label:'Completed Offer Presentation',type:'internal'}
+      {id:'completed_offer',label:'Completed Offer Presentation',type:'internal'},
+      {id:'mark_closed_won',label:'Mark as Closed/Won',type:'closedwon'},
+      {id:'mark_closed_lost',label:'Mark as Closed/Lost',type:'closedlost'}
     ],
     'Custom':[
       {id:'write_custom_message_deal',label:'Write Custom Message',type:'custom',structure:'Describe the situation, AI drafts it'}
@@ -3815,7 +3932,7 @@ function renderPfActions(task,type,cf,body){
   const actionHtml=Object.entries(groups).map(([grp,actions])=>`
     <div class="action-group-label" style="color:${GROUP_COLORS[grp]||'var(--text-muted)'}">${esc(grp)}</div>
     ${actions.map(a=>{
-      const missing=(a.type==='internal'||a.type==='magnet'||a.type==='custom')?[]:(a.vars||[]).filter(v=>!vars[v]);
+      const missing=(a.type==='internal'||a.type==='magnet'||a.type==='custom'||a.type==='closedwon'||a.type==='closedlost')?[]:(a.vars||[]).filter(v=>!vars[v]);
       const missingLabels=missing.map(v=>MSG_VAR_LABELS[v]||v).join(', ');
       const readyBadge=a.type==='internal'
         ?'<span style="color:var(--text-muted);font-size:12px">internal</span>'
@@ -3823,7 +3940,9 @@ function renderPfActions(task,type,cf,body){
           ?'<span style="color:var(--text-muted);font-size:12px">pick magnet</span>'
           :a.type==='custom'
             ?'<span style="color:var(--text-muted);font-size:12px">describe situation</span>'
-            :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
+            :(a.type==='closedwon'||a.type==='closedlost')
+              ?'<span style="color:var(--text-muted);font-size:12px">opens form</span>'
+              :(missing.length?`<span class="action-req" title="Missing: ${esc(missingLabels)}">${missing.length} field${missing.length>1?'s':''} empty</span>`:'<span style="color:var(--success);font-size:12px">✓ ready</span>');
       return `<div class="action-option${S.selectedAction===a.id?' selected':''}" onclick="selectAction(this,'${a.id}')" data-action="${a.id}">
         <div class="action-dot" style="background:${GROUP_COLORS[grp]||'#6b7280'}"></div>
         <div class="action-name">${esc(a.label)}</div>
@@ -3883,6 +4002,8 @@ function selectAction(el,actionId){
   const cf=getCF(task);
   const groups=(type==='leads'||type==='contacts')?CRM_ACTIONS.lead:CRM_ACTIONS.pipeline;
   const action=findActionById(actionId,groups);
+  if(action?.type==='closedwon'){openClosedWonModal();return;}
+  if(action?.type==='closedlost'){openClosedLostModal();return;}
   const sec=document.getElementById('msg-preview-section');
   if(sec&&action)sec.innerHTML=renderMessagePreview(action,buildMsgVars(task,type,cf));
 }
@@ -5356,7 +5477,7 @@ function selHash(el,tag){
 function toggleResponseText(){
   const selected=document.querySelector('input[name="act-response-type"]:checked')?.value;
   const box=document.getElementById('act-response-text');
-  if(box)box.style.display=selected==='Got a Response'?'block':'none';
+  if(box)box.style.display=(selected==='Got a Response'||selected==='Other')?'block':'none';
 }
 
 function toggleEmailPaste(){
@@ -5418,7 +5539,7 @@ async function submitActivity(){
   const responseType=document.querySelector('input[name="act-response-type"]:checked')?.value||'';
   const responseText=document.getElementById('act-response-text')?.value?.trim()||'';
   let responseSuffix='';
-  if(responseType==='Got a Response'&&responseText){
+  if((responseType==='Got a Response'||responseType==='Other')&&responseText){
     responseSuffix=`\n\nResponse: ${responseText}`;
   }else if(responseType==='No Answer'||responseType==='No Response'){
     responseSuffix=`\n\nResponse: ${responseType}`;
