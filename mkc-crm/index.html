@@ -2471,6 +2471,19 @@ function toggleDepositAmount(){
 // one confirmed status value ("Archived") -- it does NOT attempt any
 // Closed Won/Lost intermediate status, since that value was never
 // confirmed and this avoids guessing at it.
+// Strips $ / commas / stray text from a freeform amount input so it can
+// be sent as a real number to a currency-type custom field -- ClickUp's
+// API wants a plain number here, not "$1,500".
+function parseCurrencyInput(str){
+  if(!str)return null;
+  const cleaned=str.replace(/[^0-9.]/g,'');
+  const num=parseFloat(cleaned);
+  return isNaN(num)?null:num;
+}
+
+const DEAL_DEPOSIT_AMOUNT_FIELD='31cbfe2a-7f60-4b79-8bb8-a54b675e84f2';
+const DEAL_REMAINING_BALANCE_FIELD='17a2ade3-befa-44a2-beca-fb669f44fde4';
+
 async function submitClosedWon(archive){
   if(!S.currentEntry)return;
   const{task}=S.currentEntry;
@@ -2489,7 +2502,15 @@ async function submitClosedWon(archive){
 
   statusEl.textContent=archive?'Logging & archiving…':'Logging…';
   try{
+    // Comment stays exactly as before -- the additional record the user
+    // specifically asked to keep, alongside the now-real field values.
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:lines.join('\n'),notify_all:false});
+    if(depositMade){
+      const depositNum=parseCurrencyInput(depositAmount);
+      if(depositNum!=null)await setFieldById(task.id,DEAL_DEPOSIT_AMOUNT_FIELD,depositNum,'currency');
+    }
+    const balanceNum=parseCurrencyInput(balanceAmount);
+    if(balanceNum!=null)await setFieldById(task.id,DEAL_REMAINING_BALANCE_FIELD,balanceNum,'currency');
     if(archive)await cuFetch(`/task/${task.id}`,'PUT',{status:'Archived'});
     showToast(archive?'Logged and archived.':'Details logged.','success');
     closeModal('closedwon-modal');
