@@ -1921,6 +1921,7 @@ function renderTable(type){
     const status=task.status?.status||'—';
     const branch=cf.branch||'';
     const upd=fmtDate(task.date_updated);
+    const stale=staleDaysInfo(task.date_updated);
     const sb=makeSB(status);
     const bb=makeBB(branch);
     const lk={leads:'leads',pipeline:'pipeline',contacts:'contacts',accounts:'accounts'}[type];
@@ -1933,7 +1934,7 @@ function renderTable(type){
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(email)}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(phone)}</td>
         <td>${sb}</td><td>${bb}</td><td>${ct?makeTypeBadge(ct):''}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${upd}</td>
+        <td style="font-size:12px;color:${stale.color}" title="${stale.label}">${upd}</td>
       </tr>`;
     }
     if(type==='pipeline'){
@@ -1945,7 +1946,7 @@ function renderTable(type){
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(acct)}</td>
         <td>${sb}</td><td>${bb}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(asgn)}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${upd}</td>
+        <td style="font-size:12px;color:${stale.color}" title="${stale.label}">${upd}</td>
       </tr>`;
     }
     if(type==='accounts'){
@@ -1956,7 +1957,7 @@ function renderTable(type){
         <td><div style="font-weight:500">${esc(name)}</div></td>
         <td>${makeSB(as)}</td><td>${sb}</td><td>${bb}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(pc)}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${upd}</td>
+        <td style="font-size:12px;color:${stale.color}" title="${stale.label}">${upd}</td>
       </tr>`;
     }
     return '';
@@ -3330,12 +3331,14 @@ function renderPfHeader(task,type){
     </span>
   </span>`;
 
+  const stale=staleDaysInfo(task.date_updated);
   document.getElementById('pf-name').textContent=name;
   document.getElementById('pf-mkcid').textContent=(task.id||'').toUpperCase();
   document.getElementById('pf-badges').innerHTML=`
     <span class="badge" style="background:var(--accent-light);color:var(--accent)">${typeLabel}</span>
     ${statusBadge}${branch?makeBB(branch):''}
     ${cf['lead/contact type']?makeTypeBadge(cf['lead/contact type']):''}
+    <span class="badge" style="background:transparent;border:1px solid ${stale.color};color:${stale.color}">Last touched: ${stale.label}</span>
   `;
   document.getElementById('pf-contacts-row').innerHTML=`
     ${email?`<div class="contact-chip" onclick="copyVal('${esc(email)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${esc(email)}</div>`:''}
@@ -7089,6 +7092,22 @@ function getCF(task){
   });
   Object.defineProperty(cf,'_byId',{value:byId,enumerable:false});
   return cf;
+}
+
+// Shared by both the list-view "Last Updated" coloring and the profile
+// header's staleness badge, so the thresholds only ever live in one
+// place. Starting thresholds: 0-3 days fresh, 4-7 getting stale, 8+
+// stale -- same universal cutoff for every entry type to start; worth
+// revisiting per-type once there's a real feel for whether that's right.
+function staleDaysInfo(dateUpdated){
+  if(!dateUpdated)return{days:null,color:'var(--text-muted)',label:'—'};
+  const days=Math.max(0,Math.floor((Date.now()-Number(dateUpdated))/(1000*60*60*24)));
+  let color;
+  if(days<=3)color='var(--success)';
+  else if(days<=7)color='#d97706';
+  else color='#dc2626';
+  const label=days===0?'Today':days===1?'1 day ago':`${days} days ago`;
+  return{days,color,label};
 }
 
 function fmtDate(val){
