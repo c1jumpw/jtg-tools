@@ -878,11 +878,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 <!-- ADD TEAM MEMBER: creates the ClickUp task + matching Sheet row in one action -->
 <div id="add-team-modal" style="display:none" class="modal-overlay">
   <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto">
-    <div class="modal-header"><h3>+ Add Team Member</h3><button class="pf-close" onclick="closeModal('add-team-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-header"><h3>+ Add Team Member</h3><button class="pf-close" onclick="closeAddTeamMemberModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Creates a real record in ClickUp's Team Member Directory and the matching Google Sheet row together — this is what keeps the two from drifting apart the way the old manual process could.</div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
         <div class="form-group"><label>First Name *</label><input type="text" id="atm-first"></div>
         <div class="form-group"><label>Last Name *</label><input type="text" id="atm-last"></div>
         <div class="form-group"><label>Known As</label><input type="text" id="atm-known" placeholder="Defaults to First Name"></div>
@@ -898,7 +898,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
       <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Login &amp; Access</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row">
           <div class="form-group"><label>Workspace Email *</label><input type="email" id="atm-wsemail" placeholder="Their real ClickUp login email"></div>
           <div class="form-group"><label>Workspace Passcode *</label><input type="text" id="atm-passcode" placeholder="New login passcode"></div>
           <div class="form-group" style="grid-column:1/-1"><label>Access Level *</label>
@@ -913,7 +913,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
       <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Send Identity (for CRM Actions)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row">
           <div class="form-group"><label>MKC Public Email</label><input type="email" id="atm-pubemail" placeholder="Used for Send via Email"></div>
           <div class="form-group"><label>MKC Public Phone</label><input type="tel" id="atm-pubphone" placeholder="Used for Send via Quo, e.g. 1 470 300 1898"></div>
         </div>
@@ -921,7 +921,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
       <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Optional / HR Reference</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row">
           <div class="form-group"><label>Personal Email</label><input type="email" id="atm-persemail"></div>
           <div class="form-group"><label>Personal Phone</label><input type="tel" id="atm-persphone"></div>
           <div class="form-group" style="grid-column:1/-1"><label>Mailing Address</label><input type="text" id="atm-address"></div>
@@ -932,7 +932,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="add-team-status" style="font-size:12.5px;color:var(--text-secondary);white-space:pre-line;margin-top:6px"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('add-team-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="closeAddTeamMemberModal()">Cancel</button>
       <button class="btn btn-primary" id="add-team-submit-btn" onclick="submitAddTeamMember()">Create Team Member</button>
     </div>
   </div>
@@ -951,14 +951,14 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Change Passcode</div>
       <div class="form-group"><label>Current Passcode *</label><input type="password" id="ep-current-passcode" placeholder="Required to save any change below"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row">
         <div class="form-group"><label>New Passcode</label><input type="password" id="ep-new-passcode" placeholder="Leave blank to keep current"></div>
         <div class="form-group"><label>Confirm New Passcode</label><input type="password" id="ep-confirm-passcode"></div>
       </div>
 
       <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Send Identity (for CRM Actions)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row">
           <div class="form-group"><label>MKC Public Email</label><input type="email" id="ep-pubemail"></div>
           <div class="form-group"><label>MKC Public Phone</label><input type="tel" id="ep-pubphone"></div>
         </div>
@@ -966,7 +966,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
       <div style="margin:14px 0;padding-top:14px;border-top:1px solid var(--border)">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px">Personal Info (optional)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-row">
           <div class="form-group"><label>Personal Email</label><input type="email" id="ep-persemail"></div>
           <div class="form-group"><label>Personal Phone</label><input type="tel" id="ep-persphone"></div>
           <div class="form-group" style="grid-column:1/-1"><label>Mailing Address</label><input type="text" id="ep-address"></div>
@@ -985,7 +985,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 <!-- MARK AS CLOSED/WON: logs deposit/balance terms as a structured comment (no custom fields exist for these yet), with an explicit Archive step using the one confirmed status value -->
 <div id="closedwon-modal" style="display:none" class="modal-overlay">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>Mark as Closed/Won</h3><button class="pf-close" onclick="closeModal('closedwon-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-header"><h3>Mark as Closed/Won</h3><button class="pf-close" onclick="closeClosedWonModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div class="form-group"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400"><input type="checkbox" id="cw-deposit-made" onchange="toggleDepositAmount()"> Deposit made</label></div>
       <div class="form-group" id="cw-deposit-amount-group" style="display:none"><label>Deposit Amount</label><input type="text" id="cw-deposit-amount" class="form-select" placeholder="$"></div>
@@ -995,7 +995,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="closedwon-status" style="font-size:12.5px;color:var(--text-secondary)"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('closedwon-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="closeClosedWonModal()">Cancel</button>
       <button class="btn btn-secondary" onclick="submitClosedWon(false)">Log Details</button>
       <button class="btn btn-primary" onclick="submitClosedWon(true)">Log &amp; Archive</button>
     </div>
@@ -1005,13 +1005,13 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 <!-- MARK AS CLOSED/LOST -->
 <div id="closedlost-modal" style="display:none" class="modal-overlay">
   <div class="modal" style="max-width:480px">
-    <div class="modal-header"><h3>Mark as Closed/Lost</h3><button class="pf-close" onclick="closeModal('closedlost-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-header"><h3>Mark as Closed/Lost</h3><button class="pf-close" onclick="closeClosedLostModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Reason <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional, but useful for later reference)</span></label><textarea class="form-textarea" id="cl-reason" rows="4" placeholder="Why did this deal not close?"></textarea></div>
       <div id="closedlost-status" style="font-size:12.5px;color:var(--text-secondary)"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('closedlost-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="closeClosedLostModal()">Cancel</button>
       <button class="btn btn-secondary" onclick="submitClosedLost(false)">Log Details</button>
       <button class="btn btn-primary" onclick="submitClosedLost(true)">Log &amp; Archive</button>
     </div>
@@ -2651,6 +2651,34 @@ async function submitEditProfile(){
   }
 }
 
+// Guards against silently losing real work -- closeModal() itself has no
+// such check for ANY modal (by design, most are short/low-stakes and a
+// confirm would just be friction). These three are long enough, or
+// consequential enough (financial deal details), that a stray click on
+// the X or the backdrop shouldn't be able to erase them without warning.
+function closeAddTeamMemberModal(){
+  const textFields=['atm-first','atm-last','atm-known','atm-middle','atm-role','atm-wsemail','atm-passcode','atm-pubemail','atm-pubphone','atm-persemail','atm-persphone','atm-address','atm-hiredate'];
+  const hasContent=textFields.some(id=>document.getElementById(id)?.value?.trim())||document.getElementById('atm-branch')?.value;
+  if(hasContent&&!confirm('Discard this new team member form? Nothing entered will be saved.'))return;
+  closeModal('add-team-modal');
+}
+
+function closeClosedWonModal(){
+  const hasContent=document.getElementById('cw-deposit-made')?.checked
+    ||document.getElementById('cw-deposit-amount')?.value?.trim()
+    ||document.getElementById('cw-balance-amount')?.value?.trim()
+    ||document.getElementById('cw-balance-terms')?.value?.trim()
+    ||document.getElementById('cw-notes')?.value?.trim();
+  if(hasContent&&!confirm('Discard these Closed/Won details? Nothing entered will be saved.'))return;
+  closeModal('closedwon-modal');
+}
+
+function closeClosedLostModal(){
+  const hasContent=document.getElementById('cl-reason')?.value?.trim();
+  if(hasContent&&!confirm('Discard this note? Nothing entered will be saved.'))return;
+  closeModal('closedlost-modal');
+}
+
 function openAddTeamMemberModal(){
   ['atm-first','atm-last','atm-known','atm-middle','atm-role','atm-wsemail','atm-passcode',
    'atm-pubemail','atm-pubphone','atm-persemail','atm-persphone','atm-address','atm-hiredate']
@@ -3744,7 +3772,7 @@ function quickFillHtmlFor(missingVars){
   let html='<div style="margin:10px 0;padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">';
   if(fillable.length){
     html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#92400e;margin-bottom:8px">Quick Fill</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${fillable.map(v=>`<div class="form-group" style="margin:0"><label style="font-size:11px">${QUICK_FILL_MAP[v].label}</label>${QUICK_FILL_MAP[v].html()}</div>`).join('')}</div>
+      <div class="field-grid">${fillable.map(v=>`<div class="form-group" style="margin:0"><label style="font-size:11px">${QUICK_FILL_MAP[v].label}</label>${QUICK_FILL_MAP[v].html()}</div>`).join('')}</div>
       <button class="btn btn-sm" style="margin-top:8px;background:#fef3c7;border-color:#fde68a;color:#92400e" onclick="quickSaveFields()">Save &amp; Refresh Draft</button>`;
   }
   if(other.length){
@@ -3813,7 +3841,7 @@ function renderMessagePreview(action,vars){
       // usable until it's individually sent.
       const smsSent=!!S.customBothSent?.sms;
       const emailSent=!!S.customBothSent?.email;
-      html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      html+=`<div class="field-grid" style="margin-top:12px">
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">📱 Text version</div>
           ${smsSent?'<div style="font-size:12px;color:var(--success);font-weight:600">✓ Sent</div>':`
@@ -3929,7 +3957,7 @@ function renderMessagePreview(action,vars){
       <span id="action-status" style="font-size:12px;color:var(--text-secondary)"></span>
     </div>
     <div id="schedule-panel" style="display:none;margin-top:10px;padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+      <div class="field-grid" style="margin-bottom:6px">
         <div class="form-group" style="margin:0"><label style="font-size:11px">Channel</label>
           <select id="sched-channel" class="form-select">
             <option value="sms">Text (Quo)</option>
