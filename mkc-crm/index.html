@@ -330,6 +330,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 </div>
   <div class="sidebar-section">
     <div class="sidebar-section-label">Main</div>
+    <div class="nav-item" data-view="myday">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>My Day
+    </div>
     <div class="nav-item active" data-view="dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
     </div>
@@ -431,11 +434,41 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             </div>
           </div>
         </div>
-        <div class="card"><div class="card-header"><h3>Pipeline by Stage</h3></div><div class="card-body" id="dash-pipeline"></div></div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-header"><h3>Needs Follow-Up</h3></div>
+            <div id="dash-followup"></div>
+          </div>
+          <div class="card"><div class="card-header"><h3>Pipeline by Stage</h3></div><div class="card-body" id="dash-pipeline"></div></div>
+        </div>
       </div>
     </div>
 
     <!-- MY WORK (Personal Dashboard, Section 11-H) -->
+    <div class="view" id="view-myday">
+      <div class="dash-grid">
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-header"><h3>Overdue Tasks</h3></div>
+            <div id="myday-tasks"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Awaiting Your Confirmation</h3></div>
+            <div id="myday-awaiting"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-header"><h3>Stale Entries</h3></div>
+            <div id="myday-stale"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Scheduled for Today</h3></div>
+            <div id="myday-today"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="view" id="view-mywork">
       <div class="summary-grid">
         <div class="sc"><div class="sc-icon" style="background:#eff3ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="sc-label">My Leads</div><div class="sc-value" id="mw-leads">—</div><div class="sc-meta">Assigned to you</div></div>
@@ -1014,6 +1047,24 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <button class="btn btn-secondary" onclick="closeClosedLostModal()">Cancel</button>
       <button class="btn btn-secondary" onclick="submitClosedLost(false)">Log Details</button>
       <button class="btn btn-primary" onclick="submitClosedLost(true)">Log &amp; Archive</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK ASSIGN: applies to whatever's currently checked in the list view -->
+<div id="bulk-assign-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>Bulk Assign</h3><button class="pf-close" onclick="closeModal('bulk-assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <div id="bulk-assign-count" style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px"></div>
+      <div class="form-group"><label>Assign to</label>
+        <select id="bulk-assign-select" class="form-select"><option value="">— Select —</option></select>
+      </div>
+      <div id="bulk-assign-status" style="font-size:12.5px;color:var(--text-secondary)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('bulk-assign-modal')">Cancel</button>
+      <button class="btn btn-primary" id="bulk-assign-submit-btn" onclick="submitBulkAssign()">Assign</button>
     </div>
   </div>
 </div>
@@ -1867,6 +1918,7 @@ function switchView(view){
   if(['leads','pipeline','contacts','accounts'].includes(view)){
     setLastViewed(view);
     updateBadge(view,0);
+    if(S.selectedRows)S.selectedRows[view]=new Set(); // stale selections shouldn't survive navigating away and back
   }
   if(['leads','pipeline','contacts'].includes(view)){
     renderViewMode(view,S.viewMode[view]||'list');
@@ -1874,6 +1926,7 @@ function switchView(view){
   if(view==='export')updateExportFields();
   if(view==='tasks'){populateTaskFilters();renderTasks();}
   if(view==='mywork')renderMyWork();
+  if(view==='myday')renderMyDay();
   if(view==='qcinbox'){setLastViewed('qcinbox');updateBadge('qcinbox',0);loadQcInbox();}
 }
 
@@ -1907,7 +1960,7 @@ function renderTable(type){
   buildToolbar(type);
 
   if(!items.length){
-    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No entries found</p><small>Adjust filters or create a new entry</small></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="10"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No entries found</p><small>Adjust filters or create a new entry</small></div></td></tr>`;
     renderPg(type,0);return;
   }
 
@@ -1929,6 +1982,7 @@ function renderTable(type){
     if(type==='leads'||type==='contacts'){
       const ct=cf['lead/contact type']||'';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
+        <td onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleRowSelection('${type}','${task.id}',this.checked)" ${isRowSelected(type,task.id)?'checked':''}></td>
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
         <td><div style="font-weight:500">${esc(name)}</div>${isSub?'<div style="font-size:11px;color:var(--text-muted)">↳ Subtask</div>':''}</td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(email)}</td>
@@ -1941,6 +1995,7 @@ function renderTable(type){
       const acct=cf['company/account name']||'—';
       const asgn=task.assignees?.map(a=>a.username||a.email).join(', ')||'—';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
+        <td onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleRowSelection('${type}','${task.id}',this.checked)" ${isRowSelected(type,task.id)?'checked':''}></td>
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
         <td><div style="font-weight:500">${esc(name)}</div></td>
         <td style="font-size:12.5px;color:var(--text-secondary)">${esc(acct)}</td>
@@ -1953,6 +2008,7 @@ function renderTable(type){
       const pc=cf._byId[CU_FIELDS.MAIN_CONTACT]||'—';
       const as=cf['account status']||'—';
       return `<tr onclick="openProfile('${task.id}','${lk}')" class="${isSub?'is-subtask':''}">
+        <td onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleRowSelection('${type}','${task.id}',this.checked)" ${isRowSelected(type,task.id)?'checked':''}></td>
         <td style="font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--text-muted)">${esc(id)}</td>
         <td><div style="font-weight:500">${esc(name)}</div></td>
         <td>${makeSB(as)}</td><td>${sb}</td><td>${bb}</td>
@@ -1971,7 +2027,7 @@ function renderTable(type){
       contacts:['MKC ID','Name','Email','Phone','Status','Branch','Type','Last Updated'],
       accounts:['MKC ID','Account Name','Acct Status','Task Status','Branch','Primary Contact','Last Updated']
     };
-    thead.innerHTML=`<tr>${(cols[type]||[]).map(c=>`<th>${c}</th>`).join('')}</tr>`;
+    thead.innerHTML=`<tr><th style="width:36px"><input type="checkbox" onchange="toggleSelectAllVisible('${type}',this.checked)" title="Select all on this page"></th>${(cols[type]||[]).map(c=>`<th>${c}</th>`).join('')}</tr>`;
   }
   renderPg(type,items.length);
 }
@@ -2006,6 +2062,13 @@ function buildToolbar(type){
     ${isStaffOnly()?'':`<select class="filter-select" id="fs-assignee-${type}" onchange="filterByField('${type}','assignee',this.value)">
       <option value="">— Assignee —</option><option value="">All Assignees</option>${assignees.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('')}
     </select>`}
+    <select class="filter-select" id="fs-staleness-${type}" onchange="filterByField('${type}','staleness',this.value)">
+      <option value="">— Follow-Up —</option>
+      <option value="">All</option>
+      <option value="stale">Stale (8+ days)</option>
+      <option value="getting_stale">Getting Stale (4-7 days)</option>
+      <option value="fresh">Fresh (0-3 days)</option>
+    </select>
     <select class="filter-select" id="fs-sort-${type}" onchange="sortTable('${type}',this.value)">
       <option value="">— Sort by —</option>
       <option value="date_updated_desc">Last Updated ↓</option>
@@ -2016,6 +2079,24 @@ function buildToolbar(type){
     <button class="btn btn-ghost btn-sm" onclick="clearFilters('${type}')" title="Clear all filters" style="color:var(--text-muted);padding:5px 8px;flex-shrink:0">✕ Clear</button>
     <button class="btn btn-secondary btn-sm" style="margin-left:auto;flex-shrink:0" onclick="switchView('export')">Export CSV</button>
   `;
+  // Bulk-action bar -- built once per toolbar render, shown/hidden based
+  // on current selection state (updateBulkActionBar keeps it in sync as
+  // selections change without needing a full toolbar rebuild each time).
+  let barEl=document.getElementById(`bulk-bar-${type}`);
+  if(!barEl){
+    barEl=document.createElement('div');
+    barEl.id=`bulk-bar-${type}`;
+    barEl.className='bulk-bar';
+    barEl.style.cssText='display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--accent-light);border-radius:8px;margin-top:8px';
+    el.after(barEl);
+  }
+  barEl.innerHTML=`
+    <span id="bulk-count-${type}" style="font-size:13px;font-weight:600;color:var(--accent)"></span>
+    <button class="btn btn-secondary btn-sm" onclick="openBulkAssignModal('${type}')">Assign to…</button>
+    ${type==='pipeline'?`<button class="btn btn-secondary btn-sm" onclick="bulkArchive('${type}')">Archive Selected</button>`:''}
+    <button class="btn btn-ghost btn-sm" onclick="clearSelection('${type}')" style="margin-left:auto">Clear Selection</button>
+  `;
+  updateBulkActionBar(type);
 }
 
 function getStatuses(type){
@@ -2058,6 +2139,14 @@ function filterByField(type,field,value){
     }
     if(field==='assignee')return(t.assignees?.map(a=>a.username||a.email).join(', ')||'').toLowerCase().includes(value.toLowerCase());
     if(field==='type')return(cf['lead/contact type']||'').toLowerCase().includes(value.toLowerCase());
+    if(field==='staleness'){
+      const days=staleDaysInfo(t.date_updated).days;
+      if(days==null)return false;
+      if(value==='stale')return days>=8;
+      if(value==='getting_stale')return days>=4&&days<=7;
+      if(value==='fresh')return days<=3;
+      return true;
+    }
     return true;
   });
   S.pages[type]=1;renderTable(type);
@@ -2065,7 +2154,7 @@ function filterByField(type,field,value){
 }
 
 function clearFilters(type){
-  const ids=[`fs-status-${type}`,`fs-branch-${type}`,`fs-subbranch-${type}`,`fs-assignee-${type}`,`fs-sort-${type}`,`fs-search-${type}`];
+  const ids=[`fs-status-${type}`,`fs-branch-${type}`,`fs-subbranch-${type}`,`fs-assignee-${type}`,`fs-staleness-${type}`,`fs-sort-${type}`,`fs-search-${type}`];
   ids.forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
@@ -2076,6 +2165,108 @@ function clearFilters(type){
   S.pages[type]=1;
   renderTable(type);
   if(S.viewMode[type]==='kanban')renderKanban(type);
+}
+
+// ── Bulk selection & actions ────────────────────────────────────────
+// Selection state lives outside S.filtered/S.entries entirely -- it's
+// purely a UI concern (which rows are checked right now), not data, so
+// it doesn't need to survive a full entries reload the way filters do.
+// Cleared automatically on any bulk action success, and whenever
+// switching away from a list (see switchView), so a stale selection
+// from a previous visit can never silently apply to the wrong entries.
+function ensureSelectedRowsSet(type){
+  if(!S.selectedRows)S.selectedRows={};
+  if(!S.selectedRows[type])S.selectedRows[type]=new Set();
+  return S.selectedRows[type];
+}
+function isRowSelected(type,id){return ensureSelectedRowsSet(type).has(id);}
+
+function toggleRowSelection(type,id,checked){
+  const set=ensureSelectedRowsSet(type);
+  if(checked)set.add(id);else set.delete(id);
+  updateBulkActionBar(type);
+}
+
+function toggleSelectAllVisible(type,checked){
+  const set=ensureSelectedRowsSet(type);
+  const page=S.pages[type]||1,ps=50;
+  const slice=(S.filtered[type]||[]).slice((page-1)*ps,page*ps);
+  slice.forEach(t=>{if(checked)set.add(t.id);else set.delete(t.id);});
+  renderTable(type); // re-render so every visible row's checkbox reflects the new state
+}
+
+function updateBulkActionBar(type){
+  const bar=document.getElementById(`bulk-bar-${type}`);
+  const countEl=document.getElementById(`bulk-count-${type}`);
+  if(!bar||!countEl)return;
+  const count=ensureSelectedRowsSet(type).size;
+  bar.style.display=count>0?'flex':'none';
+  countEl.textContent=`${count} selected`;
+}
+
+function clearSelection(type){
+  ensureSelectedRowsSet(type).clear();
+  renderTable(type);
+}
+
+async function openBulkAssignModal(type){
+  const count=ensureSelectedRowsSet(type).size;
+  if(!count)return;
+  S._bulkAssignType=type;
+  const sel=document.getElementById('bulk-assign-select');
+  sel.innerHTML='<option value="">Loading…</option>';
+  document.getElementById('bulk-assign-count').textContent=`${count} ${type} entries selected`;
+  document.getElementById('bulk-assign-status').textContent='';
+  document.getElementById('bulk-assign-modal').style.display='flex';
+  const members=await loadTeamMembers();
+  sel.innerHTML='<option value="">— Select —</option>'+members.map(m=>`<option value="${m.id}">${esc(m.username)}</option>`).join('');
+}
+
+async function submitBulkAssign(){
+  const type=S._bulkAssignType;
+  const userId=document.getElementById('bulk-assign-select').value;
+  const statusEl=document.getElementById('bulk-assign-status');
+  if(!userId){statusEl.textContent='Pick a team member first.';return;}
+  const ids=[...ensureSelectedRowsSet(type)];
+  if(!ids.length)return;
+  const btn=document.getElementById('bulk-assign-submit-btn');
+  btn.disabled=true;
+  let done=0,failed=0;
+  for(const id of ids){
+    statusEl.textContent=`Assigning… ${done+failed}/${ids.length}`;
+    try{
+      await cuFetch(`/task/${id}`,'PUT',{assignees:{add:[Number(userId)],rem:[]}});
+      done++;
+    }catch(e){failed++;}
+  }
+  statusEl.textContent=`Done: ${done} updated${failed?`, ${failed} failed`:''}.`;
+  showToast(`Bulk assign: ${done} updated${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
+  ensureSelectedRowsSet(type).clear();
+  btn.disabled=false;
+  setTimeout(()=>closeModal('bulk-assign-modal'),1200);
+  await loadAllEntries();
+  renderTable(type);
+}
+
+// Archive only ever touches Pipeline, using the one confirmed status
+// value ("Archived") -- same reasoning as the individual Closed/Won-Lost
+// actions, never guessing at any other status transition.
+async function bulkArchive(type){
+  if(type!=='pipeline')return;
+  const ids=[...ensureSelectedRowsSet(type)];
+  if(!ids.length)return;
+  if(!confirm(`Archive ${ids.length} selected deal${ids.length>1?'s':''}? This changes their status to Archived.`))return;
+  let done=0,failed=0;
+  for(const id of ids){
+    try{
+      await cuFetch(`/task/${id}`,'PUT',{status:'Archived'});
+      done++;
+    }catch(e){failed++;}
+  }
+  showToast(`Archived ${done}${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
+  ensureSelectedRowsSet(type).clear();
+  await loadAllEntries();
+  renderTable(type);
 }
 
 function sortTable(type,mode){
@@ -2362,6 +2553,104 @@ function isAssignedToMe(item){
   const myName=(S.user?.name||'').toLowerCase();
   const myEmail=(S.user?.wsEmail||'').toLowerCase();
   return assignees.some(a=>(a.username||'').toLowerCase()===myName||(a.email||'').toLowerCase()===myEmail);
+}
+
+// "My Day" -- the actual intended starting point of a session. Reuses
+// existing logic wherever possible rather than inventing parallel
+// versions: isAssignedToMe/buildEntryLookup (same as My Work) for tasks,
+// the same staleDaysInfo thresholds as the list views/Dashboard for
+// stale entries, and the self-scoped scheduled-messages query (fixed in
+// the Worker specifically for this) for the two Outbox-related sections.
+async function renderMyDay(){
+  const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
+  const active=arr=>arr.filter(t=>!t.parent&&!closed.includes((t.status?.status||'').toLowerCase()));
+  const lookup=buildEntryLookup();
+
+  // Overdue Tasks -- same source/assignment logic as My Work, filtered
+  // to strictly past-due (not just "not yet completed").
+  const now=Date.now();
+  const overdueTasks=(S_masterTasks||[]).filter(t=>{
+    if(!isAssignedToMe(t))return false;
+    const s=(t.status?.status||'').toUpperCase();
+    if(s.includes('COMPLETED')||s.includes('APPROVED'))return false;
+    return t.due_date&&parseInt(t.due_date)<now;
+  }).sort((a,b)=>parseInt(a.due_date)-parseInt(b.due_date));
+  document.getElementById('myday-tasks').innerHTML=overdueTasks.length?overdueTasks.map(t=>{
+    const cf=getCF(t);
+    const{name:linkedName,type:linkedType}=resolveLinkedEntry(cf,lookup);
+    const daysOverdue=Math.floor((now-parseInt(t.due_date))/(1000*60*60*24));
+    return `<div class="task-item" onclick="openTaskProfile('${t.id}')">
+      <div class="task-dot" style="background:#dc2626"></div>
+      <div class="task-info">
+        <div class="task-name">${esc(t.name)}</div>
+        <div class="task-parent">${linkedName?`<span style="font-size:11.5px;font-weight:500;color:var(--text-secondary)">${esc(linkedName)}</span> <span style="font-size:10.5px;color:var(--text-muted)">· ${linkedType}</span>`:'<span style="font-size:11.5px;color:var(--text-muted)">No linked entry</span>'} <span style="font-size:10.5px;color:#dc2626">· ${daysOverdue===0?'Due today':`${daysOverdue}d overdue`}</span></div>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty-state" style="padding:20px"><p>Nothing overdue — nice work</p></div>';
+
+  // Stale Entries -- same computation as the Dashboard widget, just
+  // showing more of them here since this page exists specifically for this.
+  const typeKeys={Lead:'leads',Deal:'pipeline',Contact:'contacts',Account:'accounts'};
+  const allEntries=[
+    ...S.entries.leads.filter(t=>!t.parent).map(t=>({...t,_t:'Lead'})),
+    ...S.entries.pipeline.filter(t=>!t.parent).map(t=>({...t,_t:'Deal'})),
+    ...S.entries.contacts.filter(t=>!t.parent).map(t=>({...t,_t:'Contact'})),
+    ...S.entries.accounts.filter(t=>!t.parent).map(t=>({...t,_t:'Account'}))
+  ];
+  const staleEntries=active(allEntries)
+    .map(t=>({...t,_stale:staleDaysInfo(t.date_updated)}))
+    .filter(t=>t._stale.days!=null&&t._stale.days>=4)
+    .sort((a,b)=>b._stale.days-a._stale.days)
+    .slice(0,15);
+  document.getElementById('myday-stale').innerHTML=staleEntries.length?staleEntries.map(t=>
+    `<div class="act-item" onclick="openProfile('${t.id}','${typeKeys[t._t]}')">
+      <div class="act-dot" style="background:${t._stale.color}"></div>
+      <div><div style="font-size:13px;font-weight:500">${esc(t.name)}</div>
+      <div style="font-size:11.5px;color:${t._stale.color}">${t._t} · ${esc(t.status?.status||'—')} · ${t._stale.label}</div></div>
+    </div>`
+  ).join(''):'<div class="empty-state" style="padding:20px"><p>Nothing stale — nice work</p></div>';
+
+  // Awaiting Your Confirmation / Scheduled for Today -- self-scoped
+  // query (createdByMkcId = you), which the Worker specifically allows
+  // without needing an entryTaskId, since it's always safe to see your
+  // own scheduled messages regardless of tier.
+  const awaitingEl=document.getElementById('myday-awaiting');
+  const todayEl=document.getElementById('myday-today');
+  awaitingEl.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:12px">Loading…</div>';
+  todayEl.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:12px">Loading…</div>';
+  try{
+    const mine=await authFetch('/api/scheduled-messages','GET',{createdByMkcId:S.user?.mkcId||''});
+    const items=Array.isArray(mine)?mine:[];
+
+    const awaiting=items.filter(it=>it.status==='awaiting_confirmation');
+    awaitingEl.innerHTML=awaiting.length?awaiting.map(it=>{
+      const when=new Date(it.scheduled_for).toLocaleString();
+      return `<div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500">${esc(it.entry_name||'Entry')} · ${it.channel==='email'?'✉️ Email':'📱 Text'}</div>
+        <div style="font-size:11.5px;color:#d97706;margin-bottom:6px">${esc(when)} · Awaiting your confirmation</div>
+        <button class="btn btn-primary btn-sm" onclick="confirmScheduledMessageNow('${it.id}')">▶ Send Now</button>
+        <button class="btn btn-secondary btn-sm" onclick="cancelScheduledMessage('${it.id}')">Cancel</button>
+      </div>`;
+    }).join(''):'<div class="empty-state" style="padding:20px"><p>Nothing waiting on you</p></div>';
+
+    const todayStart=new Date();todayStart.setHours(0,0,0,0);
+    const todayEnd=new Date();todayEnd.setHours(23,59,59,999);
+    const today=items.filter(it=>{
+      if(it.status!=='pending')return false;
+      const t=new Date(it.scheduled_for).getTime();
+      return t>=todayStart.getTime()&&t<=todayEnd.getTime();
+    }).sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
+    todayEl.innerHTML=today.length?today.map(it=>{
+      const when=new Date(it.scheduled_for).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+      return `<div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500">${esc(it.entry_name||'Entry')} · ${it.channel==='email'?'✉️ Email':'📱 Text'}</div>
+        <div style="font-size:11.5px;color:var(--text-muted)">Scheduled for ${esc(when)}</div>
+      </div>`;
+    }).join(''):'<div class="empty-state" style="padding:20px"><p>Nothing scheduled for today</p></div>';
+  }catch(e){
+    awaitingEl.innerHTML=`<div style="padding:12px;font-size:12.5px;color:#dc2626">Failed to load: ${esc(e.message)}</div>`;
+    todayEl.innerHTML='';
+  }
 }
 
 async function renderMyWork(){
@@ -6168,12 +6457,16 @@ function renderDashboard(){
 
   const typeKeys={Lead:'leads',Deal:'pipeline',Contact:'contacts',Account:'accounts'};
   const typeColors={Lead:'var(--accent)',Deal:'var(--success)',Contact:'var(--warning)',Account:'#8b5cf6'};
-  const all=[
+  const allEntries=[
     ...S.entries.leads.filter(t=>!t.parent).map(t=>({...t,_t:'Lead'})),
     ...S.entries.pipeline.filter(t=>!t.parent).map(t=>({...t,_t:'Deal'})),
     ...S.entries.contacts.filter(t=>!t.parent).map(t=>({...t,_t:'Contact'})),
     ...S.entries.accounts.filter(t=>!t.parent).map(t=>({...t,_t:'Account'}))
-  ].sort((a,b)=>(b.date_updated||0)-(a.date_updated||0)).slice(0,10);
+  ];
+  // Recent Activity wants the 10 most RECENTLY touched -- a completely
+  // different sort than what Needs Follow-Up wants (most STALE), so
+  // this can't be computed from the same pre-sliced array as that.
+  const all=[...allEntries].sort((a,b)=>(b.date_updated||0)-(a.date_updated||0)).slice(0,10);
 
   document.getElementById('dash-activity').innerHTML=all.map(t=>
     `<div class="act-item" onclick="openProfile('${t.id}','${typeKeys[t._t]}')">
@@ -6182,6 +6475,24 @@ function renderDashboard(){
       <div style="font-size:11.5px;color:var(--text-muted)">${t._t} · ${esc(t.status?.status||'—')} · ${fmtDateShort(t.date_updated)}</div></div>
     </div>`
   ).join('')||'<div class="empty-state" style="padding:20px"><p>No recent activity</p></div>';
+
+  // Needs Follow-Up: active (non-closed) entries only -- following up on
+  // something already Closed/Won or Churned isn't meaningful -- sorted
+  // worst-first, using the exact same staleDaysInfo thresholds as the
+  // list-view coloring and profile badge, so "stale" means the same
+  // thing everywhere in the app.
+  const followUpCandidates=active(allEntries)
+    .map(t=>({...t,_stale:staleDaysInfo(t.date_updated)}))
+    .filter(t=>t._stale.days!=null&&t._stale.days>=4)
+    .sort((a,b)=>b._stale.days-a._stale.days)
+    .slice(0,8);
+  document.getElementById('dash-followup').innerHTML=followUpCandidates.map(t=>
+    `<div class="act-item" onclick="openProfile('${t.id}','${typeKeys[t._t]}')">
+      <div class="act-dot" style="background:${t._stale.color}"></div>
+      <div><div style="font-size:13px;font-weight:500">${esc(t.name)}</div>
+      <div style="font-size:11.5px;color:${t._stale.color}">${t._t} · ${esc(t.status?.status||'—')} · ${t._stale.label}</div></div>
+    </div>`
+  ).join('')||'<div class="empty-state" style="padding:20px"><p>Nothing overdue — nice work</p></div>';
 
   const stages={};
   S.entries.pipeline.filter(t=>!t.parent).forEach(t=>{const s=t.status?.status||'Unknown';stages[s]=(stages[s]||0)+1;});
