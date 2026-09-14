@@ -346,6 +346,57 @@
            path for straightforward logos. See the corresponding chat
            message for the fuller tradeoff analysis this was weighed against
            (replacing Step 2 entirely vs. adding an alternate path).
+
+  v13 (this file, brand-kit-generator-v13.html)
+    - RENAMED (user-facing only): "Edit" -> "Asset Creation", "Compose" ->
+           "Logo Creation" (pill labels, step headings, the back-to-Edit
+           button, cross-step description text, and the layer-source labels
+           set by useLayerAsCoreAsset). Internal ids/function/variable names
+           (panel2, panel4, pill3, pill4, renderLockupStage, etc.) were
+           deliberately left alone — see the v7 changelog entry for why
+           renaming internals has no user-facing benefit and only adds risk.
+    - CHANGED (workflow): Export is now the LAST wizard step (was 3rd of 4,
+           now 4th of 4) — recommended in chat and implemented here, since
+           v12 already made Logo Creation the default landing point after
+           upload, so Export-as-final now matches the actual usage order:
+           Upload -> Asset Creation -> Logo Creation -> Export. Implemented
+           via a new `stepOrder` array that decouples wizard POSITION from
+           the panel/pill element suffixes (panel3/pill3 = Export, panel4/
+           pill4 = Logo Creation — those ids are unchanged from before the
+           reorder, only their position in the sequence moved). Every
+           goToStep() call site was individually re-checked and corrected
+           for the new numbering — see stepOrder's doc comment for the
+           mapping, since this is exactly the kind of thing a future edit
+           could silently break without that context.
+    - CHANGED: the freeform crop tool is no longer "drag existing points to
+           reshape a preset quad" — it's now genuinine pen-tool style
+           point-by-point placement. Click the canvas to place point 1,
+           click again for point 2 (a live line follows your cursor before
+           each click), keep going, then click back near the first point
+           (or directly on it, or the new "Close shape" button) to close
+           the shape. Only once closed does it become editable/extractable
+           the same way as before (drag points, double-click an edge to
+           insert one, double-click a point to remove one). Added an
+           "Undo point" button and a point counter during placement, and a
+           defensive guard in extractLayerCrop refusing to extract an
+           unclosed or <3-point shape.
+    - NEW: "Trim canvas to content" — canvas-level counterpart to the
+           existing per-layer "Trim to visible content". Resizes the whole
+           canvas to the bounding box of every layer combined and shifts
+           every layer by the same offset, so the arrangement looks
+           identical but the canvas's empty margin is gone.
+    - FIXED: the Logo Creation canvas's boundary was nearly invisible when
+           using a transparent background, because the canvas AND its
+           surrounding padding area both rendered the same checker pattern
+           (just at a slightly different tile size) — there was no visual
+           line between "inside the canvas" and "outside it". The
+           surrounding wrap is now plain neutral padding (checker appears
+           ONLY inside the actual canvas), and the canvas itself gained a
+           solid 2px border plus a drop shadow so its edge reads clearly
+           regardless of background mode. Also darkened the shared
+           `--checker` pattern color (#e4e6ea -> #c7ccd4) for better
+           contrast everywhere it's used (Step 2's crop preview, asset
+           previews, and here).
   ============================================================================
 -->
 <!-- Google Fonts used by Compose text layers: the curated FONT_CHOICES list
@@ -370,10 +421,10 @@
     --mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
     --checker:
-      linear-gradient(45deg,#e4e6ea 25%,transparent 25%),
-      linear-gradient(-45deg,#e4e6ea 25%,transparent 25%),
-      linear-gradient(45deg,transparent 75%,#e4e6ea 75%),
-      linear-gradient(-45deg,transparent 75%,#e4e6ea 75%);
+      linear-gradient(45deg,#c7ccd4 25%,transparent 25%),
+      linear-gradient(-45deg,#c7ccd4 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#c7ccd4 75%),
+      linear-gradient(-45deg,transparent 75%,#c7ccd4 75%);
   }
   *{box-sizing:border-box;}
   body{
@@ -645,15 +696,25 @@
      proportions; actual pixel math is done in JS via a computed scale factor
      (display px per export px), never assume this box IS the export size. */
   .lockup-stage-wrap{
-    background-image:var(--checker);background-size:16px 16px;
+    /* Deliberately PLAIN (not checkered) — previously this wrap and the
+       canvas itself both showed a checker pattern (just at a different
+       tile size), so a transparent-background canvas nearly disappeared
+       into its own padding area. Checker now means ONE thing only: "this
+       is inside your actual canvas and it's transparent there." */
+    background:var(--paper);
     border:1px solid var(--line);border-radius:10px;
     display:flex;align-items:center;justify-content:center;
-    padding:16px;margin-bottom:12px;
+    padding:20px;margin-bottom:12px;
   }
   .lockup-stage{
     position:relative;overflow:hidden;
     background:#fff; /* overridden inline when bg is transparent or a custom color */
     max-width:100%;
+    /* Strong, unambiguous edge regardless of what's inside (white, a solid
+       color, or the transparency checker) — a canvas boundary you can spot
+       at a glance instead of hunting for a faint 1px line. */
+    border:2px solid var(--ink);
+    box-shadow:0 2px 10px rgba(0,0,0,.18);
   }
   .lockup-stage.transparent-bg{background-image:var(--checker);background-size:14px 14px;background-color:transparent;}
   .lockup-layer{position:absolute;cursor:move;touch-action:none;}
@@ -780,6 +841,13 @@
     border-radius:50%;background:#fff;border:2px solid var(--accent);
     cursor:grab;z-index:2;
   }
+  /* The first placed point, while still in the placing phase, doubles as
+     the "close the shape here" target — a soft glow hints that clicking it
+     does something different from the other points. */
+  .poly-handle.poly-handle-close-target{
+    box-shadow:0 0 0 4px rgba(7,169,163,.45);
+    cursor:pointer;
+  }
 
   .orientation-hint{
     font-family:var(--mono);font-size:11px;color:var(--ink-soft);
@@ -797,16 +865,16 @@
   <!-- Step indicator: purely visual, driven by goToStep() toggling .active/.done -->
   <div class="steps">
     <div class="step-pill active" id="pill1"><span class="num">1</span>Upload</div>
-    <div class="step-pill" id="pill2"><span class="num">2</span>Edit</div>
-    <div class="step-pill" id="pill3"><span class="num">3</span>Export</div>
-    <div class="step-pill" id="pill4"><span class="num">4</span>Compose</div>
+    <div class="step-pill" id="pill2"><span class="num">2</span>Asset Creation</div>
+    <div class="step-pill" id="pill4"><span class="num">3</span>Logo Creation</div>
+    <div class="step-pill" id="pill3"><span class="num">4</span>Export</div>
   </div>
 
   <!-- ======================= STEP 1: UPLOAD ======================= -->
   <div class="panel active" id="panel1">
     <div class="tool-desc">
       <h2>1. Upload</h2>
-      <p>Start here with any logo image. You'll land in Compose next to crop out an icon and clean it up &mdash; nothing leaves your browser at any point.</p>
+      <p>Start here with any logo image. You'll land in Logo Creation next to crop out an icon and clean it up &mdash; nothing leaves your browser at any point.</p>
     </div>
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept="image/*">
@@ -821,8 +889,8 @@
   <!-- ======================= STEP 2: EDIT (crop + background removal) ======================= -->
   <div class="panel" id="panel2">
     <div class="tool-desc">
-      <h2>2. Edit</h2>
-      <p>The quick, no-layers path to your <strong>initial core assets</strong>: square off the logo and, optionally, strip a solid background color. Skip this if you already extracted an icon in Compose and sent it to Export directly.</p>
+      <h2>2. Asset Creation</h2>
+      <p>The quick, no-layers path to your <strong>initial core assets</strong>: square off the logo and, optionally, strip a solid background color. Skip this if you already extracted an icon in Logo Creation and sent it to Export directly.</p>
     </div>
     <div class="card">
       <div class="edit-grid">
@@ -880,8 +948,8 @@
   <!-- ======================= STEP 3: EXPORT ======================= -->
   <div class="panel" id="panel3">
     <div class="tool-desc">
-      <h2>3. Export</h2>
-      <p>Your <strong>initial core assets</strong> &mdash; favicon, apple touch icon, social square, and color palette, generated from whichever image reached here (via Edit, or "Use this layer as my core asset" in Compose). Download individually, or grab everything as one zip, including any logo variations you've saved in Compose.</p>
+      <h2>4. Export</h2>
+      <p>The final step. Your <strong>initial core assets</strong> &mdash; favicon, apple touch icon, social square, and color palette, generated from whichever image reached here (via Asset Creation, or "Use this layer as my core asset" in Logo Creation). Download individually, or grab everything as one zip, including any logo variations you've saved in Logo Creation.</p>
     </div>
     <div class="source-row">
       <div class="source-thumb"><img id="sourceThumb" alt=""></div>
@@ -890,7 +958,7 @@
         <p class="source-meta" id="sourceMeta">&mdash;</p>
       </div>
       <div class="source-actions">
-        <button class="btn ghost" id="backToEditBtn" type="button">Edit</button>
+        <button class="btn ghost" id="backToEditBtn" type="button">Asset Creation</button>
         <button class="btn ghost" id="startOverBtn" type="button">Start over</button>
       </div>
     </div>
@@ -938,7 +1006,7 @@
     <button class="all-btn" id="dlAll" disabled>Download all as .zip</button>
     <p class="hint">Everything runs in your browser &mdash; the image is never uploaded anywhere.</p>
 
-    <button class="btn" id="goToLockupsBtn" type="button" style="width:100%;margin-top:14px;">Build a composition (horizontal, vertical, or custom) &rarr;</button>
+    <button class="btn" id="goToLockupsBtn" type="button" style="width:100%;margin-top:14px;">Create logo variations in Logo Creation &rarr;</button>
   </div>
 
   <!-- ======================= STEP 4: LOCKUP EDITOR ======================= -->
@@ -949,7 +1017,7 @@
        variant and export it as its own PNG. -->
   <div class="panel" id="panel4">
     <div class="tool-desc">
-      <h2>4. Compose</h2>
+      <h2>3. Logo Creation</h2>
       <p>Where you land right after uploading. Crop, trim, or split your logo to isolate a clean icon (freeform/square/circle crop, trim-to-content, background removal), then either send it straight to Export as your core asset, or build <strong>logo variations</strong> &mdash; horizontal, vertical, white/recolored, fully custom &mdash; and save each as a named variant for your final zip.</p>
     </div>
     <div class="card">
@@ -962,6 +1030,7 @@
         </div>
         <button class="btn" id="bgTransparentBtn" type="button">Transparent</button>
         <input type="color" id="canvasBgColor" value="#ffffff" title="Canvas background color">
+        <button class="btn" id="trimCanvasBtn" type="button" title="Resize the canvas to fit all layers, removing empty margin">Trim canvas to content</button>
         <button class="btn" id="toggleCoordsBtn" type="button" title="Show each layer's x, y position on the canvas">Show coordinates</button>
         <span style="flex:1;"></span>
         <button class="btn" id="undoBtn" type="button" title="Undo (Ctrl+Z)" disabled>&#8630; Undo</button>
@@ -1122,23 +1191,32 @@ let customFonts = [];
  * not the canvas — mirrors the same "store in a stable unit, convert to
  * display px only at render time" convention used everywhere else in Compose.
  * `shape`:
- *   'freeform' — an arbitrary, editable POLYGON (see `polygon` below), not
- *                just a resizable rectangle. Drag any vertex to reshape;
- *                double-click an edge to add a point, double-click a vertex
- *                to remove it (minimum 3 points).
+ *   'freeform' — a pen-tool style polygon built POINT BY POINT: click the
+ *                canvas to place each vertex in turn (a line connects each
+ *                new point to the last one), then click back near the first
+ *                point — or use the "Close shape" button — to close it.
+ *                While `closed` is false, `polygon` is the in-progress open
+ *                path and `pendingPoint` is the live cursor position used to
+ *                draw a "rubber band" preview line to where the next click
+ *                would land. Once closed, existing points become draggable
+ *                (same as before): double-click an edge to insert a new
+ *                point, double-click a point to remove it (minimum 3).
  *   'square'   — uses `rect`; resize is constrained to equal real pixel width/height.
  *   'circle'   — same square constraint as above, plus the extracted result
  *                is clipped to a circular alpha mask.
- * Both `rect` and `polygon` are kept simultaneously (only the one matching
- * the current `shape` is actually used) so switching shape mid-session
- * doesn't require throwing away and recomputing the other. `shape` persists
- * across crop sessions on the same layer (only "Start over" resets it) so
- * doing several same-shaped crops in a row doesn't require reselecting it.
+ * `rect` and `polygon` are kept simultaneously (only the one matching the
+ * current `shape` is actually used) so switching shape mid-session doesn't
+ * require throwing away and recomputing the other. `shape` persists across
+ * crop sessions on the same layer (only "Start over" resets it) so doing
+ * several same-shaped crops in a row doesn't require reselecting it —
+ * `polygon`/`closed`/`pendingPoint` do NOT persist, though: every new crop
+ * session (clicking "Crop this layer...") starts a fresh, empty placement,
+ * same as `rect` resetting to its default box.
  */
 let layerCropTool = {
   active: false, layerId: null, shape: 'freeform',
   rect: { x: 0.25, y: 0, w: 0.5, h: 1 },
-  polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }]
+  polygon: [], closed: false, pendingPoint: null
 };
 let cropRectDrag = null;   // active pointer-drag on the rect overlay (square/circle), or null when idle
 let polyVertexDrag = null; // { index } of the polygon vertex currently being dragged (freeform), or null
@@ -1239,6 +1317,7 @@ const variantNameInput = document.getElementById('variantNameInput');
 const saveVariantBtn = document.getElementById('saveVariantBtn');
 const exportCurrentBtn = document.getElementById('exportCurrentBtn');
 const toggleCoordsBtn = document.getElementById('toggleCoordsBtn');
+const trimCanvasBtn = document.getElementById('trimCanvasBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const arrangeHorizontalBtn = document.getElementById('arrangeHorizontalBtn');
@@ -1342,49 +1421,65 @@ presets.forEach(hex => {
  * ============================================================================
  * A guided wizard by default (Continue/Back buttons drive first-time use),
  * but each step is also independently reachable via the pill nav once its
- * prerequisite exists — so returning to Edit, jumping straight to Export, or
- * using Compose standalone don't require re-walking the whole sequence.
+ * prerequisite exists.
+ *
+ * WIZARD ORDER (v13): Upload -> Asset Creation -> Logo Creation -> Export.
+ * IMPORTANT: this order does NOT match the panel/pill element suffixes.
+ * panel3/pill3 = Export, panel4/pill4 = Logo Creation (né Compose) — those
+ * ids were kept as-is when the steps were renamed/reordered, to limit risk
+ * (renaming ids everywhere is pure downside with no user-facing benefit).
+ * So position 3 in the wizard shows panel4/pill4, and position 4 shows
+ * panel3/pill3. `stepOrder` below is the SINGLE place that mapping lives —
+ * every other function just asks "what's at position N", never assumes N
+ * matches an element's own suffix number.
  * Availability rules (see updateStepNav): Upload is always reachable;
- * Edit needs an uploaded image (`originalImg`); Export needs a processed
- * working image (`currentImg`); Compose has no prerequisite at all — it can
- * build a composition entirely from its own "Add image"/"Add text" tools.
+ * Asset Creation needs an uploaded image (`originalImg`); Logo Creation has
+ * no prerequisite (it can build a composition entirely from its own "Add
+ * image"/"Add text" tools); Export needs a processed working image (`currentImg`).
  */
+const stepOrder = [
+  { panel: () => panel1, pill: () => pill1, available: () => true },
+  { panel: () => panel2, pill: () => pill2, available: () => !!originalImg },
+  { panel: () => panel4, pill: () => pill4, available: () => true },
+  { panel: () => panel3, pill: () => pill3, available: () => !!currentImg }
+];
 
-/** Shows the given panel and syncs pill active/done/disabled styling to current state. */
+/** Shows the panel at wizard position `n` (1-4) and syncs pill active/done/disabled styling. */
 function goToStep(n){
-  [panel1, panel2, panel3, panel4].forEach((p, i) => p.classList.toggle('active', i === n - 1));
+  stepOrder.forEach((s, i) => s.panel().classList.toggle('active', i === n - 1));
   updateStepNav(n);
 }
 
 /**
  * Recomputes which step pills are clickable and which are styled "done",
  * based on real editor state rather than pure step order — e.g. after
- * jumping directly to Compose, Edit/Export shouldn't look "done" just
- * because their pill number is lower.
- * @param {number} currentStepNum the panel currently showing (1-4)
+ * jumping directly to Logo Creation, Asset Creation/Export shouldn't look
+ * "done" just because their wizard position is lower.
+ * @param {number} currentStepNum the wizard position currently showing (1-4)
  */
 function updateStepNav(currentStepNum){
-  const steps = [
-    { pill: pill1, num: 1, available: true },
-    { pill: pill2, num: 2, available: !!originalImg },
-    { pill: pill3, num: 3, available: !!currentImg },
-    { pill: pill4, num: 4, available: true } // Compose works standalone, no prerequisite
-  ];
-  steps.forEach(s => {
-    const isActive = s.num === currentStepNum;
-    s.pill.classList.toggle('active', isActive);
-    s.pill.classList.toggle('disabled', !s.available);
+  stepOrder.forEach((s, i) => {
+    const stepNum = i + 1;
+    const isActive = stepNum === currentStepNum;
+    const isAvailable = s.available();
+    s.pill().classList.toggle('active', isActive);
+    s.pill().classList.toggle('disabled', !isAvailable);
     // "Done" here just means "reachable and not the one you're currently
     // on" — a lightweight visual cue, not a strict "you finished this"
     // claim, since steps can be revisited/edited indefinitely.
-    s.pill.classList.toggle('done', s.available && !isActive);
+    s.pill().classList.toggle('done', isAvailable && !isActive);
   });
 }
 
 pill1.addEventListener('click', () => goToStep(1));
 pill2.addEventListener('click', () => { if (originalImg) goToStep(2); });
-pill3.addEventListener('click', () => { if (currentImg) goToStep(3); });
-pill4.addEventListener('click', () => goToStep(4));
+// NOTE: pill3's element/id is still "Export" and pill4's is still "Logo
+// Creation" (internal ids unchanged to limit risk — see the v13 changelog),
+// but as of v13 they're visually reordered so Logo Creation comes 3rd and
+// Export comes 4th (Export is now the final step). The step NUMBERS passed
+// to goToStep() below reflect that new order, not the element name suffix.
+pill3.addEventListener('click', () => { if (currentImg) goToStep(4); });
+pill4.addEventListener('click', () => goToStep(3));
 
 /*
  * Fully resets the tool back to the upload screen: clears every piece of
@@ -1429,8 +1524,9 @@ function resetAll(){
   showCoordinates = false;
   toggleCoordsBtn.classList.remove('toggled');
   layerEyedropper = { active: false, layerId: null };
-  layerCropTool = { active: false, layerId: null, shape: 'freeform', rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }] };
+  layerCropTool = { active: false, layerId: null, shape: 'freeform', rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, polygon: [], closed: false, pendingPoint: null };
   cropRectDrag = null;
+  polyVertexDrag = null;
   customFonts = [];
   history = [];
   historyIndex = -1;
@@ -1551,7 +1647,7 @@ function handleFile(file){
     // there directly. addImageLayer() handles rendering, selecting the new
     // layer, and committing the first undo/redo snapshot.
     addImageLayer(img, 'Uploaded logo');
-    goToStep(4);
+    goToStep(3); // Logo Creation (panel4/pill4) is wizard position 3 as of v13 — see stepOrder
   };
   img.onerror = () => alert('Could not read that image. Try a different file.');
   img.src = url;
@@ -1807,7 +1903,7 @@ applyBtn.addEventListener('click', async () => {
   sourceName.textContent = 'Working image';
   sourceMeta.textContent = `${size}\u00d7${size}px${bgRemoval.enabled ? ' \u00b7 background removed' : ''}`;
 
-  goToStep(3);
+  goToStep(4); // Export (panel3/pill3) is wizard position 4 as of v13 — see stepOrder
   setSocialColor(colorPicker.value);
   renderAll();
   renderPalette(extractPalette(currentImg, 6));
@@ -2201,13 +2297,20 @@ function renderRectCropOverlay(cropLayer, scale){
 }
 
 /**
- * Renders the freeform polygon crop overlay: an SVG outline/fill for the
- * shape itself, plus one draggable HTML handle per vertex. The overlay div
- * is sized to exactly match the target layer's on-screen box and the SVG
- * uses `viewBox="0 0 1 1"`, which makes vertex fraction coordinates (0..1)
- * usable AS SVG coordinates directly — no separate scale conversion needed
- * for the path itself (only the handles, positioned via CSS percentages,
- * which is the same trick).
+ * Renders the freeform polygon crop overlay. Two phases:
+ *   PLACING (layerCropTool.closed === false): an open polyline through the
+ *     points placed so far, plus a "rubber band" preview line from the last
+ *     placed point to the live cursor position. Clicking anywhere on the
+ *     overlay adds a new point there; clicking near the first point (or the
+ *     first point's handle) closes the shape once >=3 points exist.
+ *   CLOSED (layerCropTool.closed === true): the filled, closed shape with
+ *     draggable vertex handles — double-click an edge to insert a point,
+ *     double-click a point to remove it (minimum 3).
+ * The overlay div is sized to exactly match the target layer's on-screen
+ * box and the SVG uses `viewBox="0 0 1 1"`, which makes vertex fraction
+ * coordinates (0..1) usable AS SVG coordinates directly — no separate scale
+ * conversion needed for the path itself (only the handles, positioned via
+ * CSS percentages, which is the same trick).
  * @param {object} cropLayer the layer being cropped
  * @param {number} scale display px per canvas px
  */
@@ -2224,46 +2327,115 @@ function renderPolygonOverlay(cropLayer, scale){
   svg.setAttribute('viewBox', '0 0 1 1');
   svg.setAttribute('preserveAspectRatio', 'none');
 
-  const path = document.createElementNS(svgNS, 'path');
   const pts = layerCropTool.polygon;
-  path.setAttribute('d', pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x + ' ' + p.y).join(' ') + ' Z');
-  path.setAttribute('fill', 'rgba(7,169,163,0.28)');
-  path.setAttribute('stroke', '#ffffff');
-  path.setAttribute('stroke-width', '0.012');
-  path.setAttribute('vector-effect', 'non-scaling-stroke');
-  path.style.cursor = 'crosshair';
-  // Double-click an edge/interior to insert a new point at the nearest edge
-  // to the click — simpler and more forgiving than requiring a precise
-  // click exactly on the outline.
-  path.addEventListener('dblclick', e => {
-    e.stopPropagation();
-    addPolygonPoint(overlay, e);
-  });
-  svg.appendChild(path);
+  const closed = layerCropTool.closed;
+
+  if (pts.length > 0) {
+    const path = document.createElementNS(svgNS, 'path');
+    let d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x + ' ' + p.y).join(' ');
+    if (closed) {
+      d += ' Z';
+    } else if (layerCropTool.pendingPoint) {
+      // Rubber-band preview: extends the open path to wherever the cursor
+      // currently is, so the person can see where the NEXT click will land
+      // before committing to it.
+      d += ' L' + layerCropTool.pendingPoint.x + ' ' + layerCropTool.pendingPoint.y;
+    }
+    path.setAttribute('d', d);
+    path.setAttribute('fill', closed ? 'rgba(7,169,163,0.28)' : 'none');
+    path.setAttribute('stroke', '#ffffff');
+    path.setAttribute('stroke-width', '0.012');
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    if (closed) {
+      // Only closed shapes support edge-insertion — while still placing,
+      // every click on the overlay adds a new point at the END of the path
+      // instead (see the overlay click handler below), so a dblclick-to-
+      // insert-in-the-middle gesture would be ambiguous with that.
+      path.style.cursor = 'crosshair';
+      path.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        addPolygonPoint(overlay, e);
+      });
+    }
+    svg.appendChild(path);
+  }
   overlay.appendChild(svg);
 
+  if (!closed) {
+    // PLACING PHASE: track the cursor for the rubber-band line, and treat
+    // any click on empty overlay area as "place a new point here" (or
+    // "close the shape", if close enough to the first point already placed).
+    overlay.style.cursor = 'crosshair';
+    overlay.addEventListener('pointermove', e => {
+      if (polyVertexDrag) return; // don't fight with an in-progress vertex drag (see below)
+      const rect = overlay.getBoundingClientRect();
+      layerCropTool.pendingPoint = {
+        x: clamp((e.clientX - rect.left) / rect.width, 0, 1),
+        y: clamp((e.clientY - rect.top) / rect.height, 0, 1)
+      };
+      renderLockupStage();
+    });
+    overlay.addEventListener('click', e => {
+      if (e.target.classList.contains('poly-handle')) return; // handles manage their own click behavior below
+      const rect = overlay.getBoundingClientRect();
+      const fx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const fy = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+      if (pts.length >= 3) {
+        const CLOSE_THRESHOLD = 0.05; // fraction of the layer's box — generous enough to not require pixel precision
+        if (Math.hypot(fx - pts[0].x, fy - pts[0].y) < CLOSE_THRESHOLD) {
+          closePolygonShape();
+          return;
+        }
+      }
+      pts.push({ x: fx, y: fy });
+      renderLockupStage();
+      renderPropPanel(); // refreshes the point count / enables "Close shape" once >=3
+    });
+  }
+
+  // Vertex handles — shown in BOTH phases, so a point already placed can be
+  // nudged before the shape is closed, not just after.
   pts.forEach((pt, idx) => {
     const handle = document.createElement('div');
-    handle.className = 'poly-handle';
+    handle.className = 'poly-handle' + (!closed && idx === 0 && pts.length >= 3 ? ' poly-handle-close-target' : '');
     handle.style.left = (pt.x * 100) + '%';
     handle.style.top = (pt.y * 100) + '%';
-    handle.title = 'Drag to reshape \u00b7 double-click to remove';
+    handle.title = closed
+      ? 'Drag to reshape \u00b7 double-click to remove'
+      : (idx === 0 ? 'Click to close the shape here' : 'Drag to reposition');
     handle.addEventListener('pointerdown', e => {
       e.stopPropagation();
       try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
       polyVertexDrag = { index: idx };
     });
-    handle.addEventListener('dblclick', e => {
-      e.stopPropagation();
-      if (layerCropTool.polygon.length > 3) {
-        layerCropTool.polygon.splice(idx, 1);
-        renderLockupStage();
-      }
-    });
+    if (closed) {
+      handle.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        if (layerCropTool.polygon.length > 3) {
+          layerCropTool.polygon.splice(idx, 1);
+          renderLockupStage();
+        }
+      });
+    } else if (idx === 0) {
+      // Clicking directly on the first point's handle is a more precise
+      // alternative to the proximity-click-on-empty-canvas path above.
+      handle.addEventListener('click', e => {
+        e.stopPropagation();
+        if (pts.length >= 3) closePolygonShape();
+      });
+    }
     overlay.appendChild(handle);
   });
 
   lockupStage.appendChild(overlay);
+}
+
+/** Closes the in-progress freeform polygon (placing phase -> editable closed shape). */
+function closePolygonShape(){
+  layerCropTool.closed = true;
+  layerCropTool.pendingPoint = null;
+  renderLockupStage();
+  renderPropPanel();
 }
 
 /**
@@ -2272,6 +2444,7 @@ function renderPolygonOverlay(cropLayer, scale){
  * point (found via point-to-segment distance) — so double-clicking
  * anywhere near an edge inserts the point in the right place along the
  * outline, without needing pixel-perfect precision on the line itself.
+ * Only used once a shape is closed — see renderPolygonOverlay.
  * @param {HTMLElement} overlayEl the polygon-overlay element (for bounds)
  * @param {MouseEvent} e
  */
@@ -2825,10 +2998,10 @@ function useLayerAsCoreAsset(layer){
   const t = document.createElement('img');
   t.src = layer.imgEl.src;
   sourceThumb.appendChild(t);
-  sourceName.textContent = layer.name || 'Layer from Compose';
-  sourceMeta.textContent = `${layer.imgEl.naturalWidth}\u00d7${layer.imgEl.naturalHeight}px \u00b7 from Compose`;
+  sourceName.textContent = layer.name || 'Layer from Logo Creation';
+  sourceMeta.textContent = `${layer.imgEl.naturalWidth}\u00d7${layer.imgEl.naturalHeight}px \u00b7 from Logo Creation`;
 
-  goToStep(3);
+  goToStep(4); // Export (panel3/pill3) is wizard position 4 as of v13 — see stepOrder
   setSocialColor(colorPicker.value);
   renderAll();
   renderPalette(extractPalette(currentImg, 6));
@@ -2877,7 +3050,44 @@ function renderLayerCropControls(layer){
   block.appendChild(shapeRow);
 
   const active = layerCropTool.active && layerCropTool.layerId === layer.id;
-  if (active) {
+  const placingFreeform = active && layerCropTool.shape === 'freeform' && !layerCropTool.closed;
+
+  if (placingFreeform) {
+    const count = layerCropTool.polygon.length;
+    block.appendChild(Object.assign(document.createElement('p'), {
+      className: 'hint', style: 'margin:0 0 8px;text-align:left;',
+      textContent: count === 0
+        ? 'Click anywhere on the layer to place your first point.'
+        : `${count} point${count === 1 ? '' : 's'} placed. Click the canvas to keep going, or click the first point to close the shape.`
+    }));
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;';
+    const undoBtn = document.createElement('button');
+    undoBtn.type = 'button'; undoBtn.className = 'btn'; undoBtn.style.flex = '1';
+    undoBtn.textContent = 'Undo point';
+    undoBtn.disabled = count === 0;
+    undoBtn.addEventListener('click', () => {
+      layerCropTool.polygon.pop();
+      renderLockupStage();
+      renderPropPanel();
+    });
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button'; closeBtn.className = 'btn primary'; closeBtn.style.flex = '1';
+    closeBtn.textContent = 'Close shape';
+    closeBtn.disabled = count < 3;
+    closeBtn.title = count < 3 ? 'Place at least 3 points first' : '';
+    closeBtn.addEventListener('click', () => closePolygonShape());
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button'; cancelBtn.className = 'btn ghost';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+      layerCropTool = { ...layerCropTool, active: false, layerId: null };
+      renderLockupStage();
+      renderPropPanel();
+    });
+    row.append(undoBtn, closeBtn, cancelBtn);
+    block.appendChild(row);
+  } else if (active) {
     const row = document.createElement('div');
     row.style.display = 'flex';
     row.style.gap = '8px';
@@ -2912,7 +3122,10 @@ function renderLayerCropControls(layer){
       layerCropTool = {
         ...layerCropTool, active: true, layerId: layer.id,
         rect: { x: 0.25, y: 0, w: 0.5, h: 1 },
-        polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }]
+        // Freeform always starts as an empty, unclosed placement session —
+        // never a pre-filled shape — regardless of whatever was left over
+        // from a previous crop on this or another layer.
+        polygon: [], closed: false, pendingPoint: null
       };
       enforceCropShapeConstraint(layer); // the default rect above isn't guaranteed square — fix it up immediately if needed
       renderLockupStage();
@@ -2931,8 +3144,16 @@ function renderLayerCropControls(layer){
  * @param {'freeform'|'square'|'circle'} shape
  */
 function setCropShape(layer, shape){
+  const enteringFreeform = shape === 'freeform' && layerCropTool.shape !== 'freeform';
   layerCropTool.shape = shape;
-  if (layerCropTool.active && layerCropTool.layerId === layer.id) {
+  if (enteringFreeform) {
+    // Fresh, empty placement — never resume/resurface a stale polygon from
+    // a much earlier attempt on this layer.
+    layerCropTool.polygon = [];
+    layerCropTool.closed = false;
+    layerCropTool.pendingPoint = null;
+  }
+  if (layerCropTool.active && layerCropTool.layerId === layer.id && shape !== 'freeform') {
     enforceCropShapeConstraint(layer);
   }
   renderLockupStage();
@@ -2967,6 +3188,46 @@ function enforceCropShapeConstraint(layer){
  * @param {object} layer the layer being cropped
  * @returns {Promise<void>}
  */
+/**
+ * Canvas-level counterpart to cropLayerToContent: resizes the CANVAS (not
+ * any one layer) to the bounding box of every layer combined, removing
+ * empty margin around the whole composition. Shifts every layer's position
+ * by the same amount so nothing visually moves relative to the others —
+ * only the canvas edges move in to meet the content.
+ * @returns {void}
+ */
+function trimCanvasToContent(){
+  if (layers.length === 0) { alert('Add at least one layer first.'); return; }
+
+  // Same bounding-box approach as detectOrientation(): text layers don't
+  // carry a stored width, so approximate one via canvas measureText.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  layers.forEach(l => {
+    const w = l.type === 'image' ? l.w : estimateTextWidth(l);
+    const h = l.type === 'image' ? l.h : l.size;
+    minX = Math.min(minX, l.x); minY = Math.min(minY, l.y);
+    maxX = Math.max(maxX, l.x + w); maxY = Math.max(maxY, l.y + h);
+  });
+
+  const newW = Math.max(40, Math.round(maxX - minX));
+  const newH = Math.max(40, Math.round(maxY - minY));
+  if (Math.round(minX) === 0 && Math.round(minY) === 0 && newW === canvasSize.w && newH === canvasSize.h) {
+    alert('The canvas already fits its content \u2014 nothing to trim.');
+    return;
+  }
+
+  // Shift every layer by the same offset so the whole arrangement stays
+  // visually identical, just re-anchored to the new, smaller canvas origin.
+  layers.forEach(l => { l.x -= minX; l.y -= minY; });
+  canvasSize = { w: newW, h: newH };
+  canvasWInput.value = canvasSize.w;
+  canvasHInput.value = canvasSize.h;
+
+  renderLockupStage();
+  renderPropPanel();
+  commitHistory();
+}
+
 /**
  * Trims a layer down to the bounding box of its non-transparent pixels,
  * removing empty padding around the actual artwork. Unlike extractLayerCrop
@@ -3048,6 +3309,10 @@ async function cropLayerToContent(layer){
  */
 async function extractLayerCrop(layer){
   if (layerCropTool.shape === 'freeform') {
+    if (!layerCropTool.closed || layerCropTool.polygon.length < 3) {
+      alert('Close the shape first \u2014 place at least 3 points, then click the first point or "Close shape".');
+      return;
+    }
     await extractPolygonCrop(layer);
     return;
   }
@@ -3630,14 +3895,14 @@ goToLockupsBtn.addEventListener('click', () => {
   // opened, so it's never a blank canvas — the whole point is reusing the
   // asset already produced in Steps 1-3.
   if (layers.length === 0 && currentImg) addImageLayer(currentImg, 'Processed mark');
-  goToStep(4);
+  goToStep(3); // Logo Creation (panel4/pill4) is wizard position 3 as of v13 — see stepOrder
   renderLockupStage();
   renderLayerList();
   renderPropPanel();
   renderVariantList();
   updateUndoRedoButtons();
 });
-backToExportBtn.addEventListener('click', () => goToStep(3));
+backToExportBtn.addEventListener('click', () => goToStep(4)); // Export is wizard position 4
 
 canvasWInput.addEventListener('change', () => {
   canvasSize.w = Math.max(40, Number(canvasWInput.value) || canvasSize.w);
@@ -3659,6 +3924,8 @@ canvasBgColorInput.addEventListener('input', () => {
   renderLockupStage();
 });
 canvasBgColorInput.addEventListener('change', () => commitHistory());
+
+trimCanvasBtn.addEventListener('click', () => trimCanvasToContent());
 
 toggleCoordsBtn.addEventListener('click', () => {
   showCoordinates = !showCoordinates;
