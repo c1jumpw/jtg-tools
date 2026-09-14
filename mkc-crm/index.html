@@ -192,7 +192,7 @@ tbody tr.is-subtask{opacity:.7;background:#fafafa}
 .modal-header{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-header h3{font-size:15px;font-weight:600}
 .modal-body{padding:20px 22px;overflow-y:auto;flex:1}
-.modal-footer{padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+.modal-footer{padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;flex-wrap:wrap}
 /* FORMS */
 .form-group{margin-bottom:13px}
 .form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
@@ -857,7 +857,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <button class="btn btn-secondary btn-sm" onclick="qcExportMarkdown()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Markdown
       </button>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secondary" id="qct-create-btn" style="display:none" onclick="qcCreateContactFromThread()">+ New Lead…</button>
         <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
         <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assign…</button>
