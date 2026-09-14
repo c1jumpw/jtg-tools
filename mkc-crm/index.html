@@ -290,8 +290,8 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   .pf-footer{padding:8px 16px;flex-wrap:wrap;gap:6px}
   .btn-sm{padding:5px 9px;font-size:11.5px}
   .kanban-col{width:200px}
-  td:nth-child(3),th:nth-child(3){display:none}
-  td:nth-child(6),th:nth-child(6){display:none}
+  td:nth-child(4),th:nth-child(4){display:none}
+  td:nth-child(7),th:nth-child(7){display:none}
 }
 </style>
 </head>
@@ -872,6 +872,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-header"><h3>Assign to Record</h3><button class="pf-close" onclick="closeModal('qc-assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body" id="qc-assign-body">
       <div id="qc-assign-context" style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px"></div>
+      <div class="form-group"><label>Note <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional -- e.g. "this was actually a voicemail")</span></label>
+        <textarea id="qc-assign-note" class="form-textarea" rows="2" placeholder="Add any correction or context…"></textarea>
+      </div>
       <div id="qc-assign-suggested" style="margin-bottom:10px"></div>
       <div class="form-group"><label>Search all entries</label>
         <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC ID…" oninput="qcSearchAssign(this.value)" autocomplete="off">
@@ -2588,14 +2591,17 @@ async function renderMyDay(){
     </div>`;
   }).join(''):'<div class="empty-state" style="padding:20px"><p>Nothing overdue — nice work</p></div>';
 
-  // Stale Entries -- same computation as the Dashboard widget, just
-  // showing more of them here since this page exists specifically for this.
+  // Stale Entries -- MY assigned entries only (isAssignedToMe), NOT the
+  // same company-wide list the Dashboard widget shows. This is the
+  // actual distinction that makes My Day a genuinely different view
+  // rather than a redundant copy of Dashboard -- Dashboard is the
+  // team/company-wide picture, My Day is only ever "mine."
   const typeKeys={Lead:'leads',Deal:'pipeline',Contact:'contacts',Account:'accounts'};
   const allEntries=[
-    ...S.entries.leads.filter(t=>!t.parent).map(t=>({...t,_t:'Lead'})),
-    ...S.entries.pipeline.filter(t=>!t.parent).map(t=>({...t,_t:'Deal'})),
-    ...S.entries.contacts.filter(t=>!t.parent).map(t=>({...t,_t:'Contact'})),
-    ...S.entries.accounts.filter(t=>!t.parent).map(t=>({...t,_t:'Account'}))
+    ...S.entries.leads.filter(t=>!t.parent&&isAssignedToMe(t)).map(t=>({...t,_t:'Lead'})),
+    ...S.entries.pipeline.filter(t=>!t.parent&&isAssignedToMe(t)).map(t=>({...t,_t:'Deal'})),
+    ...S.entries.contacts.filter(t=>!t.parent&&isAssignedToMe(t)).map(t=>({...t,_t:'Contact'})),
+    ...S.entries.accounts.filter(t=>!t.parent&&isAssignedToMe(t)).map(t=>({...t,_t:'Account'}))
   ];
   const staleEntries=active(allEntries)
     .map(t=>({...t,_stale:staleDaysInfo(t.date_updated)}))
@@ -7056,6 +7062,7 @@ function renderQcInbox(){
 }
 
 async function qcArchive(id){
+  if(!confirm('Archive this item? It will be removed from the inbox.'))return;
   try{
     await authFetch(`/api/staging/${id}/archive`,'POST',{});
     showToast('Archived.','success');
@@ -7217,6 +7224,8 @@ function qcOpenAssign(id,fromThread){
   document.getElementById('qc-assign-body').querySelector('.form-group')?.scrollIntoView?.({block:'nearest'});
   const searchInput=document.getElementById('qc-assign-search');
   if(searchInput)searchInput.value='';
+  const noteInput=document.getElementById('qc-assign-note');
+  if(noteInput)noteInput.value='';
   const resultsBox=document.getElementById('qc-assign-results');
   if(resultsBox)resultsBox.innerHTML='';
   const suggestedBox=document.getElementById('qc-assign-suggested');
@@ -7315,6 +7324,7 @@ function qcSearchAssign(q){
 async function qcConfirmAssign(taskId,taskType,name){
   const id=S.qc.assignTarget;
   if(!id)return;
+  const note=document.getElementById('qc-assign-note')?.value?.trim()||'';
   try{
     // As of Worker v1.7, one assign call can mark MULTIPLE events
     // assigned at once ("assign recent thread" -- consolidates the
@@ -7325,7 +7335,7 @@ async function qcConfirmAssign(taskId,taskType,name){
     // single item's status locally -- a local-only patch would leave
     // the OTHER now-assigned items in this thread still showing as
     // "pending" until the next manual refresh.
-    const result=await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType});
+    const result=await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType,note});
     const count=result?.assignedCount||1;
     showToast(count>1?`Assigned to ${name} (${count} recent messages logged together).`:`Assigned to ${name}.`,'success');
     await loadQcInbox();
