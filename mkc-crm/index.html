@@ -252,6 +252,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
 /* ── MOBILE RESPONSIVE ─────────────────────────────────────────── */
 @media(max-width:768px){
+  .qc-item-actions{display:none!important}
   :root{--sidebar-width:0px;--topbar-height:54px}
   #sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;z-index:300;transform:translateX(-100%);transition:transform .25s ease}
   #sidebar.open{transform:translateX(0)}
@@ -575,6 +576,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <option value="archived">Archived</option>
             <option value="">All (except archived)</option>
           </select>
+          <select class="filter-select" id="qc-age-filter" onchange="S.qc.ageFilter=this.value;renderQcInbox()">
+            <option value="">Any Age</option>
+            <option value="1">Last 24 hours</option>
+            <option value="3">Last 3 days</option>
+            <option value="7">Last 7 days</option>
+          </select>
           <select class="filter-select" id="qc-source-filter" onchange="S.qc.sourceFilter=this.value;renderQcInbox()">
             <option value="">All Sources</option>
             <option value="quo">Quo (calls/texts)</option>
@@ -859,6 +866,8 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       </button>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secondary" id="qct-create-btn" style="display:none" onclick="qcCreateContactFromThread()">+ New Lead…</button>
+        <button class="btn btn-secondary" id="qct-callfix-btn" style="display:none" onclick="qcMarkNotAnswered()" title="Correct this if it was actually a voicemail or went unanswered">Mark as No Answer</button>
+        <button class="btn btn-ghost" id="qct-archive-btn" onclick="qcArchive(S.qc.current);closeModal('qc-thread-modal')">Archive</button>
         <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
         <button class="btn btn-primary" id="qct-assign-btn" onclick="qcOpenAssign(S.qc.current,true)">Assign…</button>
       </div>
@@ -3774,7 +3783,7 @@ function renderPfDetails(task,type,cf,body){
       ['Close Date',fmtDate(cf['close date'])],
       ['Next Action',cf['next action']],['Next Action Link',cf['next action link']],['Next Action Date',fmtDate(cf['next action date'])],
       ['Last Action',cf['last action']],['Deal Status Label',cf['deal status label']],['Deal Action',cf['deal action']],
-      ['Opportunity',cf.opportunity],['Plan',cf.plan],
+      ['Opportunity',cf.opportunity],['Deposit Amount',cf['deposit amount']],['Remaining Balance',cf['remaining balance']],['Plan',cf.plan],
       ['Main Contact',cf._byId[CU_FIELDS.MAIN_CONTACT]],['Primary Contact Email',cf['primary contact email']],['Primary Contact Phone',cf['primary contact phone']],
       ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Assignee(s)',asgn],['Notebook Link',cf['notebook link']],['Last Updated',fmtDate(task.date_updated)]];
@@ -5047,7 +5056,15 @@ async function logActionSent(){
       if(note)logBody+=`\n\n${note}`;
     }else{
       const msgText=document.getElementById('msg-draft')?.value||'';
-      if(msgText)logBody+=`\n\n${msgText}`;
+      if(msgText){
+        logBody+=`\n\n${msgText}`;
+      }else{
+        // A message-type action should always have draft content by this
+        // point -- if it doesn't, flag that explicitly rather than
+        // silently posting a content-less log that's indistinguishable
+        // from real data loss when someone reviews it later.
+        logBody+='\n\n⚠ No message content was captured at log time -- please verify what was actually sent.';
+      }
     }
     const fieldId=type==='pipeline'?CU_FIELDS.DEAL_ACTION:CU_FIELDS.LEAD_CRM_ACTION;
     await setCrmActionField(task,fieldId,action.label);
@@ -7005,6 +7022,7 @@ function renderQcInbox(){
   const ownerFilter=S.qc.ownerFilter;
   const contactFilter=S.qc.contactFilter;
   const statusFilter=S.qc.statusFilter;
+  const ageFilter=S.qc.ageFilter;
   // Resolve each item's contact name ONCE, up front -- both the contact
   // filter and the per-item display below need it, and resolveContactName
   // is a cheap cached-map lookup (see buildContactLookupMap), but there's
@@ -7020,7 +7038,8 @@ function renderQcInbox(){
     // status==='pending' match. "Assigned"/"Archived" ARE literal
     // matches since those are genuinely final, human-driven states.
     // Blank (All) passes everything already fetched.
-    (!statusFilter||(statusFilter==='pending'?qcNeedsReview(it):it.status===statusFilter))
+    (!statusFilter||(statusFilter==='pending'?qcNeedsReview(it):it.status===statusFilter))&&
+    (!ageFilter||(Date.now()-new Date(it.occurred_at).getTime())<=Number(ageFilter)*24*60*60*1000)
   );
   qcPopulateOwnerFilter();
   qcPopulateContactFilter();
@@ -7053,12 +7072,24 @@ function renderQcInbox(){
         </div>
         <div style="font-size:12.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub||'<em>No preview available</em>'}</div>
       </div>
-      <div style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
+      <div class="qc-item-actions" style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()">
         ${it.status!=='archived'?`<button class="btn btn-ghost btn-sm" title="Archive" onclick="qcArchive('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></button>`:''}
         ${qcNeedsReview(it)?`<button class="btn btn-secondary btn-sm" onclick="qcOpenAssign('${it.id}')">Assign</button>`:''}
       </div>
     </div>`;
   }).join('');
+}
+
+async function qcMarkNotAnswered(){
+  const id=S.qc.current;
+  if(!id)return;
+  if(!confirm('Correct this to No Answer/Voicemail? This updates the log to reflect what actually happened.'))return;
+  try{
+    await authFetch(`/api/staging/${id}/correct-call`,'POST',{});
+    showToast('Corrected.','success');
+    await loadQcInbox();
+    qcOpenThread(id); // refresh the modal in place to show the correction
+  }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
 async function qcArchive(id){
@@ -7168,6 +7199,18 @@ async function qcOpenThread(id){
     // Unknown / Not in CRM" option surfaces (see resolveContactName).
     const knownName=item.contact_name||resolveContactName(item.contact_identifier);
     document.getElementById('qct-create-btn').style.display=knownName?'none':'inline-flex';
+    document.getElementById('qct-archive-btn').style.display=item.status==='archived'?'none':'inline-flex';
+    const callfixBtn=document.getElementById('qct-callfix-btn');
+    if(callfixBtn){
+      const isAnsweredCall=item.event_type==='call'&&/call answered/i.test(item.body||'');
+      callfixBtn.style.display=isAnsweredCall?'inline-flex':'none';
+    }
+    // Messages render oldest-first (like any chat), so scrolling to the
+    // bottom lands on the most recent one -- matches every messaging
+    // app convention instead of dropping the person at the very start
+    // of a potentially long thread. Small delay lets layout settle
+    // first so scrollHeight is accurate.
+    setTimeout(()=>{body.scrollTop=body.scrollHeight;},30);
   }catch(e){
     body.innerHTML=`<div class="empty-state"><p>Couldn't load thread</p><small>${esc(e.message)}</small></div>`;
   }
