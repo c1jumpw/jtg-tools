@@ -306,6 +306,46 @@
            shape persists across crop sessions on the same layer (only
            "Start over" resets it to Freeform) so doing several same-shaped
            crops in a row doesn't require reselecting it each time.
+
+  v12 (this file, brand-kit-generator-v12.html)
+    - CHANGED: "Freeform" crop mode is no longer a resizable rectangle — it's
+           now a true editable polygon. Drag any vertex to reshape,
+           double-click an edge to insert a new point (nearest-edge
+           detection via point-to-segment distance, not pixel-perfect click
+           precision), double-click a vertex to remove it (minimum 3
+           points). Extraction (extractPolygonCrop) clips to the actual
+           polygon path via canvas clip(), cropped to its bounding box.
+           Square/Circle modes are unchanged (still rect-based). Rendered
+           via an SVG with viewBox="0 0 1 1" so vertex fraction coordinates
+           double as SVG coordinates directly — see renderPolygonOverlay.
+    - CHANGED: both crop overlays (Step 2's square crop box and Compose's
+           rect crop overlay) are noticeably darker over the unused area
+           (opacity .45\u2192.65 / .35\u2192.55) and gained a hard black hairline
+           between the white border and the accent ring, so the usable
+           region reads clearly against logos of any color — previously the
+           thin white-on-accent border alone could wash out against light
+           backgrounds.
+    - NEW: "Trim to visible content" (cropLayerToContent) — one-click,
+           no-dragging auto-crop for image layers. Scans for the bounding
+           box of non-transparent pixels (small alpha threshold to ignore
+           anti-aliasing noise) and trims the layer to just that, shifting
+           its canvas position so the visible artwork stays anchored in
+           place — only the empty transparent margin disappears.
+    - CHANGED (workflow): uploading now lands in COMPOSE by default (seeded
+           with the raw upload as its first layer), not Edit. Compose's crop
+           tools are genuinely more capable at isolating an icon from a
+           combined logo+wordmark image than Step 2's simple center-square
+           crop, so extraction happens there first now. A new "Use this
+           layer as my core asset \u2192 Export" button (useLayerAsCoreAsset) on
+           every image layer sends its current processed image to Export as
+           `currentImg` — the same variable Step 2's "Apply & continue"
+           populates, so every downstream step (rendering, zip bundling,
+           palette extraction) behaves identically regardless of which path
+           produced the source image. Step 2 was deliberately NOT removed —
+           it remains reachable via the nav pill as the fast, no-layers
+           path for straightforward logos. See the corresponding chat
+           message for the fuller tradeoff analysis this was weighed against
+           (replacing Step 2 entirely vs. adding an alternate path).
   ============================================================================
 -->
 <!-- Google Fonts used by Compose text layers: the curated FONT_CHOICES list
@@ -437,7 +477,14 @@
   .crop-box{
     position:absolute;
     border:2px solid #fff;
-    box-shadow:0 0 0 1px var(--accent), 0 0 0 2000px rgba(10,14,26,.45);
+    /* Layered for contrast against ANY logo color: a hard black hairline
+       right against the white border (so it doesn't wash out on light
+       logos), an accent ring outside that, then a noticeably darker mask
+       over the unused area so the usable region is unambiguous. */
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.9),
+      0 0 0 3px var(--accent),
+      0 0 0 2000px rgba(10,14,26,.65);
     cursor:move;
   }
   .crop-box .handle{
@@ -706,7 +753,10 @@
   .crop-rect-overlay{
     position:absolute;
     border:2px dashed #fff;
-    box-shadow:0 0 0 1px var(--accent), 0 0 0 2000px rgba(10,14,26,.35);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.9),
+      0 0 0 3px var(--accent),
+      0 0 0 2000px rgba(10,14,26,.55);
     cursor:move;
   }
   .crop-rect-overlay .cr-handle{
@@ -717,6 +767,19 @@
      selection's real pixel width and height equal (see the resize-drag
      handler) — border-radius alone can't fix an ellipse into a circle. */
   .crop-rect-overlay.shape-circle{border-radius:50%;}
+
+  /* Freeform polygon crop overlay. Positioned/sized exactly like
+     .crop-rect-overlay (matching the target layer's on-screen box), but its
+     children use percentage-based placement directly — since the overlay's
+     own box IS the layer's box, a vertex's fraction coordinate and its CSS
+     percentage position are the same number, no extra scale math needed. */
+  .polygon-overlay{position:absolute;}
+  .polygon-overlay svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;}
+  .poly-handle{
+    position:absolute;width:14px;height:14px;margin-left:-7px;margin-top:-7px;
+    border-radius:50%;background:#fff;border:2px solid var(--accent);
+    cursor:grab;z-index:2;
+  }
 
   .orientation-hint{
     font-family:var(--mono);font-size:11px;color:var(--ink-soft);
@@ -743,7 +806,7 @@
   <div class="panel active" id="panel1">
     <div class="tool-desc">
       <h2>1. Upload</h2>
-      <p>Start here with any logo image. Nothing leaves your browser — cropping, background removal, and every export happen locally.</p>
+      <p>Start here with any logo image. You'll land in Compose next to crop out an icon and clean it up &mdash; nothing leaves your browser at any point.</p>
     </div>
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept="image/*">
@@ -759,7 +822,7 @@
   <div class="panel" id="panel2">
     <div class="tool-desc">
       <h2>2. Edit</h2>
-      <p>Square off the logo and, optionally, strip a solid background color &mdash; this prepares the single source image your <strong>initial core assets</strong> (favicon, icon, social square) are generated from. Revisit any time via the nav above.</p>
+      <p>The quick, no-layers path to your <strong>initial core assets</strong>: square off the logo and, optionally, strip a solid background color. Skip this if you already extracted an icon in Compose and sent it to Export directly.</p>
     </div>
     <div class="card">
       <div class="edit-grid">
@@ -818,7 +881,7 @@
   <div class="panel" id="panel3">
     <div class="tool-desc">
       <h2>3. Export</h2>
-      <p>Your <strong>initial core assets</strong> &mdash; favicon, apple touch icon, social square, and color palette. Download individually, or grab everything as one zip, including any logo variations you've saved in Compose.</p>
+      <p>Your <strong>initial core assets</strong> &mdash; favicon, apple touch icon, social square, and color palette, generated from whichever image reached here (via Edit, or "Use this layer as my core asset" in Compose). Download individually, or grab everything as one zip, including any logo variations you've saved in Compose.</p>
     </div>
     <div class="source-row">
       <div class="source-thumb"><img id="sourceThumb" alt=""></div>
@@ -887,7 +950,7 @@
   <div class="panel" id="panel4">
     <div class="tool-desc">
       <h2>4. Compose</h2>
-      <p>This is where you generate <strong>logo variations</strong> from your initial assets: horizontal, vertical, white/recolored, cropped-apart, or fully custom lockups. Save each as a named variant to include it in your final zip. Works standalone too &mdash; no upload required if you'd rather start from your own images.</p>
+      <p>Where you land right after uploading. Crop, trim, or split your logo to isolate a clean icon (freeform/square/circle crop, trim-to-content, background removal), then either send it straight to Export as your core asset, or build <strong>logo variations</strong> &mdash; horizontal, vertical, white/recolored, fully custom &mdash; and save each as a named variant for your final zip.</p>
     </div>
     <div class="card">
       <div class="lockup-toolbar">
@@ -1054,18 +1117,31 @@ let variantIdCounter = 1;
 let customFonts = [];
 
 /*
- * Crop-into-new-layer tool state (see extractLayerCrop). `rect` fractions
- * are relative to the target layer's OWN box (0..1), not the canvas —
- * mirrors the same "store in a stable unit, convert to display px only at
- * render time" convention used everywhere else in Compose.
- * `shape`: 'freeform' (any rectangle), 'square' (resize is constrained to
- * equal real pixel width/height), or 'circle' (same square constraint,
- * plus the extracted result is clipped to a circular alpha mask). Persists
- * across crop sessions on the same layer (only reset by "Start over") so
+ * Crop-into-new-layer tool state (see extractLayerCrop). All point/rect
+ * coordinates are fractions (0..1) relative to the target layer's OWN box,
+ * not the canvas — mirrors the same "store in a stable unit, convert to
+ * display px only at render time" convention used everywhere else in Compose.
+ * `shape`:
+ *   'freeform' — an arbitrary, editable POLYGON (see `polygon` below), not
+ *                just a resizable rectangle. Drag any vertex to reshape;
+ *                double-click an edge to add a point, double-click a vertex
+ *                to remove it (minimum 3 points).
+ *   'square'   — uses `rect`; resize is constrained to equal real pixel width/height.
+ *   'circle'   — same square constraint as above, plus the extracted result
+ *                is clipped to a circular alpha mask.
+ * Both `rect` and `polygon` are kept simultaneously (only the one matching
+ * the current `shape` is actually used) so switching shape mid-session
+ * doesn't require throwing away and recomputing the other. `shape` persists
+ * across crop sessions on the same layer (only "Start over" resets it) so
  * doing several same-shaped crops in a row doesn't require reselecting it.
  */
-let layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: 'freeform' };
-let cropRectDrag = null; // active pointer-drag on the crop rect overlay, or null when idle
+let layerCropTool = {
+  active: false, layerId: null, shape: 'freeform',
+  rect: { x: 0.25, y: 0, w: 0.5, h: 1 },
+  polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }]
+};
+let cropRectDrag = null;   // active pointer-drag on the rect overlay (square/circle), or null when idle
+let polyVertexDrag = null; // { index } of the polygon vertex currently being dragged (freeform), or null
 
 /*
  * ---- Step 4 additions: coordinates, undo/redo, per-layer bg removal -----
@@ -1353,7 +1429,7 @@ function resetAll(){
   showCoordinates = false;
   toggleCoordsBtn.classList.remove('toggled');
   layerEyedropper = { active: false, layerId: null };
-  layerCropTool = { active: false, layerId: null, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: 'freeform' };
+  layerCropTool = { active: false, layerId: null, shape: 'freeform', rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }] };
   cropRectDrag = null;
   customFonts = [];
   history = [];
@@ -1416,8 +1492,20 @@ document.addEventListener('paste', e => {
  * Loads a File (from input, drop, or paste) into the editor.
  * - Validates it's actually an image; alerts and bails otherwise.
  * - Builds `rawCanvas`, an offscreen full-resolution copy of the pixels,
- *   used later for cropping and eyedropper sampling without re-decoding.
- * - Computes the default crop (largest centered square) and jumps to Step 2.
+ *   used later for cropping and eyedropper sampling without re-decoding
+ *   (this still powers Step 2's simple crop tool, which remains available).
+ * - Computes the default crop (largest centered square), for whenever Step 2
+ *   is visited — it's still there as the quick, no-layers path.
+ * - Lands in COMPOSE (not Edit) by default, seeded with the raw upload as
+ *   its first layer. This is a deliberate change from earlier versions:
+ *   Compose's crop tools (freeform polygon / square / circle / trim-to-
+ *   content) are now genuinely more capable at isolating an icon from a
+ *   combined logo+wordmark image than Step 2's simple center-square crop
+ *   is, so extraction now happens there by default. Step 2 stays reachable
+ *   via the nav pill for anyone who just wants a fast, no-layers square
+ *   crop — see the "Use this layer as your core asset" button in Compose's
+ *   image-layer property panel for how a Compose-extracted icon flows back
+ *   into Export (useLayerAsCoreAsset).
  * @param {File} file
  */
 function handleFile(file){
@@ -1439,7 +1527,8 @@ function handleFile(file){
     rawCtx.drawImage(img, 0, 0);
 
     // Default crop: largest centered square ("cover" framing). If the logo
-    // is already square this crop is a no-op (matches v1 behavior).
+    // is already square this crop is a no-op (matches v1 behavior). Only
+    // matters if Step 2 is visited — Compose is the default landing step now.
     const size = Math.min(img.naturalWidth, img.naturalHeight);
     cropState = {
       x: (img.naturalWidth - size) / 2,
@@ -1457,7 +1546,12 @@ function handleFile(file){
     bgControls.classList.remove('active');
     updateBgPreview();
 
-    goToStep(2);
+    // Seed Compose with the raw upload itself as a layer (not the
+    // "processed mark" — that doesn't exist yet at upload time) and land
+    // there directly. addImageLayer() handles rendering, selecting the new
+    // layer, and committing the first undo/redo snapshot.
+    addImageLayer(img, 'Uploaded logo');
+    goToStep(4);
   };
   img.onerror = () => alert('Could not read that image. Try a different file.');
   img.src = url;
@@ -2060,35 +2154,146 @@ function renderLockupStage(){
   // Crop-into-new-layer overlay: drawn as its own absolutely-positioned
   // child of the stage (like the layer divs above), computed by combining
   // the target layer's own canvas-space box with the tool's layer-relative
-  // rect fractions — same "convert to display px only here" convention.
+  // fractions — same "convert to display px only here" convention.
   if (layerCropTool.active) {
     const cropLayer = layers.find(l => l.id === layerCropTool.layerId);
     if (cropLayer) {
-      const rect = layerCropTool.rect;
-      const ov = document.createElement('div');
-      ov.className = 'crop-rect-overlay' + (layerCropTool.shape === 'circle' ? ' shape-circle' : '');
-      ov.style.left = ((cropLayer.x + rect.x * cropLayer.w) * scale) + 'px';
-      ov.style.top = ((cropLayer.y + rect.y * cropLayer.h) * scale) + 'px';
-      ov.style.width = (rect.w * cropLayer.w * scale) + 'px';
-      ov.style.height = (rect.h * cropLayer.h * scale) + 'px';
-
-      const handle = document.createElement('div');
-      handle.className = 'cr-handle';
-      ov.appendChild(handle);
-      handle.addEventListener('pointerdown', e => {
-        e.stopPropagation();
-        try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
-        cropRectDrag = { mode: 'resize', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
-      });
-      ov.addEventListener('pointerdown', e => {
-        if (e.target === handle) return;
-        e.stopPropagation();
-        try { ov.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
-        cropRectDrag = { mode: 'move', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
-      });
-      lockupStage.appendChild(ov);
+      if (layerCropTool.shape === 'freeform') {
+        renderPolygonOverlay(cropLayer, scale);
+      } else {
+        renderRectCropOverlay(cropLayer, scale);
+      }
     }
   }
+}
+
+/**
+ * Renders the square/circle crop-rect overlay: a positioned box with a
+ * corner resize handle. Extracted into its own function so
+ * renderLockupStage can cleanly branch between this and the polygon overlay.
+ * @param {object} cropLayer the layer being cropped
+ * @param {number} scale display px per canvas px (from computeStageDisplayDims)
+ */
+function renderRectCropOverlay(cropLayer, scale){
+  const rect = layerCropTool.rect;
+  const ov = document.createElement('div');
+  ov.className = 'crop-rect-overlay' + (layerCropTool.shape === 'circle' ? ' shape-circle' : '');
+  ov.style.left = ((cropLayer.x + rect.x * cropLayer.w) * scale) + 'px';
+  ov.style.top = ((cropLayer.y + rect.y * cropLayer.h) * scale) + 'px';
+  ov.style.width = (rect.w * cropLayer.w * scale) + 'px';
+  ov.style.height = (rect.h * cropLayer.h * scale) + 'px';
+
+  const handle = document.createElement('div');
+  handle.className = 'cr-handle';
+  ov.appendChild(handle);
+  handle.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
+    cropRectDrag = { mode: 'resize', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
+  });
+  ov.addEventListener('pointerdown', e => {
+    if (e.target === handle) return;
+    e.stopPropagation();
+    try { ov.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
+    cropRectDrag = { mode: 'move', startX: e.clientX, startY: e.clientY, orig: { ...rect } };
+  });
+  lockupStage.appendChild(ov);
+}
+
+/**
+ * Renders the freeform polygon crop overlay: an SVG outline/fill for the
+ * shape itself, plus one draggable HTML handle per vertex. The overlay div
+ * is sized to exactly match the target layer's on-screen box and the SVG
+ * uses `viewBox="0 0 1 1"`, which makes vertex fraction coordinates (0..1)
+ * usable AS SVG coordinates directly — no separate scale conversion needed
+ * for the path itself (only the handles, positioned via CSS percentages,
+ * which is the same trick).
+ * @param {object} cropLayer the layer being cropped
+ * @param {number} scale display px per canvas px
+ */
+function renderPolygonOverlay(cropLayer, scale){
+  const overlay = document.createElement('div');
+  overlay.className = 'polygon-overlay';
+  overlay.style.left = (cropLayer.x * scale) + 'px';
+  overlay.style.top = (cropLayer.y * scale) + 'px';
+  overlay.style.width = (cropLayer.w * scale) + 'px';
+  overlay.style.height = (cropLayer.h * scale) + 'px';
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 1 1');
+  svg.setAttribute('preserveAspectRatio', 'none');
+
+  const path = document.createElementNS(svgNS, 'path');
+  const pts = layerCropTool.polygon;
+  path.setAttribute('d', pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x + ' ' + p.y).join(' ') + ' Z');
+  path.setAttribute('fill', 'rgba(7,169,163,0.28)');
+  path.setAttribute('stroke', '#ffffff');
+  path.setAttribute('stroke-width', '0.012');
+  path.setAttribute('vector-effect', 'non-scaling-stroke');
+  path.style.cursor = 'crosshair';
+  // Double-click an edge/interior to insert a new point at the nearest edge
+  // to the click — simpler and more forgiving than requiring a precise
+  // click exactly on the outline.
+  path.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    addPolygonPoint(overlay, e);
+  });
+  svg.appendChild(path);
+  overlay.appendChild(svg);
+
+  pts.forEach((pt, idx) => {
+    const handle = document.createElement('div');
+    handle.className = 'poly-handle';
+    handle.style.left = (pt.x * 100) + '%';
+    handle.style.top = (pt.y * 100) + '%';
+    handle.title = 'Drag to reshape \u00b7 double-click to remove';
+    handle.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* non-fatal */ }
+      polyVertexDrag = { index: idx };
+    });
+    handle.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      if (layerCropTool.polygon.length > 3) {
+        layerCropTool.polygon.splice(idx, 1);
+        renderLockupStage();
+      }
+    });
+    overlay.appendChild(handle);
+  });
+
+  lockupStage.appendChild(overlay);
+}
+
+/**
+ * Inserts a new polygon vertex at the click position, between whichever
+ * pair of consecutive existing vertices is geometrically closest to that
+ * point (found via point-to-segment distance) — so double-clicking
+ * anywhere near an edge inserts the point in the right place along the
+ * outline, without needing pixel-perfect precision on the line itself.
+ * @param {HTMLElement} overlayEl the polygon-overlay element (for bounds)
+ * @param {MouseEvent} e
+ */
+function addPolygonPoint(overlayEl, e){
+  const rect = overlayEl.getBoundingClientRect();
+  const fx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+  const fy = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+  const pts = layerCropTool.polygon;
+
+  let bestIdx = 0, bestDist = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    let t = lenSq === 0 ? 0 : ((fx - a.x) * dx + (fy - a.y) * dy) / lenSq;
+    t = clamp(t, 0, 1);
+    const cx = a.x + t * dx, cy = a.y + t * dy;
+    const dist = Math.hypot(fx - cx, fy - cy);
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+  pts.splice(bestIdx + 1, 0, { x: fx, y: fy });
+  renderLockupStage();
 }
 
 // Drag loop for the crop-rect overlay — a third, independent pointer-drag
@@ -2108,15 +2313,14 @@ window.addEventListener('pointermove', e => {
   if (cropRectDrag.mode === 'move') {
     rect.x = clamp(cropRectDrag.orig.x + dxFrac, 0, 1 - cropRectDrag.orig.w);
     rect.y = clamp(cropRectDrag.orig.y + dyFrac, 0, 1 - cropRectDrag.orig.h);
-  } else if (layerCropTool.shape === 'freeform') {
-    rect.w = clamp(cropRectDrag.orig.w + dxFrac, 0.05, 1 - cropRectDrag.orig.x);
-    rect.h = clamp(cropRectDrag.orig.h + dyFrac, 0.05, 1 - cropRectDrag.orig.y);
   } else {
-    // Square/circle: rect fractions alone don't guarantee square OUTPUT
-    // pixels unless the layer's own box happens to be square, since a
-    // fraction of width and the same fraction of height cover different
-    // real pixel spans whenever layer.w !== layer.h. Convert through the
-    // layer's aspect ratio so the extracted result is a true square.
+    // Resize (square/circle only — this overlay is never shown for
+    // 'freeform', which uses the polygon overlay/vertex-drag below
+    // instead). Rect fractions alone don't guarantee square OUTPUT pixels
+    // unless the layer's own box happens to be square, since a fraction of
+    // width and the same fraction of height cover different real pixel
+    // spans whenever layer.w !== layer.h. Convert through the layer's
+    // aspect ratio so the extracted result is a true square.
     const avgDeltaFrac = (dxFrac + dyFrac) / 2; // average both axes for smoother diagonal drag
     let newW = clamp(cropRectDrag.orig.w + avgDeltaFrac, 0.05, 1 - cropRectDrag.orig.x);
     let newH = newW * cropLayer.w / cropLayer.h; // equal real-pixel width & height
@@ -2128,6 +2332,22 @@ window.addEventListener('pointermove', e => {
   renderLockupStage();
 });
 window.addEventListener('pointerup', () => { cropRectDrag = null; });
+
+// Drag loop for freeform polygon vertices — moves ONE point to track the
+// cursor exactly (same "read the overlay's live bounding rect, don't
+// accumulate deltas" pattern as the main layer-move drag), clamped to
+// [0,1] since each vertex is a fraction of the source image being sampled.
+window.addEventListener('pointermove', e => {
+  if (!polyVertexDrag || !layerCropTool.active || layerCropTool.shape !== 'freeform') return;
+  const overlayEl = document.querySelector('.polygon-overlay');
+  if (!overlayEl) { polyVertexDrag = null; return; }
+  const rect = overlayEl.getBoundingClientRect();
+  const fx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+  const fy = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+  layerCropTool.polygon[polyVertexDrag.index] = { x: fx, y: fy };
+  renderLockupStage();
+});
+window.addEventListener('pointerup', () => { polyVertexDrag = null; });
 
 // Clicking empty canvas (not a layer) deselects whatever was selected.
 lockupStage.addEventListener('pointerdown', e => {
@@ -2252,7 +2472,7 @@ function selectLayer(id){
   // selecting something else would otherwise leave it visually orphaned.
   let stageNeedsRebuild = false;
   if (layerCropTool.active && layerCropTool.layerId !== id) {
-    layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
+    layerCropTool = { ...layerCropTool, active: false, layerId: null };
     stageNeedsRebuild = true; // the overlay element itself must be removed from the DOM, not just deactivated in state
   }
   if (stageNeedsRebuild) renderLockupStage(); else refreshLayerSelectionStyling();
@@ -2560,11 +2780,58 @@ function renderPropPanel(){
     weightRow.append(cb, document.createTextNode('Bold'));
     propFields.appendChild(weightRow);
   } else {
+    renderUseAsCoreAssetControl(layer);
     renderLayerCropControls(layer);
     renderLayerBgRemovalControls(layer);
     renderLayerRecolorControls(layer);
     renderLayerColorSwapControls(layer);
   }
+}
+
+/**
+ * Renders the "Use this layer as your core asset" bridge button (image
+ * layers only) — the thing that connects Compose back to Export. Sets
+ * `currentImg` to this layer's current processed image (crop/background-
+ * removal/recolor/swaps already baked in, since it reads `layer.imgEl`) and
+ * jumps to Step 3, exactly mirroring what Step 2's "Apply & continue" does.
+ * This is what makes "extract an icon in Compose, then generate the
+ * favicon/icon/social-square from it" possible without ever visiting Edit.
+ * @param {object} layer an image-type layer
+ */
+function renderUseAsCoreAssetControl(layer){
+  const wrap = document.createElement('div');
+  wrap.style.marginBottom = '4px';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn primary';
+  btn.style.width = '100%';
+  btn.textContent = 'Use this layer as my core asset \u2192 Export';
+  btn.addEventListener('click', () => useLayerAsCoreAsset(layer));
+  wrap.appendChild(btn);
+  propFields.appendChild(wrap);
+}
+
+/**
+ * Sends this layer's current image to Step 3 as `currentImg`, the same
+ * variable Step 2's "Apply & continue" populates — so Export, its zip
+ * bundling, and the palette extractor all work identically regardless of
+ * which path produced the source image.
+ * @param {object} layer an image-type layer
+ */
+function useLayerAsCoreAsset(layer){
+  currentImg = layer.imgEl;
+
+  sourceThumb.innerHTML = '';
+  const t = document.createElement('img');
+  t.src = layer.imgEl.src;
+  sourceThumb.appendChild(t);
+  sourceName.textContent = layer.name || 'Layer from Compose';
+  sourceMeta.textContent = `${layer.imgEl.naturalWidth}\u00d7${layer.imgEl.naturalHeight}px \u00b7 from Compose`;
+
+  goToStep(3);
+  setSocialColor(colorPicker.value);
+  renderAll();
+  renderPalette(extractPalette(currentImg, 6));
 }
 
 /**
@@ -2581,6 +2848,17 @@ function renderLayerCropControls(layer){
   block.appendChild(Object.assign(document.createElement('p'), {
     className: 'field-label', style: 'margin:0 0 8px;', textContent: 'Crop / split into new layer'
   }));
+
+  // One-click auto-trim, separate from the manual shape tool below it:
+  // finds the bounding box of non-transparent pixels and trims the layer
+  // down to just that, removing empty padding without any dragging.
+  const trimBtn = document.createElement('button');
+  trimBtn.type = 'button';
+  trimBtn.className = 'btn';
+  trimBtn.style.cssText = 'width:100%;margin-bottom:10px;';
+  trimBtn.textContent = 'Trim to visible content';
+  trimBtn.addEventListener('click', () => cropLayerToContent(layer));
+  block.appendChild(trimBtn);
 
   // Shape selector — always visible (not just while a crop is in progress)
   // so it can be set before starting, or changed live mid-crop to reshape
@@ -2611,24 +2889,31 @@ function renderLayerCropControls(layer){
     cancelBtn.type = 'button'; cancelBtn.className = 'btn ghost';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.addEventListener('click', () => {
-      layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
+      layerCropTool = { ...layerCropTool, active: false, layerId: null };
       renderLockupStage();
       renderPropPanel();
     });
     row.append(extractBtn, cancelBtn);
     block.appendChild(row);
+    let hintText = 'Drag the dashed box on the canvas over the piece to pull out, then Extract. The original layer is left untouched \u2014 you\u2019ll end up with both.';
+    if (layerCropTool.shape === 'circle') {
+      hintText = 'Drag the dashed circle over the piece to pull out, then Extract. The original layer is left untouched.';
+    } else if (layerCropTool.shape === 'freeform') {
+      hintText = 'Drag any point to reshape. Double-click an edge to add a point, double-click a point to remove it, then Extract.';
+    }
     block.appendChild(Object.assign(document.createElement('p'), {
-      className: 'hint', style: 'margin:8px 0 0;text-align:left;',
-      textContent: layerCropTool.shape === 'circle'
-        ? 'Drag the dashed circle over the piece to pull out, then Extract. The original layer is left untouched.'
-        : 'Drag the dashed box on the canvas over the piece to pull out, then Extract. The original layer is left untouched \u2014 you\u2019ll end up with both.'
+      className: 'hint', style: 'margin:8px 0 0;text-align:left;', textContent: hintText
     }));
   } else {
     const startBtn = document.createElement('button');
     startBtn.type = 'button'; startBtn.className = 'btn'; startBtn.style.width = '100%';
     startBtn.textContent = 'Crop this layer\u2026';
     startBtn.addEventListener('click', () => {
-      layerCropTool = { active: true, layerId: layer.id, rect: { x: 0.25, y: 0, w: 0.5, h: 1 }, shape: layerCropTool.shape };
+      layerCropTool = {
+        ...layerCropTool, active: true, layerId: layer.id,
+        rect: { x: 0.25, y: 0, w: 0.5, h: 1 },
+        polygon: [{ x: 0.25, y: 0 }, { x: 0.75, y: 0 }, { x: 0.75, y: 1 }, { x: 0.25, y: 1 }]
+      };
       enforceCropShapeConstraint(layer); // the default rect above isn't guaranteed square — fix it up immediately if needed
       renderLockupStage();
       renderPropPanel();
@@ -2682,7 +2967,91 @@ function enforceCropShapeConstraint(layer){
  * @param {object} layer the layer being cropped
  * @returns {Promise<void>}
  */
+/**
+ * Trims a layer down to the bounding box of its non-transparent pixels,
+ * removing empty padding around the actual artwork. Unlike extractLayerCrop
+ * (which creates a NEW layer), this replaces the layer's own image and
+ * shrinks its box in place, keeping its visible content anchored at the
+ * same absolute canvas position — the layer just loses its transparent margins.
+ * @param {object} layer an image-type layer
+ * @returns {Promise<void>}
+ */
+async function cropLayerToContent(layer){
+  const nw = layer.imgEl.naturalWidth, nh = layer.imgEl.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = nw; canvas.height = nh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(layer.imgEl, 0, 0);
+  const data = ctx.getImageData(0, 0, nw, nh).data;
+
+  // Scan for the bounding box of pixels above a small alpha threshold
+  // (rather than strictly > 0) so faint anti-aliased edge noise doesn't
+  // prevent trimming from finding a meaningfully tighter box.
+  const ALPHA_THRESHOLD = 10;
+  let minX = nw, minY = nh, maxX = -1, maxY = -1;
+  for (let y = 0; y < nh; y++) {
+    for (let x = 0; x < nw; x++) {
+      const a = data[(y * nw + x) * 4 + 3];
+      if (a > ALPHA_THRESHOLD) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0) { alert('This layer appears to be fully transparent \u2014 nothing to trim to.'); return; }
+  const trimmedW = maxX - minX + 1, trimmedH = maxY - minY + 1;
+  if (minX === 0 && minY === 0 && trimmedW === nw && trimmedH === nh) {
+    alert('This layer already has no empty padding to trim.');
+    return;
+  }
+
+  const trimmedCanvas = document.createElement('canvas');
+  trimmedCanvas.width = trimmedW;
+  trimmedCanvas.height = trimmedH;
+  trimmedCanvas.getContext('2d').drawImage(layer.imgEl, -minX, -minY);
+  const newImg = await canvasToImage(trimmedCanvas);
+
+  // Shift/shrink the layer's canvas-space box by the same fractions that
+  // were trimmed off, so the visible artwork stays exactly where it was —
+  // only the empty margin around it disappears.
+  const fracX = minX / nw, fracY = minY / nh, fracW = trimmedW / nw, fracH = trimmedH / nh;
+  layer.x = layer.x + fracX * layer.w;
+  layer.y = layer.y + fracY * layer.h;
+  layer.w = fracW * layer.w;
+  layer.h = fracH * layer.h;
+  layer.imgEl = newImg;
+  // Re-basing origImgEl here is a deliberate simplification, same as
+  // extractLayerCrop: trimming is treated as a final/destructive step on
+  // this layer, so background removal / recolor settings will reprocess
+  // from the trimmed image if touched again, rather than the pre-trim
+  // original. In practice this is harmless (there's no untrimmed content
+  // left to lose), it just means "undo the trim via the bg-removal panel"
+  // isn't possible — only Ctrl+Z can undo the trim itself.
+  layer.origImgEl = newImg;
+
+  renderLockupStage();
+  renderPropPanel();
+  commitHistory();
+}
+
+/**
+ * Cuts the region currently selected by the crop-rect tool out of `layer`'s
+ * CURRENT rendered image (i.e. after any background removal/recolor already
+ * applied to it — "what you see is what you crop") and adds it as a brand
+ * new, independent image layer positioned exactly where the crop box was on
+ * the canvas. The source layer is left completely unchanged.
+ * @param {object} layer the layer being cropped
+ * @returns {Promise<void>}
+ */
 async function extractLayerCrop(layer){
+  if (layerCropTool.shape === 'freeform') {
+    await extractPolygonCrop(layer);
+    return;
+  }
+
   const rect = layerCropTool.rect;
   const nw = layer.imgEl.naturalWidth, nh = layer.imgEl.naturalHeight;
   const sx = rect.x * nw, sy = rect.y * nh, sw = rect.w * nw, sh = rect.h * nh;
@@ -2729,7 +3098,63 @@ async function extractLayerCrop(layer){
     colorSwaps: []
   };
   layers.push(newLayer);
-  layerCropTool = { active: false, layerId: null, rect: layerCropTool.rect, shape: layerCropTool.shape };
+  layerCropTool = { ...layerCropTool, active: false, layerId: null };
+  renderLockupStage();
+  selectLayer(newLayer.id);
+  commitHistory();
+}
+
+/**
+ * Freeform-polygon counterpart to the rect-based extraction above: clips to
+ * the arbitrary polygon path (in the source image's natural pixel
+ * coordinates) instead of a rectangle or circle, cropped to the polygon's
+ * own bounding box so the result isn't padded with empty transparent margin.
+ * @param {object} layer the layer being cropped
+ * @returns {Promise<void>}
+ */
+async function extractPolygonCrop(layer){
+  const nw = layer.imgEl.naturalWidth, nh = layer.imgEl.naturalHeight;
+  const ptsNatural = layerCropTool.polygon.map(p => ({ x: p.x * nw, y: p.y * nh }));
+  const minX = Math.min(...ptsNatural.map(p => p.x)), maxX = Math.max(...ptsNatural.map(p => p.x));
+  const minY = Math.min(...ptsNatural.map(p => p.y)), maxY = Math.max(...ptsNatural.map(p => p.y));
+  const bboxW = Math.max(1, maxX - minX), bboxH = Math.max(1, maxY - minY);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bboxW);
+  canvas.height = Math.round(bboxH);
+  const ctx = canvas.getContext('2d');
+
+  ctx.save();
+  ctx.beginPath();
+  // Points shifted into the new canvas's own local coordinate space (the
+  // polygon's bounding box becomes the canvas, so subtract its top-left).
+  ptsNatural.forEach((p, i) => {
+    const lx = p.x - minX, ly = p.y - minY;
+    if (i === 0) ctx.moveTo(lx, ly); else ctx.lineTo(lx, ly);
+  });
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(layer.imgEl, -minX, -minY);
+  ctx.restore();
+
+  const newImg = await canvasToImage(canvas);
+
+  const xFrac = minX / nw, yFrac = minY / nh, wFrac = bboxW / nw, hFrac = bboxH / nh;
+  const newLayer = {
+    id: layerIdCounter++, type: 'image',
+    x: layer.x + xFrac * layer.w,
+    y: layer.y + yFrac * layer.h,
+    w: wFrac * layer.w,
+    h: hFrac * layer.h,
+    imgEl: newImg,
+    origImgEl: newImg,
+    name: (layer.name || 'Image') + ' (polygon crop)',
+    bgRemoval: { enabled: false, target: null, tolerance: 30 },
+    recolor: { enabled: false, color: '#ffffff' },
+    colorSwaps: []
+  };
+  layers.push(newLayer);
+  layerCropTool = { ...layerCropTool, active: false, layerId: null };
   renderLockupStage();
   selectLayer(newLayer.id);
   commitHistory();
