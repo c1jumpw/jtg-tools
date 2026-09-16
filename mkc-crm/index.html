@@ -600,6 +600,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <option value="__unknown__">❓ Unknown / Not in CRM</option>
           </select>
         </div>
+        <button class="btn btn-primary btn-sm" onclick="startSmartTriage()">✨ Start Smart Triage</button>
         <button class="btn btn-ghost btn-sm" onclick="loadQcInbox()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Refresh
         </button>
@@ -1078,6 +1079,18 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <button class="btn btn-secondary" onclick="closeModal('bulk-assign-modal')">Cancel</button>
       <button class="btn btn-primary" id="bulk-assign-submit-btn" onclick="submitBulkAssign()">Assign</button>
     </div>
+  </div>
+</div>
+
+<!-- SMART TRIAGE: classifies pending Activity Inbox items into three
+     tiers -- likely not CRM-relevant (checklist, bulk-archive),
+     confident CRM matches (grouped, bulk-confirm with visible
+     summaries), and genuinely unclear (routed to the existing one-at-a-
+     time thread review, no new UI needed for that tier). -->
+<div id="triage-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:760px;max-height:88vh;display:flex;flex-direction:column">
+    <div class="modal-header"><h3>Smart Triage</h3><button class="pf-close" onclick="closeModal('triage-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="triage-body" style="overflow-y:auto;flex:1"></div>
   </div>
 </div>
 
@@ -1879,6 +1892,7 @@ async function loadAllEntries(){
   // see resolveContactName/buildContactLookupMap -- since entries below
   // are about to change and the old map would otherwise silently go stale.
   S._contactLookup=null;
+  S._contactEntryLookup=null;
   const lists={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts};
   const typeKeys=Object.keys(lists);
   for(const type of typeKeys){
@@ -7092,6 +7106,190 @@ async function qcMarkNotAnswered(){
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
+const TRIAGE_CLASSIFY_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/triage-classify';
+
+// Same raw, timestamped play-by-play format the Worker builds
+// server-side for its own thread bundling (buildRawThreadText) --
+// mirrored here client-side since Smart Triage classifies before any
+// assign action happens, not after.
+function buildRawThreadTextClient(msgs){
+  const kindLabel={text:'Text',call:'Call',email:'Email'};
+  return msgs.map(m=>{
+    const time=new Date(m.occurred_at).toLocaleString('en-US');
+    const kind=kindLabel[m.event_type]||'Activity';
+    const dirArrow=m.direction==='outgoing'?'->':'<-';
+    return `[${time}] ${dirArrow} ${kind}: ${(qcParseMessageBody(m.body).main||'').trim()}`;
+  }).join('\n\n');
+}
+
+// Orchestrates the whole Smart Triage pass: groups pending items into
+// threads (same thread_key the Worker itself uses for auto-bundling),
+// classifies each thread once via Gemini, then buckets results into
+// three tiers by confidence -- see renderTriageResults for the actual
+// bucketing rule. Contact matching is done here client-side via the
+// existing deterministic phone/email lookup, passed to the classifier
+// as known fact rather than left for the model to guess.
+async function startSmartTriage(){
+  const pending=(S.qc.items||[]).filter(qcNeedsReview);
+  if(!pending.length)return showToast('Nothing needs review right now.','info');
+
+  const groups={};
+  pending.forEach(it=>{
+    const key=it.thread_key||it.id;
+    if(!groups[key])groups[key]=[];
+    groups[key].push(it);
+  });
+  const threadKeys=Object.keys(groups);
+
+  const modal=document.getElementById('triage-modal');
+  const body=document.getElementById('triage-body');
+  modal.style.display='flex';
+  body.innerHTML=`<div style="padding:40px;text-align:center"><div class="spinner"></div><div style="margin-top:12px;font-size:13px;color:var(--text-muted)" id="triage-progress">Classifying 0 of ${threadKeys.length}…</div></div>`;
+
+  const results=[];
+  let done=0;
+  for(const key of threadKeys){
+    const items=groups[key].sort((a,b)=>new Date(a.occurred_at)-new Date(b.occurred_at));
+    const latest=items[items.length-1];
+    const progressEl=document.getElementById('triage-progress');
+    if(progressEl)progressEl.textContent=`Classifying ${done+1} of ${threadKeys.length}…`;
+    const matchedEntry=resolveContactEntry(latest.contact_identifier);
+    const contactName=latest.contact_name||resolveContactName(latest.contact_identifier)||'';
+    try{
+      const rawThread=buildRawThreadTextClient(items);
+      const cls=await fetch(TRIAGE_CLASSIFY_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({rawThread,contactName,hasCrmMatch:!!matchedEntry})
+      }).then(r=>r.json());
+      results.push({key,items,latest,matchedEntry,contactName,
+        summary:cls.summary||'(no summary)',
+        isCrmRelevant:cls.isCrmRelevant,
+        confidence:cls.confidence,
+        reason:cls.reason||''
+      });
+    }catch(e){
+      // Classification failure -- falls through to "needs judgment"
+      // rather than silently dropping the thread or guessing wrong.
+      results.push({key,items,latest,matchedEntry,contactName,
+        summary:'(classification failed -- review manually)',
+        isCrmRelevant:null,confidence:'low',
+        reason:'Classification request failed: '+e.message
+      });
+    }
+    done++;
+  }
+  renderTriageResults(results);
+}
+
+// Bucketing rule, deliberately conservative in both directions:
+// Tier 1 (archive) only for high-confidence NOT-relevant -- anything
+// less certain falls through to Tier 3 rather than risk losing
+// visibility into a real lead. Tier 2 (auto-assign) requires BOTH high
+// confidence AND an actual deterministic contact match -- confidence
+// alone isn't enough without somewhere real to log it to.
+function renderTriageResults(results){
+  const tier1=results.filter(r=>r.isCrmRelevant===false&&r.confidence==='high');
+  const tier2=results.filter(r=>r.isCrmRelevant===true&&r.confidence==='high'&&r.matchedEntry);
+  const tier3=results.filter(r=>!tier1.includes(r)&&!tier2.includes(r));
+  S._triageResults=results;
+
+  const body=document.getElementById('triage-body');
+  if(!results.length){
+    body.innerHTML='<div class="empty-state" style="padding:30px"><p>Nothing to triage</p></div>';
+    return;
+  }
+  body.innerHTML=`
+    ${tier1.length?renderTriageTier1(tier1):''}
+    ${tier2.length?renderTriageTier2(tier2):''}
+    ${tier3.length?renderTriageTier3(tier3):''}
+  `;
+}
+
+function renderTriageTier1(items){
+  return `<div class="pf-section">
+    <h4 style="margin:0 0 4px">Likely Not CRM-Relevant (${items.length})</h4>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">Scam calls, personal conversations, support/appointment calls, etc. Review and uncheck anything that looks wrong before archiving.</p>
+    ${items.map(r=>`<label style="display:flex;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer">
+      <input type="checkbox" checked class="triage-t1-check" data-key="${esc(r.key)}" style="margin-top:2px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600">${esc(r.contactName||r.latest.contact_identifier||'Unknown')}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${esc(r.reason)}</div>
+      </div>
+    </label>`).join('')}
+    <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="confirmTriageTier1()">Archive Checked</button>
+  </div>`;
+}
+
+function renderTriageTier2(items){
+  return `<div class="pf-section">
+    <h4 style="margin:0 0 4px">Confident Matches (${items.length})</h4>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">Matched to a known CRM entry. Review the summaries below, uncheck anything that needs a closer look, then confirm -- this posts a real log comment to each entry.</p>
+    ${items.map(r=>`<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+      <label style="display:flex;gap:10px;cursor:pointer">
+        <input type="checkbox" checked class="triage-t2-check" data-key="${esc(r.key)}" style="margin-top:2px;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(r.matchedEntry.name)} <span style="font-size:11px;color:var(--text-muted);font-weight:400">(${esc(r.matchedEntry.type)})</span></div>
+          <div style="font-size:12.5px;margin-top:3px">${esc(r.summary)}</div>
+        </div>
+      </label>
+    </div>`).join('')}
+    <button class="btn btn-primary btn-sm" onclick="confirmTriageTier2()">Confirm &amp; Log Checked</button>
+  </div>`;
+}
+
+function renderTriageTier3(items){
+  return `<div class="pf-section">
+    <h4 style="margin:0 0 4px">Needs Your Judgment (${items.length})</h4>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">No confident match or unclear content -- review each individually, same as opening it from the feed directly.</p>
+    ${items.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:600">${esc(r.contactName||r.latest.contact_identifier||'Unknown')}</div>
+        <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="qcOpenThread('${r.latest.id}')">Review</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function confirmTriageTier1(){
+  const checked=[...document.querySelectorAll('.triage-t1-check:checked')].map(el=>el.dataset.key);
+  if(!checked.length)return showToast('Nothing checked.','info');
+  let done=0,failed=0;
+  for(const key of checked){
+    const result=(S._triageResults||[]).find(r=>r.key===key);
+    if(!result)continue;
+    try{
+      await authFetch(`/api/staging/${result.latest.id}/archive`,'POST',{});
+      done++;
+    }catch(e){failed++;}
+  }
+  showToast(`Archived ${done}${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
+  await loadQcInbox();
+  closeModal('triage-modal');
+}
+
+async function confirmTriageTier2(){
+  const checked=[...document.querySelectorAll('.triage-t2-check:checked')].map(el=>el.dataset.key);
+  if(!checked.length)return showToast('Nothing checked.','info');
+  let done=0,failed=0;
+  for(const key of checked){
+    const result=(S._triageResults||[]).find(r=>r.key===key);
+    if(!result||!result.matchedEntry)continue;
+    try{
+      await authFetch(`/api/staging/${result.latest.id}/assign`,'POST',{
+        taskId:result.matchedEntry.id,
+        taskType:result.matchedEntry.type,
+        note:'Auto-triaged and confirmed via Smart Triage'
+      });
+      done++;
+    }catch(e){failed++;}
+  }
+  showToast(`Logged ${done}${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
+  await loadQcInbox();
+  closeModal('triage-modal');
+}
+
 async function qcArchive(id){
   if(!confirm('Archive this item? It will be removed from the inbox.'))return;
   try{
@@ -7329,6 +7527,42 @@ function buildContactLookupMap(){
     });
   });
   return map;
+}
+
+// Parallel to buildContactLookupMap, but stores the full entry
+// reference (id/type/name) instead of just a display name -- needed for
+// Smart Triage's auto-assign, which has to actually call the assign
+// endpoint with a real taskId/taskType, not just show a name. Kept
+// entirely separate from the name-only map above rather than changing
+// its return shape, since resolveContactName has existing callers that
+// expect a plain string back.
+function buildContactEntryLookupMap(){
+  const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
+  const map={};
+  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+    (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
+      const cf=getCF(t);
+      const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
+      const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
+      const entry={id:t.id,type:typeLabel[key],name:t.name};
+      if(phoneDigits.length>=10)map['phone:'+phoneDigits.slice(-10)]=entry;
+      if(email)map['email:'+email]=entry;
+    });
+  });
+  return map;
+}
+
+// Resolves a QC Inbox item's contact_identifier to the full matched
+// entry (id/type/name), for Smart Triage's auto-assign. Lazily built/
+// cached the same way as S._contactLookup (see resolveContactName).
+function resolveContactEntry(identifier){
+  if(!identifier)return null;
+  if(!S._contactEntryLookup)S._contactEntryLookup=buildContactEntryLookupMap();
+  const trimmed=identifier.trim();
+  if(trimmed.includes('@'))return S._contactEntryLookup['email:'+trimmed.toLowerCase()]||null;
+  const digits=trimmed.replace(/\D/g,'');
+  if(digits.length<10)return null;
+  return S._contactEntryLookup['phone:'+digits.slice(-10)]||null;
 }
 
 /**
