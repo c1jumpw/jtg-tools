@@ -6597,7 +6597,7 @@ function searchAll(q){
     S.entries[key].filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
       const idMatch=(t.id||'').toLowerCase().includes(q);
-      const phoneDigits=(cf.phone||'').replace(/\D/g,'');
+      const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
       const phoneMatch=phoneSearch&&phoneDigits.includes(qDigits);
       const textBlob=[t.name,cf['primary contact email'],cf.email].filter(Boolean).join(' ').toLowerCase();
       const textMatch=qWords.length>0&&qWords.every(w=>textBlob.includes(w));
@@ -7322,7 +7322,7 @@ function buildContactLookupMap(){
   ['leads','pipeline','contacts','accounts'].forEach(key=>{
     (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      const phoneDigits=(cf.phone||'').replace(/\D/g,'');
+      const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
       const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
       if(phoneDigits.length>=10)map['phone:'+phoneDigits.slice(-10)]=t.name;
       if(email)map['email:'+email]=t.name;
