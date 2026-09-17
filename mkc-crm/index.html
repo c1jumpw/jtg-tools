@@ -866,7 +866,8 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Markdown
       </button>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary" id="qct-create-btn" style="display:none" onclick="qcCreateContactFromThread()">+ New Lead…</button>
+        <button class="btn btn-secondary" id="qct-create-lead-btn" style="display:none" onclick="qcCreateContactFromThread('Lead')">+ New Lead…</button>
+        <button class="btn btn-secondary" id="qct-create-contact-btn" style="display:none" onclick="qcCreateContactFromThread('Contact')">+ New Contact…</button>
         <button class="btn btn-secondary" id="qct-callfix-btn" style="display:none" onclick="qcMarkNotAnswered()" title="Correct this if it was actually a voicemail or went unanswered">Mark as No Answer</button>
         <button class="btn btn-ghost" id="qct-archive-btn" onclick="qcArchive(S.qc.current);closeModal('qc-thread-modal')">Archive</button>
         <button class="btn btn-secondary" onclick="closeModal('qc-thread-modal')">Close</button>
@@ -7411,7 +7412,8 @@ async function qcOpenThread(id){
     // contact -- i.e. exactly the case the qc-contact-filter's "❓
     // Unknown / Not in CRM" option surfaces (see resolveContactName).
     const knownName=item.contact_name||resolveContactName(item.contact_identifier);
-    document.getElementById('qct-create-btn').style.display=knownName?'none':'inline-flex';
+    document.getElementById('qct-create-lead-btn').style.display=knownName?'none':'inline-flex';
+    document.getElementById('qct-create-contact-btn').style.display=knownName?'none':'inline-flex';
     document.getElementById('qct-archive-btn').style.display=item.status==='archived'?'none':'inline-flex';
     const callfixBtn=document.getElementById('qct-callfix-btn');
     if(callfixBtn){
@@ -7432,7 +7434,7 @@ async function qcOpenThread(id){
 /**
  * Opens the New Entry form pre-filled with an unknown QC Inbox contact's
  * phone or email, for the common "this is someone new, not in the CRM
- * yet" case -- see qcOpenThread's #qct-create-btn visibility toggle,
+ * yet" case -- see qcOpenThread's #qct-create-lead-btn/#qct-create-contact-btn visibility toggle,
  * which only shows this option when resolveContactName found no match.
  * Defaults to creating a Lead (the most common case for an unknown
  * inbound contact); the person can still switch the Entry Type
@@ -7442,12 +7444,12 @@ async function qcOpenThread(id){
  * be unreachable in practice -- the button that calls this only shows
  * once a thread has already loaded successfully).
  */
-function qcCreateContactFromThread(){
+function qcCreateContactFromThread(entryType){
   const msg=(S.qc.currentThread||[])[0];
   if(!msg)return;
   const identifier=(msg.contact_identifier||'').trim();
   closeModal('qc-thread-modal');
-  openNewEntryModal('Lead');
+  openNewEntryModal(entryType||'Lead');
   // openNewEntryModal + updateNFFields render synchronously, so these
   // fields already exist in the DOM by the time execution reaches here.
   const isEmail=identifier.includes('@');
