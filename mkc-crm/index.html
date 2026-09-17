@@ -6613,7 +6613,8 @@ function searchAll(q){
       const cf=getCF(t);
       const idMatch=(t.id||'').toLowerCase().includes(q);
       const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
-      const phoneMatch=phoneSearch&&phoneDigits.includes(qDigits);
+      const phone2Digits=(cf['phone 2']||'').replace(/\D/g,'');
+      const phoneMatch=phoneSearch&&(phoneDigits.includes(qDigits)||phone2Digits.includes(qDigits));
       const textBlob=[t.name,cf['primary contact email'],cf.email].filter(Boolean).join(' ').toLowerCase();
       const textMatch=qWords.length>0&&qWords.every(w=>textBlob.includes(w));
       if(idMatch||phoneMatch||textMatch)
@@ -7534,12 +7535,23 @@ function qcMatchEntries(q){
  */
 function buildContactLookupMap(){
   const map={};
-  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+  // Order matters: last write wins on a phone/email collision, so this
+  // is also the priority order (lowest to highest). Contacts explicitly
+  // confirmed to win over everything else -- an established contact is
+  // the most current, actionable person-level record if the same
+  // number happens to also appear on an older Lead, a Deal, or an Account.
+  ['accounts','pipeline','leads','contacts'].forEach(key=>{
     (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
+      const primaryPhone=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
+      const phone2=(cf['phone 2']||'').replace(/\D/g,'');
       const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
-      if(phoneDigits.length>=10)map['phone:'+phoneDigits.slice(-10)]=t.name;
+      // Phone 2 is a genuinely separate number for the same person, not
+      // a fallback for a missing primary -- both need their own map key
+      // pointing at this same entry, not an OR-chain that only checks
+      // one or the other.
+      if(primaryPhone.length>=10)map['phone:'+primaryPhone.slice(-10)]=t.name;
+      if(phone2.length>=10)map['phone:'+phone2.slice(-10)]=t.name;
       if(email)map['email:'+email]=t.name;
     });
   });
@@ -7556,13 +7568,15 @@ function buildContactLookupMap(){
 function buildContactEntryLookupMap(){
   const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
   const map={};
-  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+  ['accounts','pipeline','leads','contacts'].forEach(key=>{
     (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      const phoneDigits=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
+      const primaryPhone=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
+      const phone2=(cf['phone 2']||'').replace(/\D/g,'');
       const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
       const entry={id:t.id,type:typeLabel[key],name:t.name};
-      if(phoneDigits.length>=10)map['phone:'+phoneDigits.slice(-10)]=entry;
+      if(primaryPhone.length>=10)map['phone:'+primaryPhone.slice(-10)]=entry;
+      if(phone2.length>=10)map['phone:'+phone2.slice(-10)]=entry;
       if(email)map['email:'+email]=entry;
     });
   });
