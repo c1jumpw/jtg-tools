@@ -63,3 +63,9 @@ Initial release.
 - New backend: lib/filesPolicy.js (category rules) and /api/files/{upload-url,list,download-url,delete}, all permission-checked server-side.
 - New Supabase: `files` metadata table + the storage bucket, RLS enabled with no direct-access policies (same backend-only-access pattern already used for profiles/account_access).
 - jsdom smoke test now 67/67 passing (added coverage for category visibility by role, upload restriction, the upload/download/delete flows).
+
+## v1.6.0 (2026-09-19)
+- Dashboard now flags "stuck" tasks: no Next Action Date set and no ClickUp activity in 7+ days (date_updated as a proxy), excluding terminal statuses like Published. New stat card + list section, amber-styled to read distinctly from the existing overdue/red styling.
+- Soft, dismissable warning when moving a task into "For Review" with no Copy/Drafts or Media Files (raw) uploaded yet -- covers both drag-and-drop and the modal's Save button. Never blocks the move outright, and only fires on an actual transition into the status (not on re-saving a task already there).
+- No backend changes -- both features are frontend-only, reusing the existing /api/files/list endpoint.
+- jsdom smoke test now 78/78 passing.
