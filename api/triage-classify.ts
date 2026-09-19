@@ -44,8 +44,12 @@ const RESPONSE_SCHEMA = {
       type: 'string',
       description: 'One short sentence explaining the isCrmRelevant judgment, so a human reviewer can quickly sanity-check it (e.g. "Generic scripted sales pitch with no real dialogue" or "Contact confirmed an appointment time, unrelated to any business deal").',
     },
+    suggestedName: {
+      type: 'string',
+      description: 'The likely name of the person on the other end of this thread, if it can be reasonably inferred from the actual content (a signature, a self-introduction like "this is John from...", or how they sign off a text). Empty string if no name is mentioned or inferable -- do not guess from a business name, a generic greeting, or anything not clearly a person\u2019s name.',
+    },
   },
-  required: ['summary', 'isCrmRelevant', 'confidence', 'reason'],
+  required: ['summary', 'isCrmRelevant', 'confidence', 'reason', 'suggestedName'],
 };
 
 function jsonResponse(body: unknown, status: number) {
@@ -98,7 +102,9 @@ RAW THREAD (oldest first, -> outgoing, <- incoming):
 ${rawThread}
 """
 
-Be conservative: if the content is ambiguous or too short to really tell, say so with confidence "low" rather than forcing a guess. A known CRM contact having an unrelated personal conversation is still NOT CRM-relevant for this specific thread, even though they're a known contact overall.`;
+Be conservative: if the content is ambiguous or too short to really tell, say so with confidence "low" rather than forcing a guess. A known CRM contact having an unrelated personal conversation is still NOT CRM-relevant for this specific thread, even though they're a known contact overall.
+
+${hasCrmMatch ? 'This contact already has a CRM record, so suggestedName can be left empty.' : 'Since no CRM record exists yet, also look for the actual person\u2019s name if it appears anywhere in the content -- a text signature, someone introducing themselves on a call, or how they sign off. Leave it empty if no real name is mentioned.'}`;
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
@@ -126,7 +132,7 @@ Be conservative: if the content is ambiguous or too short to really tell, say so
       return jsonResponse({ error: 'Gemini returned no content.', detail: geminiJson }, 502);
     }
 
-    let parsed: { summary?: string; isCrmRelevant?: boolean; confidence?: string; reason?: string };
+    let parsed: { summary?: string; isCrmRelevant?: boolean; confidence?: string; reason?: string; suggestedName?: string };
     try {
       parsed = JSON.parse(rawText);
     } catch {
