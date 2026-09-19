@@ -55,3 +55,11 @@ Initial release.
 - Renamed "Comments" to "Log" throughout, admin/rep and client alike (heading, empty state, placeholder text).
 - Backend: new getAccountNames() in lib/clickupService.js, new CLICKUP_ACCOUNTS_LIST_ID env var, /api/client/tasks now returns an accountNames map alongside tasks.
 - jsdom smoke test now 52/52 passing (added coverage for account-name resolution on both roles, medium color-coding, and the Log rename).
+
+## v1.5.0 (2026-09-19)
+- File/media storage per task, backed by Supabase Storage (private bucket "content-files"). Six categories: Copy/Drafts, Notes, Media Extractions, Media Files (raw) -- internal, admin/rep only -- and Published/Final, Client Assets -- visible to clients too.
+- Clients can upload only into Client Assets (their own reference material/logos); admin/rep can upload anywhere and delete; clients can't delete at all in v1.
+- Uploads never pass through the Vercel backend: the browser gets a short-lived signed URL/token from /api/files/upload-url, then pushes the file straight to Supabase Storage, avoiding serverless request-size limits for large media.
+- New backend: lib/filesPolicy.js (category rules) and /api/files/{upload-url,list,download-url,delete}, all permission-checked server-side.
+- New Supabase: `files` metadata table + the storage bucket, RLS enabled with no direct-access policies (same backend-only-access pattern already used for profiles/account_access).
+- jsdom smoke test now 67/67 passing (added coverage for category visibility by role, upload restriction, the upload/download/delete flows).
