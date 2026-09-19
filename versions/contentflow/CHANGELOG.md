@@ -47,3 +47,11 @@ Initial release.
 - Fix: added /api/clickup-proxy on the backend. Admin/rep ClickUp calls now route through it (server-to-server, immune to browser CORS) using the admin/rep's own ClickUp token, and the response is relayed back byte-for-byte. cuRequest()'s function signature and error behavior are unchanged, so no other frontend code needed to change.
 - Also fixed a related backend bug from the same root cause class: /api/oauth-exchange's CORS setup only allowed a Content-Type header, but the frontend always attaches the user's Supabase login as an Authorization header too -- causing "Failed to fetch" during the ClickUp connect step itself. Now uses the shared applyCors() helper (allows Authorization) instead of a hand-rolled, incomplete copy.
 - Added a jsdom test that actually exercises loadAll() -> cuRequest() -> the clickup-proxy backend call end-to-end, so this class of regression can't silently ship again. 40/40 passing.
+
+## v1.4.0 (2026-09-19)
+- Account names instead of raw MKC IDs everywhere: admin/rep resolve them via a new accounts directory (fetched from the Companies & Accounts list); clients get them from a new accountNames map the backend resolves server-side. Filter dropdown, board badges, list view, and dashboard breakdown all show names now, sorted alphabetically by name.
+- Removed "Related Account ID" as a plain field row in the task modal; replaced with an editable name badge (styled <select>) at the top of the entry -- reassigning a task's account is now picking a name from a list, not hand-typing an id.
+- Medium(s) are color-coded everywhere now (list view, edit-modal toggles), using each medium's own ClickUp color -- board cards already did this.
+- Renamed "Comments" to "Log" throughout, admin/rep and client alike (heading, empty state, placeholder text).
+- Backend: new getAccountNames() in lib/clickupService.js, new CLICKUP_ACCOUNTS_LIST_ID env var, /api/client/tasks now returns an accountNames map alongside tasks.
+- jsdom smoke test now 52/52 passing (added coverage for account-name resolution on both roles, medium color-coding, and the Log rename).
