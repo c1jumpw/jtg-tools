@@ -106,3 +106,14 @@ New layer added IN FRONT OF the production board -- nothing about the board/dash
 - Inline copy clarifying Inbox vs. the workflow's own Idea status.
 - New backend: /api/accounts (admin-only).
 - jsdom smoke test now 146/146 passing.
+
+## v1.11.0 (2026-09-19)
+Richer capture, based on a broader content-ops research pass.
+
+- Ideas now carry: source type (Idea/Link/Note, plus existing Quote), a needs_review flag (links start flagged by default), an is_private flag (default off = whole account team; on = only the creator, admins excepted), and a freeform category label independent of pillar.
+- Idea Inbox gained real filter tabs (Active / Needs Review / Archived / Promoted) and a Newest/Oldest sort toggle. Active and Needs Review show the drag-and-drop pillar matrix; Archived and Promoted are flat lists.
+- Archiving and promoting now update an idea's status in place instead of removing it from view, so it's still findable under its own filter tab.
+- Privacy enforced server-side on every read and write, not just in the UI.
+- Schema: ideas gained needs_review, is_private, category columns; source_type's allowed values extended.
+- Deliberately NOT built this round: attaching media files directly to an idea. Plan: reuse the exact file-upload infrastructure already built for tasks (an idea's id can stand in for a task id with zero backend changes) -- UI didn't make it into this pass.
+- jsdom smoke test now 159/159 passing.
