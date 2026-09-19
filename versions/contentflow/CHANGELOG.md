@@ -117,3 +117,12 @@ Richer capture, based on a broader content-ops research pass.
 - Schema: ideas gained needs_review, is_private, category columns; source_type's allowed values extended.
 - Deliberately NOT built this round: attaching media files directly to an idea. Plan: reuse the exact file-upload infrastructure already built for tasks (an idea's id can stand in for a task id with zero backend changes) -- UI didn't make it into this pass.
 - jsdom smoke test now 159/159 passing.
+
+## v1.12.0 (2026-09-19)
+Media attachments for ideas -- the "old unsorted media" / gallery-pool feature deferred last round.
+
+- Reuses the exact file-upload infrastructure already built for tasks: an idea's own id stands in for a task id, under a new "idea_media" category. Zero new storage code needed.
+- New: canAccessIdeaMedia() in lib/supabaseAdmin.js re-checks an idea's own is_private rule inside all four file endpoints (upload-url, list, download-url, delete), since those endpoints otherwise have no way to know a taskId might actually be a private idea.
+- delete.js now also lets a client remove an idea_media file they personally uploaded (still can't delete anything else), consistent with clients already fully managing their own captured ideas.
+- Frontend: clicking any idea card (matrix or flat list) opens a detail modal with its body/link plus an Attachments section, using the same upload/download/delete controls as task files.
+- jsdom smoke test now 166/166 passing.
