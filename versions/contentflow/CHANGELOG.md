@@ -84,3 +84,14 @@ Initial release.
 - Account reassignment is now admin-only: reps see a read-only account badge even where a writable text field exists. A rep creating a brand-new task with exactly one assigned account gets it prefilled (still read-only).
 - New: clients can create their own entries directly via a "+ New" button and a name-only form. Backed by a new POST /api/client/tasks endpoint that locks the new entry to the client's own assigned account server-side, defaults to the list's first workflow status (e.g. "Idea") rather than a hardcoded name, and logs who created it.
 - jsdom smoke test now 109/109 passing.
+
+## v1.9.0 (2026-09-19)
+New layer added IN FRONT OF the production board -- nothing about the board/dashboard/roles changed, this sits before it.
+
+- Idea Infrastructure system for capturing raw material before it's ready to be a real ClickUp task, based on product brainstorming around a four-layer model (Strategy/Pillars, Capture/Inbox, Rhythm/Habits, Production).
+- Three new Supabase tables: pillars, ideas, rhythm_configs -- account-scoped exactly like account_access/files, same backend-gated access pattern (RLS enabled, no direct policies, everything through the service role key).
+- Three new backend endpoints: /api/pillars, /api/ideas, /api/rhythm. Identical logic for admin/rep/client since none of this touches ClickUp until an idea is promoted -- a first for this codebase, where every other feature needed role-forked logic.
+- New "Ideas" tab for every role: a one-time rhythm wizard (how ideas naturally originate, realistic weekly capacity, routine shape) that doubles as an editable settings screen; a plain-language pillar manager (no rigid one-to-one binding); an idea inbox (quick text capture, tagged to a pillar, grouped by pillar).
+- "Promote" turns an idea into a real production task: admin/rep create it themselves via their own ClickUp connection then record the result (markConverted); clients have no ClickUp connection, so the backend creates it for them (convert action), reusing the same createClientTask() their "+ New" button already used.
+- Deliberately no AI extraction yet -- structure first, per direction, until there's a way to charge for token use.
+- jsdom smoke test now 128/128 passing (19 new tests covering account resolution, the rhythm wizard, pillar CRUD, idea capture/grouping/archive, and both promote-to-production paths).
