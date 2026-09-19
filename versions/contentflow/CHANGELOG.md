@@ -126,3 +126,18 @@ Media attachments for ideas -- the "old unsorted media" / gallery-pool feature d
 - delete.js now also lets a client remove an idea_media file they personally uploaded (still can't delete anything else), consistent with clients already fully managing their own captured ideas.
 - Frontend: clicking any idea card (matrix or flat list) opens a detail modal with its body/link plus an Attachments section, using the same upload/download/delete controls as task files.
 - jsdom smoke test now 166/166 passing.
+
+## v1.13.0 (2026-09-19)
+A full front-to-back audit turned up real bugs and gaps; all fixed in one pass.
+
+- Promoting an idea now carries its body/link/category onto the new task's description (both paths), and attached idea_media files get re-parented onto the new task under "Media Files (raw)" instead of staying orphaned.
+- Ideas can now be fully edited after capture (title, body, link, category, pillar) from the detail modal -- previously capture-only. The pillar picker there also serves as the non-drag fallback for reassigning pillar, since native drag-and-drop doesn't work on touch devices and ideas had no alternative (tasks already did).
+- "Inactive" accounts now actually restrict rep/client access everywhere (files, ideas, pillars, rhythm, client tasks/comments, and a rep's own direct board/task view) -- previously only hid the account from the admin's own selector. getAllowedAccountIds() is the single enforcement point; new Supabase RLS policy lets a rep's own browser check inactive status too.
+- Admin Accounts screen no longer goes stale after inviting someone from it or reopening the panel.
+- Settings-gear dropdown closes on any click elsewhere, not just the gear or Disconnect.
+- A rep with multiple accounts gets prompted to pick one for the Ideas tab instead of a silent default.
+- render() now restores focus/cursor position across re-renders -- enables smooth live-filtering inputs for the first time.
+- New: live search box on the List view (admin/rep and client).
+- New: "Idea pipeline" summary on the Dashboard when a specific account is in view.
+- disconnect() clears idea/pillar/accounts-directory state too, not just core ClickUp data.
+- jsdom smoke test now 184/184 passing.
