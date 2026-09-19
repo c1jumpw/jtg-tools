@@ -367,6 +367,9 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="nav-item" data-view="export">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export
     </div>
+    <div class="nav-item" data-view="resources">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Resources
+    </div>
   </div>
   <div class="sidebar-section" id="admin-sidebar-section">
     <div class="sidebar-section-label">Admin</div>
@@ -446,6 +449,12 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     </div>
 
     <!-- MY WORK (Personal Dashboard, Section 11-H) -->
+    <div class="view" id="view-resources">
+      <div style="max-width:760px">
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">Brief how-tos for features across the app. Only showing what's relevant to your access level.</p>
+        <div id="resources-list"></div>
+      </div>
+    </div>
     <div class="view" id="view-myday">
       <div class="dash-grid">
         <div>
@@ -1092,6 +1101,28 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   <div class="modal" style="max-width:760px;max-height:88vh;display:flex;flex-direction:column">
     <div class="modal-header"><h3>Smart Triage</h3><button class="pf-close" onclick="closeModal('triage-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body" id="triage-body" style="overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+
+<!-- QUICK CAPTURE: always-available freeform capture for anything that
+     happened outside the CRM entirely -- a live conversation, a text on
+     a personal phone, a stray idea. Deliberately zero required fields;
+     sorting out who/what happens later via Smart Triage, not at the
+     moment of capture. -->
+<button id="quick-capture-fab" onclick="openQuickCapture()" title="Quick Capture" style="position:fixed;bottom:22px;right:22px;z-index:250;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center">✎</button>
+
+<div id="quick-capture-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h3>Quick Capture</h3><button class="pf-close" onclick="closeModal('quick-capture-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <textarea id="qcap-text" class="form-textarea" rows="5" placeholder="What happened? Who, what was discussed, any next steps -- write it however it comes out, it'll get sorted out later." style="font-size:14px"></textarea>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">On your phone, tap the keyboard's mic to talk instead of type. No need to say who this is about -- that gets figured out during review.</div>
+      <div id="qcap-status" style="font-size:12.5px;color:var(--text-secondary);margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('quick-capture-modal')">Cancel</button>
+      <button class="btn btn-primary" id="qcap-submit-btn" onclick="submitQuickCapture()">Capture</button>
+    </div>
   </div>
 </div>
 
@@ -1954,6 +1985,7 @@ function switchView(view){
   if(view==='tasks'){populateTaskFilters();renderTasks();}
   if(view==='mywork')renderMyWork();
   if(view==='myday')renderMyDay();
+  if(view==='resources')renderResources();
   if(view==='qcinbox'){setLastViewed('qcinbox');updateBadge('qcinbox',0);loadQcInbox();}
 }
 
@@ -6884,9 +6916,10 @@ async function testWorkerLogger(){
 const QC_ICONS={
   text:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
   call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.94a16 16 0 006.15 6.15l1.3-1.3a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
-  email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>'
+  email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+  note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>'
 };
-function qcSourceLabel(s){return s==='quo'?'Quo':s==='zoho_mail'?'Zoho Mail':(s||'—');}
+function qcSourceLabel(s){return s==='quo'?'Quo':s==='zoho_mail'?'Zoho Mail':s==='manual'?'Quick Capture':(s||'—');}
 function qcStatusBadge(status){
   const map={pending:['#fef3c7','#92400e'],assigned:['#dcfce7','#166534'],archived:['#f3f4f6','#6b7280'],posted:['#e0f2fe','#0369a1']};
   const[bg,fg]=map[status]||['#e5e7eb','#374151'];
@@ -7073,7 +7106,9 @@ function renderQcInbox(){
     // a guess for confirmed data.
     const resolvedName=it._resolvedName;
     const nameIsResolved=!it.contact_name&&resolvedName;
-    const who=esc(resolvedName||it.contact_identifier||'Unknown contact')+(nameIsResolved?' <span style="font-weight:400;color:var(--text-muted);font-size:10.5px">(CRM)</span>':'');
+    const who=it.event_type==='note'&&!it.contact_name&&!resolvedName
+      ?esc((qcParseMessageBody(it.body).main||'Note').slice(0,60))
+      :esc(resolvedName||it.contact_identifier||'Unknown contact')+(nameIsResolved?' <span style="font-weight:400;color:var(--text-muted);font-size:10.5px">(CRM)</span>':'');
     const sub=it.event_type==='email'&&it.subject?esc(it.subject):esc(qcParseMessageBody(it.body).main.slice(0,140));
     const owner=(it.owner_name&&isAdmin())?`<span class="badge" style="background:var(--bg-main);color:var(--text-secondary);border:1px solid var(--border)">${esc(it.owner_name)}</span>`:'';
     return`
@@ -7109,6 +7144,18 @@ async function qcMarkNotAnswered(){
 }
 
 const TRIAGE_CLASSIFY_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/triage-classify';
+const CAPTURE_CLASSIFY_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/capture-classify';
+
+// The real, current list of CRM entry names for manual-note matching --
+// the model can only pick a name that's actually in this list, never
+// invent one (see capture-classify.ts's own defense-in-depth check too).
+function buildCandidateNames(){
+  const names=[];
+  ['leads','pipeline','contacts','accounts'].forEach(key=>{
+    (S.entries[key]||[]).filter(t=>!t.parent&&t.name).forEach(t=>names.push(t.name));
+  });
+  return names;
+}
 
 // Same raw, timestamped play-by-play format the Worker builds
 // server-side for its own thread bundling (buildRawThreadText) --
@@ -7155,22 +7202,51 @@ async function startSmartTriage(){
     const latest=items[items.length-1];
     const progressEl=document.getElementById('triage-progress');
     if(progressEl)progressEl.textContent=`Classifying ${done+1} of ${threadKeys.length}…`;
-    const matchedEntry=resolveContactEntry(latest.contact_identifier);
-    const contactName=latest.contact_name||resolveContactName(latest.contact_identifier)||'';
+    const isManualNote=latest.event_type==='note';
+    const matchedEntry=isManualNote?null:resolveContactEntry(latest.contact_identifier);
+    const contactName=latest.contact_name||(isManualNote?'':resolveContactName(latest.contact_identifier))||'';
     try{
       const rawThread=buildRawThreadTextClient(items);
-      const cls=await fetch(TRIAGE_CLASSIFY_ENDPOINT,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({rawThread,contactName,hasCrmMatch:!!matchedEntry})
-      }).then(r=>r.json());
-      results.push({key,items,latest,matchedEntry,contactName,
-        summary:cls.summary||'(no summary)',
-        isCrmRelevant:cls.isCrmRelevant,
-        confidence:cls.confidence,
-        reason:cls.reason||'',
-        suggestedName:cls.suggestedName||''
-      });
+      if(isManualNote){
+        const cls=await fetch(CAPTURE_CLASSIFY_ENDPOINT,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({rawText:rawThread,candidateNames:buildCandidateNames()})
+        }).then(r=>r.json());
+        // Resolve the matched NAME back to a real id/type via the exact
+        // same entry-lookup Smart Triage already uses for phone/email --
+        // the model was constrained to real names, this just finds the
+        // actual record behind the name it picked.
+        let matched=null;
+        if(cls.matchedEntryName){
+          const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
+          for(const key of['leads','pipeline','contacts','accounts']){
+            const hit=(S.entries[key]||[]).find(t=>!t.parent&&t.name===cls.matchedEntryName);
+            if(hit){matched={id:hit.id,type:typeLabel[key],name:hit.name};break;}
+          }
+        }
+        const summary=cls.summary||'(no summary)';
+        results.push({key,items,latest,matchedEntry:matched,contactName:matched?.name||'',
+          summary:cls.suggestedNextAction?`${summary} Next: ${cls.suggestedNextAction}`:summary,
+          isCrmRelevant:true, // a manually-written note is never "not relevant" -- only "matched" or "needs a look"
+          confidence:matched?cls.confidence:'low',
+          reason:matched?'':'No confident match found for this note.',
+          suggestedName:''
+        });
+      }else{
+        const cls=await fetch(TRIAGE_CLASSIFY_ENDPOINT,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({rawThread,contactName,hasCrmMatch:!!matchedEntry})
+        }).then(r=>r.json());
+        results.push({key,items,latest,matchedEntry,contactName,
+          summary:cls.summary||'(no summary)',
+          isCrmRelevant:cls.isCrmRelevant,
+          confidence:cls.confidence,
+          reason:cls.reason||'',
+          suggestedName:cls.suggestedName||''
+        });
+      }
     }catch(e){
       // Classification failure -- falls through to "needs judgment"
       // rather than silently dropping the thread or guessing wrong.
@@ -7262,13 +7338,16 @@ function renderTriageTier3(items){
   return `<div class="pf-section">
     <h4 style="margin:0 0 4px">Needs Your Judgment (${items.length})</h4>
     <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">No confident match or unclear content -- review each individually, same as opening it from the feed directly.</p>
-    ${items.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)">
+    ${items.map(r=>{
+      const noteSnippet=r.latest.event_type==='note'?(qcParseMessageBody(r.latest.body).main||'').slice(0,50):'';
+      const heading=r.contactName||r.suggestedName||r.latest.contact_identifier||noteSnippet||'Unknown';
+      return`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)">
       <div style="min-width:0;flex:1">
-        <div style="font-size:13px;font-weight:600">${esc(r.contactName||r.suggestedName||r.latest.contact_identifier||'Unknown')}${!r.contactName&&r.suggestedName?' <span style="font-weight:400;color:var(--text-muted);font-size:11px">(suggested)</span>':''}</div>
+        <div style="font-size:13px;font-weight:600">${esc(heading)}${!r.contactName&&r.suggestedName?' <span style="font-weight:400;color:var(--text-muted);font-size:11px">(suggested)</span>':''}</div>
         <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</div>
       </div>
       <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="reviewTriageItem('${esc(r.key)}')">Review</button>
-    </div>`).join('')}
+    </div>`;}).join('')}
   </div>`;
 }
 
@@ -7308,6 +7387,32 @@ async function confirmTriageTier2(){
   showToast(`Logged ${done}${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
   await loadQcInbox();
   closeModal('triage-modal');
+}
+
+function openQuickCapture(){
+  document.getElementById('qcap-text').value='';
+  document.getElementById('qcap-status').textContent='';
+  document.getElementById('quick-capture-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('qcap-text')?.focus(),50);
+}
+
+async function submitQuickCapture(){
+  const textEl=document.getElementById('qcap-text');
+  const text=textEl.value.trim();
+  if(!text)return;
+  const statusEl=document.getElementById('qcap-status');
+  const btn=document.getElementById('qcap-submit-btn');
+  btn.disabled=true;
+  statusEl.textContent='Saving…';
+  try{
+    await authFetch('/api/staging/manual','POST',{rawText:text});
+    closeModal('quick-capture-modal');
+    showToast('Captured. Review it anytime from Smart Triage in the Activity Inbox.','success');
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 async function qcArchive(id){
@@ -7910,6 +8015,72 @@ function isAdmin(){return accessTier()==='super'||accessTier()==='admin';}
 // (Data Maintenance bulk tools, changing someone else's access level).
 function isSuperAdmin(){return accessTier()==='super';}
 function isStaffOnly(){return accessTier()==='staff';}
+
+// Brief, accurate how-tos for features across the app, filtered by
+// access level so nobody sees tutorials for things they can't use.
+// minTier: 'staff' (everyone), 'admin' (Admin + Super Admin), 'super'
+// (Super Admin only) -- reuses the exact same tier concept as the rest
+// of the app's access control.
+const RESOURCE_ARTICLES=[
+  {id:'myday-vs-dashboard',category:'Getting Started',minTier:'staff',title:'My Day, My Work & Dashboard — what\'s the difference?',
+    body:`<strong>Dashboard</strong> is the team-wide overview — active counts, recent activity across everyone you can see, and a Needs Follow-Up widget.<br><br><strong>My Work</strong> is your own reference: your assigned counts, plus your complete task list.<br><br><strong>My Day</strong> is only what's actually urgent today — your overdue tasks, your stale leads, and anything waiting on your confirmation in the Outbox. Start here each morning.`},
+  {id:'staleness',category:'Staying on Top of Leads & Clients',minTier:'staff',title:'The Staleness Indicator',
+    body:`Every entry shows how long it's been since it was last touched — green (0-3 days), amber (4-7), red (8+). Shows in list views and on every entry's profile header. Use the Follow-Up filter on any list to see only what's overdue.`},
+  {id:'logging-activity',category:'Staying on Top of Leads & Clients',minTier:'staff',title:'Logging an Activity',
+    body:`Log New Activity captures calls, texts, meetings, and notes. Use the Response field (No Answer, No Response, Got a Response, Other) to record not just what you did, but what happened next. After logging, you'll be asked if you want to add a follow-up task — a good default to say yes to.`},
+  {id:'crm-actions',category:'Staying on Top of Leads & Clients',minTier:'staff',title:'CRM Actions',
+    body:`Pick an action from the list on any entry to get an AI-drafted message personalized to that lead's context. Edit before sending, or use Schedule Send to queue it for later (minimum 10 minutes out, so it doesn't get lost between check-ins).`},
+  {id:'closing-deals',category:'Staying on Top of Leads & Clients',minTier:'staff',title:'Closing a Deal',
+    body:`Mark as Closed/Won to log deposit and remaining balance details — this writes to real, reportable fields, not just a comment. Mark as Closed/Lost to log a reason. Both let you Archive right from the same screen once you're ready to close it out.`},
+  {id:'activity-inbox',category:'The Activity Inbox',minTier:'staff',title:'The Activity Inbox',
+    body:`Every incoming and outgoing text or call from Quo lands here automatically, matched to a CRM entry when possible. Assign to log it to that entry, Archive to dismiss it, or create a new Lead/Contact right from an unmatched thread.`},
+  {id:'smart-triage',category:'The Activity Inbox',minTier:'staff',title:'Smart Triage',
+    body:`Click Start Smart Triage to review everything pending at once instead of one at a time. It sorts items into three groups: <strong>likely not CRM-relevant</strong> (scam calls, personal chats — bulk-archive with one click), <strong>confident matches</strong> (review summaries, confirm in bulk), and <strong>needs your judgment</strong> (reviewed individually, same as opening from the feed).`},
+  {id:'quick-capture',category:'The Activity Inbox',minTier:'staff',title:'Quick Capture',
+    body:`Tap the pencil button (bottom-right, anywhere in the app) to jot down anything that happened outside the CRM — a live conversation, a text from your personal phone, a stray idea. No fields to fill in, just write what happened, even mid-sentence. Sort it out later through Smart Triage, when you're in review mode instead of mid-day.`},
+  {id:'bulk-actions',category:'Working Efficiently',minTier:'staff',title:'Bulk Actions',
+    body:`Check the boxes on any list view to select multiple entries, then Assign or Archive them together instead of one at a time. Selections clear automatically when you navigate away, so nothing stale carries over to a later visit.`},
+  {id:'custom-messages',category:'Working Efficiently',minTier:'staff',title:'Custom Messages & "Both" Mode',
+    body:`Describe a situation and let AI draft a message from scratch, in your chosen tone. Choose "Both" to get independent text and email drafts — each fully editable, personalizable, and sendable on its own.`},
+  {id:'team-management',category:'Admin',minTier:'admin',title:'Team Management',
+    body:`Add Team Member creates both the ClickUp record and login access in one step. Anyone can update their own passcode and public contact info from Edit Profile in the sidebar user menu — no admin needed for that part.`},
+  {id:'access-levels',category:'Admin',minTier:'admin',title:'Understanding Access Levels',
+    body:`<strong>Staff</strong> see only their own assigned entries, everywhere in the app. <strong>Admin</strong> and <strong>Super Admin</strong> see everything. Only <strong>Super Admin</strong> sees Data Maintenance tools and can change someone else's access level.`},
+  {id:'data-maintenance',category:'Super Admin',minTier:'super',title:'Data Maintenance Tools',
+    body:`One-time fixes like backfilling Related Account IDs or checking the Team Directory for drift, in Settings. These write directly to ClickUp — read what a tool actually does before running it, since these aren't easily reversible.`}
+];
+
+function renderResources(){
+  const tier=accessTier();
+  const rank={staff:0,admin:1,super:2};
+  const visible=RESOURCE_ARTICLES.filter(a=>rank[a.minTier]<=rank[tier]);
+  const byCategory={};
+  visible.forEach(a=>{(byCategory[a.category]=byCategory[a.category]||[]).push(a);});
+  const list=document.getElementById('resources-list');
+  list.innerHTML=Object.entries(byCategory).map(([category,articles])=>`
+    <div class="pf-section">
+      <h4 style="margin:0 0 8px">${esc(category)}</h4>
+      ${articles.map(a=>`
+        <div style="border-bottom:1px solid var(--border)">
+          <div onclick="toggleResourceArticle('${a.id}')" style="padding:10px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:600">
+            ${esc(a.title)}
+            <span id="res-caret-${a.id}" style="color:var(--text-muted);font-size:11px">▾</span>
+          </div>
+          <div id="res-body-${a.id}" style="display:none;padding:0 4px 12px;font-size:13px;color:var(--text-secondary);line-height:1.6">${a.body}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('')||'<div class="empty-state"><p>No resources available</p></div>';
+}
+
+function toggleResourceArticle(id){
+  const body=document.getElementById(`res-body-${id}`);
+  const caret=document.getElementById(`res-caret-${id}`);
+  if(!body)return;
+  const opening=body.style.display==='none';
+  body.style.display=opening?'block':'none';
+  if(caret)caret.textContent=opening?'▴':'▾';
+}
 
 function updateUserUI(){
   const n=S.user?.name||'';
