@@ -7168,7 +7168,8 @@ async function startSmartTriage(){
         summary:cls.summary||'(no summary)',
         isCrmRelevant:cls.isCrmRelevant,
         confidence:cls.confidence,
-        reason:cls.reason||''
+        reason:cls.reason||'',
+        suggestedName:cls.suggestedName||''
       });
     }catch(e){
       // Classification failure -- falls through to "needs judgment"
@@ -7176,7 +7177,8 @@ async function startSmartTriage(){
       results.push({key,items,latest,matchedEntry,contactName,
         summary:'(classification failed -- review manually)',
         isCrmRelevant:null,confidence:'low',
-        reason:'Classification request failed: '+e.message
+        reason:'Classification request failed: '+e.message,
+        suggestedName:''
       });
     }
     done++;
@@ -7250,8 +7252,9 @@ function renderTriageTier2(items){
 // afterward instead of losing their place in Tier 3.
 function reviewTriageItem(key){
   S._triageReturnKey=key;
-  closeModal('triage-modal');
   const result=(S._triageResults||[]).find(r=>r.key===key);
+  S._triageSuggestedName=result?.suggestedName||'';
+  closeModal('triage-modal');
   if(result)qcOpenThread(result.latest.id);
 }
 
@@ -7261,7 +7264,7 @@ function renderTriageTier3(items){
     <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">No confident match or unclear content -- review each individually, same as opening it from the feed directly.</p>
     ${items.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)">
       <div style="min-width:0;flex:1">
-        <div style="font-size:13px;font-weight:600">${esc(r.contactName||r.latest.contact_identifier||'Unknown')}</div>
+        <div style="font-size:13px;font-weight:600">${esc(r.contactName||r.suggestedName||r.latest.contact_identifier||'Unknown')}${!r.contactName&&r.suggestedName?' <span style="font-weight:400;color:var(--text-muted);font-size:11px">(suggested)</span>':''}</div>
         <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</div>
       </div>
       <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="reviewTriageItem('${esc(r.key)}')">Review</button>
@@ -7449,6 +7452,8 @@ function qcCreateContactFromThread(entryType){
   const msg=(S.qc.currentThread||[])[0];
   if(!msg)return;
   const identifier=(msg.contact_identifier||'').trim();
+  const suggestedName=S._triageSuggestedName||'';
+  S._triageSuggestedName=null;
   closeModal('qc-thread-modal');
   openNewEntryModal(entryType||'Lead');
   // openNewEntryModal + updateNFFields render synchronously, so these
@@ -7456,9 +7461,16 @@ function qcCreateContactFromThread(entryType){
   const isEmail=identifier.includes('@');
   const emailEl=document.getElementById('nf-email');
   const phoneEl=document.getElementById('nf-phone');
+  const fnameEl=document.getElementById('nf-fname');
+  const lnameEl=document.getElementById('nf-lname');
   if(isEmail&&emailEl)emailEl.value=identifier;
   else if(!isEmail&&phoneEl)phoneEl.value=identifier;
-  showToast('Pre-filled from Activity Inbox — review and save.','success');
+  if(suggestedName&&fnameEl){
+    const parts=suggestedName.trim().split(/\s+/);
+    fnameEl.value=parts[0]||'';
+    if(lnameEl&&parts.length>1)lnameEl.value=parts.slice(1).join(' ');
+  }
+  showToast(suggestedName?`Pre-filled from Activity Inbox, including a suggested name — review and save.`:'Pre-filled from Activity Inbox — review and save.','success');
 }
 
 async function qcExportMarkdown(){
