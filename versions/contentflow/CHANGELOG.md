@@ -141,3 +141,13 @@ A full front-to-back audit turned up real bugs and gaps; all fixed in one pass.
 - New: "Idea pipeline" summary on the Dashboard when a specific account is in view.
 - disconnect() clears idea/pillar/accounts-directory state too, not just core ClickUp data.
 - jsdom smoke test now 184/184 passing.
+
+## v1.14.0 (2026-09-19)
+Feedback pass: a real bug fix plus four requested features.
+
+- Fixed: opening the admin panel could sometimes show an empty Accounts screen until a hard refresh -- now always explicitly reloads the accounts directory when opened.
+- New: admin panel restructured into Accounts / Invite & Users sub-tabs. Accounts has a search box and collapsible rows (name + user-count + active-toggle collapsed, expand for details/invite) -- keeps a growing account list from burying the invite form.
+- New: dark/light theme toggle (sun/moon icon, both topnavs), remembered in localStorage, falls back to OS-level prefers-color-scheme. Introduced a --surface CSS variable for hardcoded white card backgrounds, plus dark-mode overrides for status-banner/badge colors.
+- New: Idea Inbox filter tabs get a small colored dot matching their semantic color (amber for review, green for promoted, etc.) for at-a-glance scanning.
+- New: account-wide message hub on the Dashboard when a specific account is in view -- a shared thread (new account_messages table) distinct from the per-task Log, for general updates/questions. Admin/rep/client all see and can post to the same thread.
+- jsdom smoke test now 190/190 passing.
