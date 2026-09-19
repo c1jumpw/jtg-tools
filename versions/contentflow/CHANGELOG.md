@@ -34,3 +34,10 @@ Initial release.
 - New backend endpoints added to contentflow-oauth: /api/admin/invite-user, /api/admin/list-users, /api/client/tasks, /api/client/comments (see that project's own README/CHANGELOG).
 - New Supabase project (uny-tools): `profiles` and `account_access` tables, RLS enabled, no direct client writes -- all writes go through the backend's service-role key.
 - Tested via jsdom smoke test (25/25 passing): login gating, role routing, rep account restriction, client task/comment flow, admin invite flow, and a regression check that board/list/calendar rendering for admins/reps is unchanged.
+
+## v1.2.0 (2026-09-19)
+- Removed the manual "List ID" field from the admin/rep connect screen -- ContentFlow now points at the one Client Master Content Strategy Workflow list automatically (fixed CU_LIST_ID, matching the backend's CLICKUP_LIST_ID). Admins/reps just connect the ClickUp user/guest that already has access to that list.
+- Clients with no account assigned yet now see a dedicated "Almost there -- waiting on your admin" screen instead of an empty board, and no longer trigger a pointless /api/client/tasks call while unassigned.
+- Confirmed and documented: the account ID used throughout (invite form, Related Account ID matching) is the MKC ID from the Companies & Accounts list -- the invite form's help text now says so explicitly.
+- Added a Dashboard view for both admin/rep and clients: total/overdue/due-this-week stat cards, a status breakdown (bar chart, CSS-only, no new dependency), an account breakdown when more than one account is in view, and a clickable "needs attention" list of overdue/due-soon tasks (by Next Action Date).
+- Tested via jsdom smoke test, now 36/36 passing (added coverage for the connect-screen simplification, the client waiting screen, and both dashboards).
