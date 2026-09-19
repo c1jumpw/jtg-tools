@@ -77,3 +77,10 @@ Initial release.
 - Mobile/responsive pass: fixed a real bug where the client task panel (.modal-card) had no CSS at all; wrapped the admin user table for horizontal scroll instead of overflowing the page; topnav buttons wrap instead of clipping when there's no room; larger touch targets, tighter dashboard/board/connect-screen spacing under 760px/420px.
 - Admin panel's user list now shows resolved account names instead of raw MKC IDs, for consistency with the rest of the app.
 - jsdom smoke test now 93/93 passing.
+
+## v1.8.0 (2026-09-19)
+- Fixed a real bug: the task modal could show "No account" while the same task's board card correctly showed one, because the modal only ever read the text field while the card checked both text and relationship fields. buildTaskDraft() now seeds the text field's draft value from the resolved id whenever the text field itself is empty -- the modal always matches the card now, and simply saving the task (even untouched) heals the gap into ClickUp's text field going forward.
+- Removed the entry's own "MKC ID" from the task modal too (v1.7.0 only removed it from cards). The save loop no longer writes back to MKC ID or to a relationship-typed account field (the latter needs a different API payload shape and this app was never meant to write to it).
+- Account reassignment is now admin-only: reps see a read-only account badge even where a writable text field exists. A rep creating a brand-new task with exactly one assigned account gets it prefilled (still read-only).
+- New: clients can create their own entries directly via a "+ New" button and a name-only form. Backed by a new POST /api/client/tasks endpoint that locks the new entry to the client's own assigned account server-side, defaults to the list's first workflow status (e.g. "Idea") rather than a hardcoded name, and logs who created it.
+- jsdom smoke test now 109/109 passing.
