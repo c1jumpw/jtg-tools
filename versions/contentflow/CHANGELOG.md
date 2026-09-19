@@ -95,3 +95,14 @@ New layer added IN FRONT OF the production board -- nothing about the board/dash
 - "Promote" turns an idea into a real production task: admin/rep create it themselves via their own ClickUp connection then record the result (markConverted); clients have no ClickUp connection, so the backend creates it for them (convert action), reusing the same createClientTask() their "+ New" button already used.
 - Deliberately no AI extraction yet -- structure first, per direction, until there's a way to charge for token use.
 - jsdom smoke test now 128/128 passing (19 new tests covering account resolution, the rhythm wizard, pillar CRUD, idea capture/grouping/archive, and both promote-to-production paths).
+
+## v1.10.0 (2026-09-19)
+- "Disconnect ClickUp" moved out of the main topnav into a small settings-gear dropdown.
+- Fixed a real bug: promoting an idea to production never set the new task's account (only name + status) -- now explicitly carries the idea's account onto the new task.
+- computeAccounts() rewritten to derive from the full Companies & Accounts directory instead of only accounts with an existing task -- root cause of "only accounts with data can be selected," including in the Ideas tab.
+- New admin Accounts screen: every account from Companies & Accounts, an active/inactive toggle (new account_settings table), who has access to each, and an "Invite to this account" shortcut.
+- Pipeline-health summary on the Idea Inbox, giving the rhythm wizard's answers ongoing purpose.
+- Idea Inbox redesigned as a drag-and-drop pillar matrix (reusing the production board's Kanban mechanics) instead of flat grouped tags.
+- Inline copy clarifying Inbox vs. the workflow's own Idea status.
+- New backend: /api/accounts (admin-only).
+- jsdom smoke test now 146/146 passing.
