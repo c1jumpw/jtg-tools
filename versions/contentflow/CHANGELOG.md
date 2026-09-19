@@ -69,3 +69,11 @@ Initial release.
 - Soft, dismissable warning when moving a task into "For Review" with no Copy/Drafts or Media Files (raw) uploaded yet -- covers both drag-and-drop and the modal's Save button. Never blocks the move outright, and only fires on an actual transition into the status (not on re-saving a task already there).
 - No backend changes -- both features are frontend-only, reusing the existing /api/files/list endpoint.
 - jsdom smoke test now 78/78 passing.
+
+## v1.7.0 (2026-09-19)
+- Account matching now checks BOTH a text field and a ClickUp relationship (linked-task) field, since the list has two fields both named "Related Account ID" -- text wins when both are set. New getTaskAccountId() (frontend) / rewritten extractAccountId() (backend) replace every direct read of the old text-only field.
+- Removed the entry's own "MKC ID" field from the UI entirely -- stays in ClickUp, unused here. Board cards no longer show it.
+- Log improvements: entries show a timestamp, sort newest-first, and collapse to 4 with a "Show all N" toggle. Every file upload now auto-posts a log entry ("Uploaded 'x.png' to Client Assets.") for both admin/rep and client uploads.
+- Mobile/responsive pass: fixed a real bug where the client task panel (.modal-card) had no CSS at all; wrapped the admin user table for horizontal scroll instead of overflowing the page; topnav buttons wrap instead of clipping when there's no room; larger touch targets, tighter dashboard/board/connect-screen spacing under 760px/420px.
+- Admin panel's user list now shows resolved account names instead of raw MKC IDs, for consistency with the rest of the app.
+- jsdom smoke test now 93/93 passing.
