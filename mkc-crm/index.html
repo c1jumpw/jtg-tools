@@ -890,21 +890,46 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
     <div class="modal-header"><h3>Assign to Record</h3><button class="pf-close" onclick="closeModal('qc-assign-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body" id="qc-assign-body">
       <div id="qc-assign-context" style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px"></div>
-      <div class="form-group"><label>Note <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional -- e.g. "this was actually a voicemail")</span></label>
-        <textarea id="qc-assign-note" class="form-textarea" rows="2" placeholder="Add any correction or context…"></textarea>
+
+      <!-- STEP 1: search for an existing entry, or create a new one -->
+      <div id="qc-assign-step-search">
+        <div class="form-group"><label>Note <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional -- e.g. "this was actually a voicemail")</span></label>
+          <textarea id="qc-assign-note" class="form-textarea" rows="2" placeholder="Add any correction or context…"></textarea>
+        </div>
+        <div id="qc-assign-suggested" style="margin-bottom:10px"></div>
+        <div class="form-group"><label>Search existing entries</label>
+          <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC ID…" oninput="qcSearchAssign(this.value)" autocomplete="off">
+        </div>
+        <div id="qc-assign-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin:12px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text-muted)">OR</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="qcCreateContactFromThread('Lead')">+ New Lead…</button>
+          <button class="btn btn-secondary btn-sm" onclick="qcCreateContactFromThread('Contact')">+ New Contact…</button>
+        </div>
       </div>
-      <div id="qc-assign-suggested" style="margin-bottom:10px"></div>
-      <div class="form-group"><label>Search existing entries</label>
-        <input type="text" id="qc-assign-search" placeholder="Name, phone, email, or MKC ID…" oninput="qcSearchAssign(this.value)" autocomplete="off">
+
+      <!-- STEP 2: confirm the pick, choose how much of the conversation to bundle in -->
+      <div id="qc-assign-step-confirm" style="display:none">
+        <p style="font-size:14px;margin-bottom:14px">Assign to <strong id="qc-assign-confirm-name"></strong>?</p>
+        <div class="form-group"><label>How much of this conversation to include</label>
+          <select id="qc-assign-window" class="form-select">
+            <option value="1">Last hour</option>
+            <option value="24" selected>Last 24 hours</option>
+            <option value="72">Last 3 days</option>
+            <option value="168">Last week</option>
+            <option value="all">Entire thread, all time</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button class="btn btn-secondary" onclick="qcBackToSearch()">Back</button>
+          <button class="btn btn-primary" id="qc-assign-confirm-btn" onclick="qcDoConfirmAssign()">Confirm &amp; Log</button>
+        </div>
       </div>
-      <div id="qc-assign-results" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:7px"></div>
-      <div style="display:flex;align-items:center;gap:10px;margin:12px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text-muted)">OR</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" onclick="qcCreateContactFromThread('Lead')">+ New Lead…</button>
-        <button class="btn btn-secondary btn-sm" onclick="qcCreateContactFromThread('Contact')">+ New Contact…</button>
-      </div>
+
+      <!-- STEP 3: success -->
+      <div id="qc-assign-step-success" style="display:none"></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('qc-assign-modal')">Cancel</button></div>
+    <div class="modal-footer" id="qc-assign-footer"><button class="btn btn-secondary" onclick="closeModal('qc-assign-modal')">Cancel</button></div>
   </div>
 </div>
 
@@ -7604,6 +7629,16 @@ async function qcExportMarkdown(){
 function qcOpenAssign(id,fromThread){
   const item=(S.qc.items||[]).find(it=>it.id===id)||(fromThread&&S.qc.currentThread?S.qc.currentThread[S.qc.currentThread.length-1]:null);
   S.qc.assignTarget=id;
+  S.qc.pendingAssign=null;
+  // Always reset to step 1 regardless of how a previous assign attempt
+  // ended -- this is the actual fix for the modal getting "stuck" after
+  // the first successful assign, since nothing here destroys the other
+  // steps' elements the way overwriting qc-assign-body's whole innerHTML
+  // used to.
+  document.getElementById('qc-assign-step-search').style.display='block';
+  document.getElementById('qc-assign-step-confirm').style.display='none';
+  document.getElementById('qc-assign-step-success').style.display='none';
+  document.getElementById('qc-assign-footer').style.display='flex';
   document.getElementById('qc-assign-context').textContent=item?`Assigning: ${item.contact_name||item.contact_identifier||'this item'} (${qcSourceLabel(item.source_type)})`:'Assigning this item';
   document.getElementById('qc-assign-body').querySelector('.form-group')?.scrollIntoView?.({block:'nearest'});
   const searchInput=document.getElementById('qc-assign-search');
@@ -7744,7 +7779,7 @@ function resolveContactName(identifier){
 function qcRenderAssignResults(matches){
   const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
   if(!matches.length)return'<div style="padding:10px 14px;font-size:13px;color:var(--text-muted)">No matches — try a different search</div>';
-  return matches.map(m=>`<div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmousedown="qcConfirmAssign('${m.id}','${m.type}','${esc(m.name)}')">${makeSB(typeLabel[m.type])}<span><strong>${esc(m.name)}</strong> <span style="color:var(--text-muted);font-size:11px">${(m.id||'').toUpperCase()}</span></span></div>`).join('');
+  return matches.map(m=>`<div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;display:flex;align-items:center;gap:8px" onmousedown="qcSelectAssignTarget('${m.id}','${typeLabel[m.type]}','${esc(m.name)}')">${makeSB(typeLabel[m.type])}<span><strong>${esc(m.name)}</strong> <span style="color:var(--text-muted);font-size:11px">${(m.id||'').toUpperCase()}</span></span></div>`).join('');
 }
 
 function qcSearchAssign(q){
@@ -7754,32 +7789,67 @@ function qcSearchAssign(q){
   res.innerHTML=qcRenderAssignResults(qcMatchEntries(q));
 }
 
-async function qcConfirmAssign(taskId,taskType,name){
+// Selecting a result no longer assigns immediately -- it advances to a
+// confirm step (with a choice of how much conversation history to
+// bundle in) so nothing gets logged to an entry from a single click.
+function qcSelectAssignTarget(taskId,taskType,name){
+  S.qc.pendingAssign={taskId,taskType,name};
+  document.getElementById('qc-assign-confirm-name').textContent=`${name} (${taskType})`;
+  document.getElementById('qc-assign-step-search').style.display='none';
+  document.getElementById('qc-assign-step-confirm').style.display='block';
+  document.getElementById('qc-assign-footer').style.display='none';
+}
+
+function qcBackToSearch(){
+  S.qc.pendingAssign=null;
+  document.getElementById('qc-assign-step-confirm').style.display='none';
+  document.getElementById('qc-assign-step-search').style.display='block';
+  document.getElementById('qc-assign-footer').style.display='flex';
+}
+
+async function qcDoConfirmAssign(){
+  const pending=S.qc.pendingAssign;
+  if(!pending)return;
+  const{taskId,taskType,name}=pending;
   const id=S.qc.assignTarget;
   if(!id)return;
   const note=document.getElementById('qc-assign-note')?.value?.trim()||'';
+  const windowChoice=document.getElementById('qc-assign-window')?.value||'24';
+  const windowHours=windowChoice==='all'?null:Number(windowChoice);
+  const btn=document.getElementById('qc-assign-confirm-btn');
+  if(btn)btn.disabled=true;
   try{
-    // As of Worker v1.7, one assign call can mark MULTIPLE events
-    // assigned at once ("assign recent thread" -- consolidates the
-    // last 24h of a conversation into one CRM comment instead of
-    // requiring one Assign click per message). Since more than just
-    // this one item may have changed server-side, reload the whole
-    // feed afterward (loadQcInbox) rather than only patching this
-    // single item's status locally -- a local-only patch would leave
-    // the OTHER now-assigned items in this thread still showing as
-    // "pending" until the next manual refresh.
-    const result=await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType,note});
+    // One assign call can mark MULTIPLE events assigned at once
+    // ("assign recent thread" -- consolidates a window of conversation
+    // into one CRM comment instead of requiring one Assign click per
+    // message). windowHours controls how wide that window is (null =
+    // the entire thread, no time limit). Since more than just this one
+    // item may have changed server-side, reload the whole feed
+    // afterward (loadQcInbox) rather than only patching this single
+    // item's status locally -- a local-only patch would leave the OTHER
+    // now-assigned items in this thread still showing as "pending"
+    // until the next manual refresh.
+    const result=await authFetch(`/api/staging/${id}/assign`,'POST',{taskId,taskType,note,windowHours});
     const count=result?.assignedCount||1;
-    showToast(count>1?`Assigned to ${name} (${count} recent messages logged together).`:`Assigned to ${name}.`,'success');
+    const windowLabel=windowChoice==='all'?'the entire thread':document.getElementById('qc-assign-window').selectedOptions[0].textContent.toLowerCase();
+    showToast(count>1?`Assigned to ${name} (${count} messages logged together).`:`Assigned to ${name}.`,'success');
     await loadQcInbox();
-    document.getElementById('qc-assign-body').innerHTML=`
-      <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment${count>1?` covering the last 24 hours (${count} messages)`:''}.</p>
+    document.getElementById('qc-assign-step-confirm').style.display='none';
+    document.getElementById('qc-assign-footer').style.display='none';
+    const successBox=document.getElementById('qc-assign-step-success');
+    successBox.style.display='block';
+    successBox.innerHTML=`
+      <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment${count>1?` covering ${esc(windowLabel)} (${count} messages)`:''}.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openNewTaskModal('${taskId}','${esc(name)}')">Create Related Task</button>
         <button class="btn btn-secondary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openProfile('${taskId}','${taskType}')">Open Record</button>
         <button class="btn btn-ghost btn-sm" onclick="closeModal('qc-assign-modal')">Done</button>
       </div>`;
-  }catch(e){showToast('Assign failed: '+e.message,'error');}
+  }catch(e){
+    showToast('Assign failed: '+e.message,'error');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
 }
 
 // ═══════════════════════════════════════════
