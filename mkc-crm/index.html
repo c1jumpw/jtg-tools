@@ -252,6 +252,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 
 /* ── MOBILE RESPONSIVE ─────────────────────────────────────────── */
 @media(max-width:768px){
+  input[type=text],input[type=email],input[type=tel],input[type=date],input[type=url],input[type=password],select.form-select,textarea.form-textarea{font-size:16px}
   .qc-item-actions{display:none!important}
   :root{--sidebar-width:0px;--topbar-height:54px}
   #sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;z-index:300;transform:translateX(-100%);transition:transform .25s ease}
@@ -703,6 +704,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
             <button class="btn btn-secondary btn-sm" id="team-sync-btn" onclick="checkTeamDirectorySync()">Run Check</button>
             <div id="team-sync-status" style="margin-top:10px;font-size:12.5px;color:var(--text-secondary);white-space:pre-line"></div>
           </div>
+        </div>
+        <div class="settings-section">
+          <h3>Message Templates</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px" id="template-editor-note"></p>
+          <div id="template-editor-list"></div>
         </div>
         <div class="settings-section">
           <h3>Team Management</h3>
@@ -1164,6 +1170,14 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
 // CONFIG & CREDENTIALS
 // ═══════════════════════════════════════════
 const CU_BASE='https://api.clickup.com/api/v2';
+
+// Canonical "this entry is done, not actively in progress" status list --
+// used everywhere staleness/follow-up/active-count logic needs to
+// exclude closed-out entries. Previously copy-pasted in three separate
+// places, which had already drifted out of sync (missing 'archived',
+// confirmed as the actual final/completed Pipeline status) -- one
+// shared list now, so it can't happen again.
+const CLOSED_STATUSES=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt','archived'];
 // SHEETS_ID/GS_BASE removed -- were only used by the now-dead
 // getGSToken()/direct-Google-Sheets path, itself removed just below.
 // The Worker already knows the Sheets ID (see its own wrangler.toml
@@ -1795,6 +1809,7 @@ function saveToken(){
 async function init(){
   setSyncState('syncing','Loading…');
   await loadRef();
+  await loadTemplateOverrides();
   await loadAllEntries();
   await loadMasterTasks();
   populateTaskFilters();
@@ -1840,6 +1855,18 @@ function setSyncState(state,label){
 // ═══════════════════════════════════════════
 // REFERENCE DATA
 // ═══════════════════════════════════════════
+// Fails soft -- if this doesn't load, findActionById just falls back to
+// the hardcoded defaults (S._templateOverrides?.[id] is undefined),
+// same as if no overrides existed at all. Never blocks app startup.
+async function loadTemplateOverrides(){
+  try{
+    S._templateOverrides=await authFetch('/api/action-templates','GET',{})||{};
+  }catch(e){
+    console.warn('loadTemplateOverrides failed:',e.message);
+    S._templateOverrides={};
+  }
+}
+
 async function loadRef(){
   const sheets=[
     ['ClickUp Labels Mastersheet!A:C','labels'],
@@ -1997,6 +2024,7 @@ function switchView(view){
   // showing an error, since this is an appropriate-scope boundary, not
   // an attempted-breach scenario worth alarming someone over.
   if(view==='settings'&&!isAdmin())view='dashboard';
+  if(view==='settings')renderTemplateEditor();
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -2652,7 +2680,7 @@ function isAssignedToMe(item){
 // stale entries, and the self-scoped scheduled-messages query (fixed in
 // the Worker specifically for this) for the two Outbox-related sections.
 async function renderMyDay(){
-  const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
+  const closed=CLOSED_STATUSES;
   const active=arr=>arr.filter(t=>!t.parent&&!closed.includes((t.status?.status||'').toLowerCase()));
   const lookup=buildEntryLookup();
 
@@ -2747,7 +2775,7 @@ async function renderMyDay(){
 }
 
 async function renderMyWork(){
-  const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
+  const closed=CLOSED_STATUSES;
   const myLeads=S.entries.leads.filter(t=>!t.parent&&isAssignedToMe(t));
   const myDeals=S.entries.pipeline.filter(t=>!t.parent&&isAssignedToMe(t));
   const myContacts=S.entries.contacts.filter(t=>!t.parent&&isAssignedToMe(t));
@@ -4136,7 +4164,19 @@ const GROUP_COLORS={
 
 function findActionById(id,groups){
   if(!id||!groups)return null;
-  for(const cat of Object.values(groups)){const found=cat.find(a=>a.id===id);if(found)return found;}
+  for(const cat of Object.values(groups)){
+    const found=cat.find(a=>a.id===id);
+    if(found){
+      const override=S._templateOverrides?.[id];
+      if(override&&(override.template!=null||override.structure!=null)){
+        return{...found,
+          template:override.template!=null?override.template:found.template,
+          structure:override.structure!=null?override.structure:found.structure
+        };
+      }
+      return found;
+    }
+  }
   return null;
 }
 
@@ -6552,7 +6592,7 @@ async function saveUpdateProfile(){
 // DASHBOARD
 // ═══════════════════════════════════════════
 function renderDashboard(){
-  const closed=['closed / won','closed / lost','churned/disqualified','completed','disqualified','burnt'];
+  const closed=CLOSED_STATUSES;
   const active=arr=>arr.filter(t=>!t.parent&&!closed.includes((t.status?.status||'').toLowerCase()));
   document.getElementById('d-leads').textContent=active(S.entries.leads).length||'—';
   document.getElementById('d-deals').textContent=active(S.entries.pipeline).length||'—';
@@ -8092,6 +8132,121 @@ function isAdmin(){return accessTier()==='super'||accessTier()==='admin';}
 // Strictly Super Admin -- gates destructive/account-level actions
 // (Data Maintenance bulk tools, changing someone else's access level).
 function isSuperAdmin(){return accessTier()==='super';}
+
+// Lists every message-type CRM Action (internal/magnet/custom actions
+// have no template to edit, so they're excluded) grouped by entry type
+// and category -- this grouping is exactly the "where it propagates"
+// info requested, derived directly from CRM_ACTIONS' own structure
+// rather than tracked separately, so it can never drift out of sync
+// with the actual action list.
+function renderTemplateEditor(){
+  const list=document.getElementById('template-editor-list');
+  const note=document.getElementById('template-editor-note');
+  if(!list)return;
+  if(note)note.textContent=isSuperAdmin()
+    ?'Edit the AI drafting templates used by CRM Actions. Changes apply immediately across the app for everyone.'
+    :'Viewing the AI drafting templates used by CRM Actions. Super Admin access is required to edit these.';
+  const rows=[];
+  [['lead','Lead / Contact'],['pipeline','Pipeline / Deal']].forEach(([key,typeLabel])=>{
+    Object.entries(CRM_ACTIONS[key]).forEach(([category,actions])=>{
+      actions.filter(a=>a.template!=null).forEach(a=>rows.push({typeLabel,category,action:a}));
+    });
+  });
+  list.innerHTML=rows.map(({typeLabel,category,action})=>{
+    const id=action.id;
+    const override=S._templateOverrides?.[id];
+    const effectiveTemplate=override?.template??action.template;
+    const effectiveStructure=override?.structure??action.structure??'';
+    const hasOverride=!!override;
+    const editable=isSuperAdmin();
+    return `<div style="border-bottom:1px solid var(--border)">
+      <div onclick="toggleTemplateEditor('${id}')" style="padding:10px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13.5px;font-weight:600">${esc(action.label)} <span id="tmpl-editedtag-${id}" style="font-size:10.5px;font-weight:400;color:var(--accent)">${hasOverride?'(edited)':''}</span></div>
+          <div style="font-size:11px;color:var(--text-muted)">${esc(typeLabel)} · ${esc(category)}</div>
+        </div>
+        <span id="tmpl-caret-${id}" style="color:var(--text-muted);font-size:11px">▾</span>
+      </div>
+      <div id="tmpl-panel-${id}" style="display:none;padding:0 4px 14px">
+        <div class="form-group"><label>Use Case / Approach</label>
+          <input type="text" id="tmpl-structure-${id}" class="form-select" value="${esc(effectiveStructure)}" ${editable?'':'disabled'}>
+        </div>
+        <div class="form-group"><label>Message Body <span style="font-weight:400;color:var(--text-muted);font-size:11px">(use {{variableName}} for placeholders)</span></label>
+          <textarea id="tmpl-body-${id}" class="form-textarea" rows="4" ${editable?'':'disabled'}>${esc(effectiveTemplate)}</textarea>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Variables used: ${(action.vars||[]).map(v=>`{{${v}}}`).join(', ')||'none'}</div>
+        ${editable?`<div id="tmpl-buttons-${id}" style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="saveTemplateOverride('${id}')">Save</button>
+          ${hasOverride?`<button class="btn btn-ghost btn-sm" onclick="resetTemplateOverride('${id}')">Reset to Default</button>`:''}
+        </div>
+        <div id="tmpl-status-${id}" style="font-size:12px;color:var(--text-secondary);margin-top:8px"></div>`:''}
+      </div>
+    </div>`;
+  }).join('')||'<div class="empty-state"><p>No message templates found</p></div>';
+}
+
+function toggleTemplateEditor(id){
+  const panel=document.getElementById(`tmpl-panel-${id}`);
+  const caret=document.getElementById(`tmpl-caret-${id}`);
+  if(!panel)return;
+  const opening=panel.style.display==='none';
+  panel.style.display=opening?'block':'none';
+  if(caret)caret.textContent=opening?'▴':'▾';
+}
+
+async function saveTemplateOverride(id){
+  if(!isSuperAdmin())return showToast('Super Admin access required.','error');
+  const template=document.getElementById(`tmpl-body-${id}`).value;
+  const structure=document.getElementById(`tmpl-structure-${id}`).value;
+  const statusEl=document.getElementById(`tmpl-status-${id}`);
+  const saveBtn=document.querySelector(`#tmpl-buttons-${id} .btn-primary`);
+  if(saveBtn)saveBtn.disabled=true;
+  statusEl.textContent='Saving…';
+  try{
+    await authFetch(`/api/action-templates/${id}`,'PUT',{template,structure});
+    if(!S._templateOverrides)S._templateOverrides={};
+    const alreadyHadOverride=!!S._templateOverrides[id];
+    S._templateOverrides[id]={template,structure};
+    statusEl.textContent='✓ Saved. Takes effect immediately.';
+    showToast('Template updated.','success');
+    // Targeted updates instead of a full list re-render -- keeps this
+    // accordion item open and preserves scroll position, rather than
+    // collapsing everything the way a full renderTemplateEditor() call
+    // would. Same lesson as the earlier Assign-modal bug: prefer
+    // patching over destructive rebuilds where the UI state matters.
+    const tag=document.getElementById(`tmpl-editedtag-${id}`);
+    if(tag)tag.textContent='(edited)';
+    if(!alreadyHadOverride&&saveBtn&&!saveBtn.parentElement.querySelector('.btn-ghost')){
+      const resetBtn=document.createElement('button');
+      resetBtn.className='btn btn-ghost btn-sm';
+      resetBtn.textContent='Reset to Default';
+      resetBtn.onclick=()=>resetTemplateOverride(id);
+      saveBtn.parentElement.appendChild(resetBtn);
+    }
+  }catch(e){
+    statusEl.textContent='Failed: '+e.message;
+  }finally{
+    if(saveBtn)saveBtn.disabled=false;
+  }
+}
+
+async function resetTemplateOverride(id){
+  if(!isSuperAdmin())return showToast('Super Admin access required.','error');
+  if(!confirm('Reset this template to its default? Your edited version will be lost.'))return;
+  const statusEl=document.getElementById(`tmpl-status-${id}`);
+  try{
+    await authFetch(`/api/action-templates/${id}`,'DELETE',{});
+    if(S._templateOverrides)delete S._templateOverrides[id];
+    showToast('Reset to default.','success');
+    // A full re-render IS appropriate here (unlike save) -- the actual
+    // default text needs to reload into the fields, which a targeted
+    // patch can't do without duplicating the lookup logic already in
+    // renderTemplateEditor.
+    renderTemplateEditor();
+  }catch(e){
+    if(statusEl)statusEl.textContent='Failed: '+e.message;
+  }
+}
 function isStaffOnly(){return accessTier()==='staff';}
 
 // Brief, accurate how-tos for features across the app, filtered by
