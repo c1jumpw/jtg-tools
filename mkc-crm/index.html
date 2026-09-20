@@ -1295,6 +1295,9 @@ const CU_FIELDS={
   LEAD_CRM_ACTION:  '15bdd4e2-13dd-41a5-b833-d0aa456dacc2',  // type: drop_down
   LEAD_CONTACT_TYPE:'1d69cb4f-928e-4dcb-bf6e-1519519140b4',  // type: labels
   KNOWN_AS:         '2e7b9ad6-456e-4aa5-a1a6-166e4267ceb0',  // type: short_text
+  // Leads + Contacts -- shared workspace-level fields, same ID on both lists (confirmed via console)
+  PHONE_2:          '7f7107e4-ec23-4c7e-b8f1-2e0ed8912b2b',  // type: phone
+  EMAIL_2:          '23f99b05-2a6d-4fa6-b40d-d3be89b892ce',  // type: email
   LEAD_SOURCE:      '44476ae7-636f-4d0f-973d-3dfe89b6ea80',  // type: labels
   TITLE:            '47f8a29f-1850-4851-b1ca-86994c5c499a',  // type: text
   LAST_NAME:        '55530338-993f-4187-b1fe-e66254971d14',  // type: short_text
@@ -3863,7 +3866,7 @@ function renderPfDetails(task,type,cf,body){
       ['Branch',cf.branch],['Sub-Branch',subBranch],
       ['Lead/Contact Type',cf['lead/contact type']],
       ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
-      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
+      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],['Email 2',cf['email 2']],['Phone 2',cf['phone 2']],
       ['Location',cf.location],['Industry',cf.industry],
       ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
@@ -3875,7 +3878,7 @@ function renderPfDetails(task,type,cf,body){
     pairs=[
       ['Lead/Contact Type',cf['lead/contact type']],
       ['Lead Source',cf['lead source']],['Lead Source Details',cf['lead source notes']||cf['source details']||cf['source activity']],
-      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],
+      ['Known As',cf['known as']],['Title',cf.title],['Email',cf['primary contact email']||cf.email],['Phone',cf.phone],['Email 2',cf['email 2']],['Phone 2',cf['phone 2']],
       ['Industry',cf.industry],
       ['Instagram',cf._byId[CU_FIELDS.INSTAGRAM]],['Facebook',cf._byId[CU_FIELDS.FACEBOOK]],['TikTok',cf._byId[CU_FIELDS.TIKTOK]],['Other Social',cf._byId[CU_FIELDS.OTHER_SOCIAL]],
       ['Next Action Date',fmtDate(cf['next action date'])],['Next Action Link',cf['next action link']],
@@ -5873,6 +5876,10 @@ async function openUpdateProfile(){
     <div class="form-row">
       <div class="form-group"><label>Email</label><input type="email" id="up-email" value="${esc(cf['primary contact email']||cf.email||'')}"></div>
       <div class="form-group"><label>Phone</label><input type="tel" id="up-phone-num" value="${esc(cf.phone||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email 2 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional)</span></label><input type="email" id="up-email-2" value="${esc(cf['email 2']||'')}"></div>
+      <div class="form-group"><label>Phone 2 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional)</span></label><input type="tel" id="up-phone-2" value="${esc(cf['phone 2']||'')}" placeholder="+1 470 222 6558" style="width:100%"></div>
     </div>`;
 
   // Shared across all 4 entry types (Leads/Contacts/Pipeline/Accounts) --
@@ -6584,6 +6591,15 @@ async function saveUpdateProfile(){
     await sfClear(F.TITLE,document.getElementById('up-title')?.value?.trim(),'text');
     await sfClear(F.PRIMARY_EMAIL,document.getElementById('up-email')?.value?.trim(),'email');
     await sfClear(F.NOTEBOOK_LINK,document.getElementById('up-notebook')?.value?.trim(),'url');
+    // ── PHONE 2 / EMAIL 2 (Leads + Contacts only -- the only two
+    //    lists this field actually exists on; guarded explicitly
+    //    rather than relying on the form simply not having the
+    //    inputs, since attempting to write a field ClickUp doesn't
+    //    recognize on a given list could fail unpredictably) ─────
+    if(type==='leads'||type==='contacts'){
+      await sfClear(F.PHONE_2,document.getElementById('up-phone-2')?.value?.trim(),'phone');
+      await sfClear(F.EMAIL_2,document.getElementById('up-email-2')?.value?.trim(),'email');
+    }
     // ── PHONE ─────────────────────────────────────────────────
     const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
     const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
