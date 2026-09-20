@@ -228,3 +228,12 @@ Full system audit. Backend checked clean; four real frontend issues found and fi
 - Fixed (more serious): toClickUpDate() built its save timestamp from local midnight while fromClickUpDate() reads via UTC -- for a positive-UTC-offset viewer, picking and saving a date would silently save and redisplay as the day before, everywhere.
 - All four covered by new regression tests, two of which explicitly run under TZ=Asia/Tokyo.
 - jsdom smoke test now 273/273 passing.
+
+## v1.22.0 (2026-09-20)
+Ideas-area navigation fix (mobile-reported bug).
+
+- Ideas/Capture, Pillars & Rhythm, and Foundation were mutually-exclusive full-screen replacements, each with its own entry button living only inside the Idea Inbox -- once inside one, there was no way back to the others without exiting completely. The Rhythm Wizard had no exit at all short of finishing it.
+- New persistent ideasSubNavHtml() sub-nav (Ideas / Pillars & Rhythm / Foundation) wraps all three states and never disappears -- switching between them, or escaping the wizard without saving, is always one tap.
+- Styled as underline tabs (distinct from the topnav's pill tabs) with the same horizontal-scroll safety as the earlier topnav fix.
+- Removed the now-redundant per-view Foundation/Pillars & Rhythm buttons inside the Idea Inbox.
+- jsdom smoke test now 281/281 passing.
