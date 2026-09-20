@@ -247,3 +247,13 @@ Social links on Brand Foundation, with quick-access links in the task modal.
 - Added to the admin/rep and client task modals via new activeSocialLinksFor() helper, reusing the existing Foundation cache -- opening any content entry shows quick-access links to that account's social profiles.
 - LinkedIn defaults to /company/{username}; flagged as a one-line change if any account's LinkedIn is a personal-style profile.
 - jsdom smoke test now 298/298 passing.
+
+## v1.23.1 (2026-09-20)
+LinkedIn now takes the full profile URL instead of a username.
+
+- Resolves the /company/ vs. /in/ ambiguity flagged in v1.23.0 -- LinkedIn's SOCIAL_NETWORKS entry is marked isFullUrl: true.
+- urlFor() uses the stored URL exactly as given (adding https:// only if the protocol was omitted) rather than reconstructing one.
+- The input binding skips sanitizeSocialUsername() for LinkedIn specifically, since that sanitizer strips a pasted URL down to a bare username -- exactly what would destroy the company/personal distinction.
+- Edit form shows a url-type input with a "Full ... profile URL" placeholder for LinkedIn; every other network keeps the plain username input.
+- No backend change needed.
+- jsdom smoke test now 305/305 passing.
