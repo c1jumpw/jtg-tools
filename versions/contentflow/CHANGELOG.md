@@ -163,3 +163,13 @@ Fixed a broken upload path, reworked topnav navigation, and added a cross-entry 
 - Tabs now have icons and color-grouping: Dashboard and Ideas each get their own color; Board/List/Calendar/Feed share one color to read as the same underlying workflow.
 - New: Feed view -- a merged chronological timeline of comments across every entry in view, reusing the same account-filtering as Board/List/Calendar. Capped at the 60 most-recently-updated entries (ClickUp has no bulk comment endpoint).
 - jsdom smoke test now 208/208 passing.
+
+## v1.16.0 (2026-09-20)
+Brand Foundation: the strategic layer underneath pillars.
+
+- New per-account document (new brand_foundations table + /api/brand-foundation): positioning (niche, elevator pitch, value proposition), audience buckets (demographics, psychographics, pain points, goals), expertise/offers (Features/Advantages/Benefits), and reusable voice/keyword/CTA/hook material.
+- Accessed via a new "Foundation" button next to Pillars & Rhythm in the Ideas tab.
+- Admin/rep fully edit (audience buckets and offers are dynamic add/remove lists); clients get read-only, enforced server-side (POST is admin/rep only) and by never showing the Edit button.
+- Read view has a Copy button next to every reusable block (elevator pitch, value prop, keywords, CTA lines, hook lines).
+- Phase 1 of 3 -- guided wizard pacing and pillar auto-suggestion from Foundation content are deliberately deferred until this shape proves out.
+- jsdom smoke test now 220/220 passing.
