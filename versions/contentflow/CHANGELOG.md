@@ -191,3 +191,12 @@ Fixed a mobile nav bug, added notebook links, a Prompt Library, and the ability 
 - New: admin-only Notebook link (external notes doc URL) on both a Brand Foundation profile and an individual content entry (new task_notebook_links table + /api/task-notebook, since tasks live in ClickUp not our database). Rep and client never see this field.
 - New: Prompt Library inside each Foundation profile (new prompt_library table + /api/prompt-library, admin/rep write, everyone-with-access read). Reusable prompt templates with {{tag}} placeholders (elevator_pitch, keywords, cta_lines, etc.) that resolve against that profile's data -- separate Copy buttons for raw template vs. resolved text. No AI generation involved.
 - jsdom smoke test now 250/250 passing.
+
+## v1.19.0 (2026-09-20)
+Corrected the content-entry notebook link's design after clarifying the actual requirement.
+
+- It's now a real ClickUp custom field (NOTEBOOK_FIELD_NAME = "Notebook Link" -- update if your list's field is named differently), read-only within ContentFlow, editable only directly in ClickUp.
+- v1.18.0 had built this as a separate editable Supabase table (task_notebook_links) + endpoint (/api/task-notebook) -- both removed now.
+- buildTaskDraft() reads the field's current value the same way it already reads Medium(s)/Next Action Date/etc; shown to admin only, no edit control at all.
+- Brand Foundation's own notebook_url is unaffected -- a Foundation profile has no ClickUp entry to read from, so it stays manually set within ContentFlow.
+- jsdom smoke test now 253/253 passing.
