@@ -182,3 +182,12 @@ Brand Foundation now supports multiple named profiles per account instead of jus
 - Foundation view now shows a profile switcher (★ marks the current one), + New profile, Set as current, and Delete controls -- all admin/rep only.
 - A brand-new profile becomes current by default; deleting the current one auto-promotes the next most recent survivor so an account is never left without an active profile.
 - jsdom smoke test now 232/232 passing.
+
+## v1.18.0 (2026-09-20)
+Fixed a mobile nav bug, added notebook links, a Prompt Library, and the ability to duplicate a Foundation profile.
+
+- Fixed: topnav view-tabs had no overflow handling -- on narrow phones later tabs got cut off with no way to reach them. Tab bar now scrolls horizontally.
+- New: "Duplicate" on a Foundation profile -- pre-fills a new-profile form from the currently viewed one instead of blank.
+- New: admin-only Notebook link (external notes doc URL) on both a Brand Foundation profile and an individual content entry (new task_notebook_links table + /api/task-notebook, since tasks live in ClickUp not our database). Rep and client never see this field.
+- New: Prompt Library inside each Foundation profile (new prompt_library table + /api/prompt-library, admin/rep write, everyone-with-access read). Reusable prompt templates with {{tag}} placeholders (elevator_pitch, keywords, cta_lines, etc.) that resolve against that profile's data -- separate Copy buttons for raw template vs. resolved text. No AI generation involved.
+- jsdom smoke test now 250/250 passing.
