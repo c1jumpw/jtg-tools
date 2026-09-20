@@ -6342,6 +6342,12 @@ async function submitEntry(){
   if(type==='Lead'||type==='Contact'){const fn=document.getElementById('nf-fname')?.value?.trim();if(!fn)return showToast('First name required.','error');name=fn+' '+(document.getElementById('nf-lname')?.value?.trim()||'');}
   else if(type==='Deal'){name=document.getElementById('nf-dealname')?.value?.trim();if(!name)return showToast('Deal name required.','error');}
   else{name=document.getElementById('nf-acctname-s')?.value?.trim();if(!name)return showToast('Account name required.','error');}
+  // Same email validation as saveUpdateProfile -- catches a typo before
+  // it reaches ClickUp, whether creating a new entry or editing one.
+  const nfEmailCheck=document.getElementById('nf-email')?.value?.trim();
+  if(nfEmailCheck&&!isValidEmailFormat(nfEmailCheck)){
+    return showToast('Email doesn\'t look like a valid email address (e.g. name@example.com).','error');
+  }
   const listId={Lead:S.creds.listLeads,Contact:S.creds.listContacts,Deal:S.creds.listPipeline,Account:S.creds.listAccounts}[type];
   if(!listId)return showToast(`${type} list ID not configured.`,'error');
   const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Creating…';
@@ -6395,7 +6401,7 @@ async function submitEntry(){
     const nfEmail=document.getElementById('nf-email')?.value?.trim();
     if(nfEmail)await sfN(F.PRIMARY_EMAIL,nfEmail,'email');
     const rawNfPhone=(document.getElementById('nf-phone')?.value||'').trim();
-    if(rawNfPhone)await sfN(F.PHONE,rawNfPhone.startsWith('+')?rawNfPhone:'+1 '+rawNfPhone,'phone');
+    if(rawNfPhone)await sfN(F.PHONE,normalizePhoneForClickUp(rawNfPhone),'phone');
     // ── FIRST / LAST NAME ─────────────────────────────────────
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
@@ -6460,9 +6466,41 @@ async function submitEntry(){
   finally{btn.disabled=false;btn.textContent='Create Entry';}
 }
 
+// Basic email format check -- ClickUp's email field type accepts
+// malformed input without complaint, but downstream consumers (Resend,
+// Quo, personalization, matching) all expect a genuinely valid address.
+function isValidEmailFormat(email){
+  if(!email)return true; // empty is fine -- these fields are optional
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// ClickUp's phone field only correctly stores/reads the digits AFTER
+// the country code -- sending "+1 4041235467" gets misread by ClickUp's
+// own field type. Strips to raw digits and takes just the last 10 (US/
+// Canada), discarding any leading country-code digit. Numbers already
+// shorter than 10 digits are passed through as-is rather than mangled
+// further, since there's nothing safe left to strip.
+function normalizePhoneForClickUp(raw){
+  const digits=(raw||'').replace(/\D/g,'');
+  if(!digits)return'';
+  if(digits.length<10)return digits;
+  return digits.slice(-10);
+}
+
 async function saveUpdateProfile(){
   if(!S.currentEntry)return;
   const{task,type}=S.currentEntry;
+  // Validate email format up front, before any field writes happen --
+  // catches a typo before it reaches ClickUp, rather than silently
+  // saving something Resend/Quo/personalization can't actually use.
+  const emailFieldsToCheck=[['up-email','Email'],['up-email-2','Email 2']];
+  for(const[id,label]of emailFieldsToCheck){
+    const val=document.getElementById(id)?.value?.trim();
+    if(val&&!isValidEmailFormat(val)){
+      showToast(`${label} doesn't look like a valid email address (e.g. name@example.com).`,'error');
+      return;
+    }
+  }
   const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Saving…';
   try{
     const newName=document.getElementById('up-name')?.value?.trim()||task.name;
@@ -6597,12 +6635,12 @@ async function saveUpdateProfile(){
     //    inputs, since attempting to write a field ClickUp doesn't
     //    recognize on a given list could fail unpredictably) ─────
     if(type==='leads'||type==='contacts'){
-      await sfClear(F.PHONE_2,document.getElementById('up-phone-2')?.value?.trim(),'phone');
+      await sfClear(F.PHONE_2,normalizePhoneForClickUp(document.getElementById('up-phone-2')?.value?.trim()),'phone');
       await sfClear(F.EMAIL_2,document.getElementById('up-email-2')?.value?.trim(),'email');
     }
     // ── PHONE ─────────────────────────────────────────────────
     const rawPhone=(document.getElementById('up-phone-num')?.value||'').trim();
-    const cleanPhone=rawPhone?(rawPhone.startsWith('+')?rawPhone:'+1 '+rawPhone):'';
+    const cleanPhone=normalizePhoneForClickUp(rawPhone);
     await sfClear(F.PHONE,cleanPhone,'phone');
     // ── SOCIAL FIELDS (shared field, same ID across all 4 entry
     //    types -- see CU_FIELDS.FACEBOOK's doc comment) ──────────
@@ -6622,7 +6660,7 @@ async function saveUpdateProfile(){
         if(planUUID)await sf(F.PLAN,[planUUID],'labels');
       }
       const phoneRawP=(document.getElementById('up-phone-num')?.value||'').trim();
-      const cleanPhoneP=phoneRawP?(phoneRawP.startsWith('+')?phoneRawP:'+1 '+phoneRawP):'';
+      const cleanPhoneP=normalizePhoneForClickUp(phoneRawP);
       await sfClear(F.PRIMARY_PHONE_P,cleanPhoneP,'phone');
       await sfClear(F.MAIN_CONTACT,document.getElementById('up-main-contact')?.value?.trim(),'short_text');
     }
