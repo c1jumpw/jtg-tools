@@ -1995,7 +1995,7 @@ async function loadAllEntries(){
       // already powering "My Work", so the matching logic (ID-first, name/
       // email fallback) stays in exactly one place.
       S.entries[type]=isStaffOnly()?tasks.filter(isAssignedToMe):tasks;
-      S.filtered[type]=S.entries[type].filter(t=>!t.parent);
+      S.filtered[type]=S.entries[type].filter(t=>!t.parent&&!(type==='pipeline'&&(t.status?.status||'').toLowerCase()==='archived'));
       renderTable(type);
       const mode=S.viewMode[type];
       if(mode==='kanban')renderKanban(type);
@@ -2219,7 +2219,7 @@ function buildToolbar(type){
 
 function getStatuses(type){
   if(type==='leads')return['PRE-ENGAGEMENT','MANUAL OUTREACH CUE','INITIAL CONTACT MADE','NURTURING','ATTENTION NEEDED','CHURNED/DISQUALIFIED','READY FOR PIPELINE'];
-  if(type==='pipeline')return['OPPURTUNITY','SCHEDULED DS / INTRO','QUALIFIED LEAD/PROSPECT','DEMO PRESENTED','PROPOSAL PENDING','OFFER PRSNTD / NEGOTIATION','DISQUALIFIED','CLOSED / WON','CLOSED / LOST'];
+  if(type==='pipeline')return['OPPURTUNITY','SCHEDULED DS / INTRO','QUALIFIED LEAD/PROSPECT','DEMO PRESENTED','PROPOSAL PENDING','OFFER PRSNTD / NEGOTIATION','DISQUALIFIED','CLOSED / WON','CLOSED / LOST','ARCHIVED'];
   if(type==='contacts')return['LISTED','TO DO','IN PROGRESS','IN REVIEW','BURNT','COMPLETED'];
   if(type==='accounts')return['LISTED','IN REVIEW','BURNT','COMPLETED'];
   if(type==='master')return['TO DO','IN PROGRESS','FOR REVIEW','COMPLETED/APPROVED'];
@@ -2279,7 +2279,7 @@ function clearFilters(type){
     if(el.tagName==='SELECT')el.selectedIndex=0;
     else el.value='';
   });
-  S.filtered[type]=S.entries[type].filter(t=>!t.parent);
+  S.filtered[type]=S.entries[type].filter(t=>!t.parent&&!(type==='pipeline'&&(t.status?.status||'').toLowerCase()==='archived'));
   S.pages[type]=1;
   renderTable(type);
   if(S.viewMode[type]==='kanban')renderKanban(type);
@@ -3983,7 +3983,7 @@ function buildMsgVars(task,type,cf){
   const fullName=task.name||'';
   const scheduling=resolveSchedulingLinks();
   return{
-    firstName:cf['first name']||fullName.split(' ')[0]||'',
+    firstName:cf['known as']||cf['first name']||fullName.split(' ')[0]||'',
     fullName,
     branch:cf.branch||'',
     companyName:cf['company name']||'',
@@ -4052,6 +4052,7 @@ const CRM_ACTIONS={
        template:"Hi {{firstName}} — thought you'd get value from {{magnetName}}. Free to check out here: {{magnetLink}}"}
     ],
     'Follow-Up':[
+      {id:'followup_last_activity',label:'Follow Up Based on Last Activity',type:'custom',structure:'Auto-drafted from recent activity history -- choose a time window or count, then generate'},
       {id:'attempt_warm_1',label:'Attempt Warm Outreach',structure:'Reaffirm relevance → ask permission',
        vars:['firstName','senderFirstName','recentOptIn'],
        template:"Hi {{firstName}}, it's {{senderFirstName}} again — following up on {{recentOptIn}}. Still a good time to connect for a quick call this week?"},
@@ -4123,6 +4124,7 @@ const CRM_ACTIONS={
        template:"Hi {{firstName}}, here's a recap of what we discussed: the {{plan}} plan at {{opportunity}}, built around [the specific outcome they want]. Full details here: {{nextActionLink}} — happy to answer anything before you decide."}
     ],
     'Sales Follow-Up':[
+      {id:'followup_last_activity_deal',label:'Follow Up Based on Last Activity',type:'custom',structure:'Auto-drafted from recent activity history -- choose a time window or count, then generate'},
       {id:'reminder_1',label:'Send Reminder 1',structure:'Speed + cadence (48h peak window)',
        vars:['firstName','nextActionLink'],
        template:"Hi {{firstName}}, just a friendly nudge on the proposal I sent over — any questions on my end I can answer? Here it is again for easy reference: {{nextActionLink}}"},
@@ -4222,8 +4224,27 @@ function renderMessagePreview(action,vars){
     const hasDraft=!!S.customDraftResult;
     const hasOptions=!!S.customDraftOptions;
     const mode=S.customChannelMode||'sms';
+    const isActivityFollowup=action.id==='followup_last_activity'||action.id==='followup_last_activity_deal';
     let html=`<h4>${esc(action.label)}</h4>
       ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
+      ${isActivityFollowup?`<div class="form-group" style="margin-bottom:10px">
+        <label>Base this on</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="activity-followup-window" class="form-select" style="flex:1;min-width:160px">
+            <option value="hour">Last hour</option>
+            <option value="day" selected>Last day</option>
+            <option value="week">Last week</option>
+            <option value="month">Last month</option>
+            <option value="year">Last year</option>
+            <option value="all">All time</option>
+            <option value="count:3">Last 3 activities</option>
+            <option value="count:5">Last 5 activities</option>
+            <option value="count:10">Last 10 activities</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="loadActivityIntoSituation()">Load Activity</button>
+        </div>
+        <div id="activity-followup-status" style="font-size:11.5px;color:var(--text-muted);margin-top:6px"></div>
+      </div>`:''}
       <div class="form-group"><label>Describe the situation</label>
         <textarea id="custom-situation" class="msg-draft" style="min-height:80px" placeholder="e.g. They asked for a refund on their last invoice and haven't heard back in 3 days...">${esc(S.customSituationText||'')}</textarea>
       </div>
@@ -4686,6 +4707,44 @@ function fillCustomPreset(kind){
 // context. Distinct from personalizeWithAI, which needs an existing
 // template to start from -- this one starts from nothing but the
 // situation itself.
+// Populates the Custom Message situation textarea from the entry's own
+// recent activity log instead of manual typing -- same time-bucket
+// vocabulary as Catch Up, plus count-based options (last 3/5/10
+// activities) since a count is sometimes the more natural way to think
+// about "recent" for a sparsely-active entry. The person can still edit
+// the loaded text before generating, exactly like the preset buttons.
+function loadActivityIntoSituation(){
+  if(!S.currentEntry)return;
+  const windowChoice=document.getElementById('activity-followup-window')?.value||'day';
+  const statusEl=document.getElementById('activity-followup-status');
+  const all=(S.currentEntry.comments||[]).slice();
+  let selected,label;
+  if(windowChoice.startsWith('count:')){
+    const n=Number(windowChoice.split(':')[1]);
+    selected=all.slice(0,n);
+    label=`the last ${n} activities`;
+  }else{
+    const now=Date.now();
+    const DAY=24*60*60*1000;
+    const windows={hour:60*60*1000,day:DAY,week:7*DAY,month:30*DAY,year:365*DAY,all:Infinity};
+    const ms=windows[windowChoice]??DAY;
+    selected=all.filter(c=>now-Number(c.date)<=ms);
+    label={hour:'the last hour',day:'the last day',week:'the last week',month:'the last month',year:'the last year',all:'all time'}[windowChoice]||'the last day';
+  }
+  if(!selected.length){
+    if(statusEl)statusEl.textContent=`No activity found in ${label}.`;
+    return;
+  }
+  // Oldest-first, so the AI reads it as a natural timeline rather than
+  // most-recent-first (which is how ClickUp's own comment order works,
+  // but reads backwards as a narrative).
+  const situationText=selected.slice().reverse().map(c=>(c.comment_text||'').trim()).filter(Boolean).join('\n\n');
+  const situationEl=document.getElementById('custom-situation');
+  if(situationEl)situationEl.value=situationText;
+  S.customSituationText=situationText;
+  if(statusEl)statusEl.textContent=`Loaded ${selected.length} activit${selected.length===1?'y':'ies'} from ${label}. Feel free to edit before generating.`;
+}
+
 async function generateCustomDraft(actionId){
   if(!S.currentEntry)return;
   const ta=document.getElementById('custom-situation');
