@@ -200,3 +200,10 @@ Corrected the content-entry notebook link's design after clarifying the actual r
 - buildTaskDraft() reads the field's current value the same way it already reads Medium(s)/Next Action Date/etc; shown to admin only, no edit control at all.
 - Brand Foundation's own notebook_url is unaffected -- a Foundation profile has no ClickUp entry to read from, so it stays manually set within ContentFlow.
 - jsdom smoke test now 253/253 passing.
+
+## v1.19.1 (2026-09-20)
+Confirmed the notebook-link field name and made the read defensive.
+
+- Confirmed: field is exactly "Notebook Link", a website/url-type custom field on every entry in the Client Master Content Strategy Workflow list -- matches NOTEBOOK_FIELD_NAME.
+- Since ClickUp's precise JSON shape for a website-type field's value can't be verified from here, added extractNotebookUrl() to also unwrap a {url: "..."}-shaped value, not just a plain string -- so this can't silently go blank if the actual shape differs.
+- jsdom smoke test now 254/254 passing.
