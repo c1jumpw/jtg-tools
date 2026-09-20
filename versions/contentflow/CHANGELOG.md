@@ -217,3 +217,14 @@ Multi-account client support.
 - "+ New" capture form gained an account picker for multi-business clients.
 - /api/client/tasks now accepts an optional accountId on POST, validated against the caller's own account_access.
 - jsdom smoke test now 263/263 passing.
+
+## v1.21.0 (2026-09-20)
+Full system audit. Backend checked clean; four real frontend issues found and fixed.
+
+- Backend: RLS confirmed enabled on all 10 tables, every endpoint pairs requireUser with CORS, no endpoint bypasses the inactive-account filter, files_category_check still matches the app's category list.
+- Fixed: --accent-ink (text color on every account badge) was never actually defined -- only used via a fallback that happened to work in light mode. Dark mode had poor contrast on one of the most frequently-visible elements in the app.
+- Fixed: disconnect() (called on every sign-out) never picked up Brand Foundation/Prompt Library/Feed/Message Hub/client-specific state added in later rounds -- a different person on the same browser session could briefly see the previous session's cached data.
+- Fixed: Calendar date keys round-tripped through toISOString(), shifting items back a day for anyone at a positive UTC offset.
+- Fixed (more serious): toClickUpDate() built its save timestamp from local midnight while fromClickUpDate() reads via UTC -- for a positive-UTC-offset viewer, picking and saving a date would silently save and redisplay as the day before, everywhere.
+- All four covered by new regression tests, two of which explicitly run under TZ=Asia/Tokyo.
+- jsdom smoke test now 273/273 passing.
