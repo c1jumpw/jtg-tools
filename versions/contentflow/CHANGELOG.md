@@ -173,3 +173,12 @@ Brand Foundation: the strategic layer underneath pillars.
 - Read view has a Copy button next to every reusable block (elevator pitch, value prop, keywords, CTA lines, hook lines).
 - Phase 1 of 3 -- guided wizard pacing and pillar auto-suggestion from Foundation content are deliberately deferred until this shape proves out.
 - jsdom smoke test now 220/220 passing.
+
+## v1.17.0 (2026-09-20)
+Brand Foundation now supports multiple named profiles per account instead of just one.
+
+- brand_foundations moved from account_id-as-primary-key to its own id, with name and is_active columns; a partial unique index enforces exactly one active profile per account at the database level.
+- /api/brand-foundation gained create/update/setActive/delete actions in place of a single upsert.
+- Foundation view now shows a profile switcher (★ marks the current one), + New profile, Set as current, and Delete controls -- all admin/rep only.
+- A brand-new profile becomes current by default; deleting the current one auto-promotes the next most recent survivor so an account is never left without an active profile.
+- jsdom smoke test now 232/232 passing.
