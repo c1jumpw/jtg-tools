@@ -207,3 +207,13 @@ Confirmed the notebook-link field name and made the read defensive.
 - Confirmed: field is exactly "Notebook Link", a website/url-type custom field on every entry in the Client Master Content Strategy Workflow list -- matches NOTEBOOK_FIELD_NAME.
 - Since ClickUp's precise JSON shape for a website-type field's value can't be verified from here, added extractNotebookUrl() to also unwrap a {url: "..."}-shaped value, not just a plain string -- so this can't silently go blank if the actual shape differs.
 - jsdom smoke test now 254/254 passing.
+
+## v1.20.0 (2026-09-20)
+Multi-account client support.
+
+- A client granted access to more than one business previously had no way to reach anything but whichever account came first -- Ideas/Foundation/Pillars/Rhythm/Feed silently locked to that one account, new entries could only be created under it, and the client topnav had no account concept.
+- New account switcher in the client topnav, shown only when a client has more than one business. Defaults to a merged "All my businesses" view across Board/List/Dashboard/Feed, with the option to narrow to one.
+- Ideas/Foundation/Pillars/Rhythm now follow the switcher instead of guessing.
+- "+ New" capture form gained an account picker for multi-business clients.
+- /api/client/tasks now accepts an optional accountId on POST, validated against the caller's own account_access.
+- jsdom smoke test now 263/263 passing.
