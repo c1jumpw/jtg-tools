@@ -237,3 +237,13 @@ Ideas-area navigation fix (mobile-reported bug).
 - Styled as underline tabs (distinct from the topnav's pill tabs) with the same horizontal-scroll safety as the earlier topnav fix.
 - Removed the now-redundant per-view Foundation/Pillars & Rhythm buttons inside the Idea Inbox.
 - jsdom smoke test now 281/281 passing.
+
+## v1.23.0 (2026-09-20)
+Social links on Brand Foundation, with quick-access links in the task modal.
+
+- New SOCIAL_NETWORKS config (Instagram, Facebook, TikTok, X, LinkedIn, YouTube, Pinterest) -- input is always just the username.
+- sanitizeSocialUsername() strips a pasted full URL or leading @ down to a clean value.
+- Read-only display is a single plain https:// link per network (new social_links jsonb column) -- no custom app-scheme URL needed, since every one of these networks already registers universal/app links for its own domain. One ordinary web link opens the installed app on mobile and the browser tab on desktop automatically.
+- Added to the admin/rep and client task modals via new activeSocialLinksFor() helper, reusing the existing Foundation cache -- opening any content entry shows quick-access links to that account's social profiles.
+- LinkedIn defaults to /company/{username}; flagged as a one-line change if any account's LinkedIn is a personal-style profile.
+- jsdom smoke test now 298/298 passing.
