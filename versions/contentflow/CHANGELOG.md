@@ -151,3 +151,15 @@ Feedback pass: a real bug fix plus four requested features.
 - New: Idea Inbox filter tabs get a small colored dot matching their semantic color (amber for review, green for promoted, etc.) for at-a-glance scanning.
 - New: account-wide message hub on the Dashboard when a specific account is in view -- a shared thread (new account_messages table) distinct from the per-task Log, for general updates/questions. Admin/rep/client all see and can post to the same thread.
 - jsdom smoke test now 190/190 passing.
+
+## v1.15.0 (2026-09-20)
+Fixed a broken upload path, reworked topnav navigation, and added a cross-entry activity feed.
+
+- Fixed: files_category_check was never updated when idea_media was introduced, so every idea attachment upload failed at the database level -- fixed directly in Supabase.
+- Fixed: account-filter dropdown options were nearly unreadable (near-white text on the browser's own white options-list background) -- now explicitly dark.
+- Fixed a real dark-mode contrast bug: --ink was double-duty as both fixed chrome color and flippable heading text color. Split into --ink (chrome, constant) and --heading (text, flips per theme).
+- Settings menu consolidated: theme, sync, and Admin panel access all moved into the one gear menu. New "Edit profile" modal (display name via new /api/profile, email + password via Supabase Auth). Sign out lives in the same menu.
+- Clicking the ContentFlow logo returns to Dashboard (or the main board, from the admin panel).
+- Tabs now have icons and color-grouping: Dashboard and Ideas each get their own color; Board/List/Calendar/Feed share one color to read as the same underlying workflow.
+- New: Feed view -- a merged chronological timeline of comments across every entry in view, reusing the same account-filtering as Board/List/Calendar. Capped at the 60 most-recently-updated entries (ClickUp has no bulk comment endpoint).
+- jsdom smoke test now 208/208 passing.
