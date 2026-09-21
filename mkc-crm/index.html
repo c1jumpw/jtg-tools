@@ -822,6 +822,7 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
       <div id="act-task-fields" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:-6px;margin-bottom:12px">
         <div class="form-group"><label>Task Name</label><input type="text" id="act-task-name" placeholder="e.g. Follow up next week"></div>
         <div class="form-group"><label>Due Date</label><input type="date" id="act-task-due"></div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;font-size:13px"><input type="checkbox" id="act-task-gcal"> 📅 Also add to Google Calendar</label>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('activity-modal')">Cancel</button><button class="btn btn-primary" onclick="submitActivity()">Post Activity</button></div>
@@ -847,7 +848,14 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </div>
         </div>
       </div>
-      <div class="form-group"><label>Status</label>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400"><input type="checkbox" id="nt-add-gcal" onchange="document.getElementById('nt-gcal-invite-row').style.display=this.checked?'block':'none'"> 📅 Also add to Google Calendar</label>
+        <div id="nt-gcal-invite-row" style="display:none;margin-top:6px;padding-left:22px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;font-size:12.5px;color:var(--text-secondary)"><input type="checkbox" id="nt-gcal-invite"> Invite <span id="nt-gcal-invite-name">the linked contact</span> too</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
         <select class="form-select" id="nt-status">
           <option value="TO DO">To Do</option>
           <option value="IN PROGRESS">In Progress</option>
@@ -3536,6 +3544,33 @@ async function openTaskProfile(taskId){
  * @param {string} [prelinkedName]
  * @returns {Promise<void>}
  */
+// Google's public "Add to Calendar" template link -- no OAuth, no API
+// key, opens Google Calendar in whatever account is already signed in,
+// pre-filled and ready to save. Timed events use UTC-with-Z format
+// (Google converts to the viewer's own timezone for display); all-day
+// events use local date components instead, since a due-date-only
+// commitment should land on that same calendar day regardless of
+// timezone, not shift from a UTC conversion.
+function buildGoogleCalendarLink({title,details,startMs,hasTime,guestEmail}){
+  const pad=n=>String(n).padStart(2,'0');
+  const start=new Date(startMs);
+  let datesParam;
+  if(hasTime){
+    const end=new Date(startMs+60*60*1000); // default 1-hour duration
+    const fmtUTC=dt=>`${dt.getUTCFullYear()}${pad(dt.getUTCMonth()+1)}${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}${pad(dt.getUTCMinutes())}00Z`;
+    datesParam=`${fmtUTC(start)}/${fmtUTC(end)}`;
+  }else{
+    // All-day: Google wants an EXCLUSIVE end date (the day after) and
+    // no time/Z suffix at all for date-only events.
+    const fmtLocalDate=dt=>`${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+    const endDate=new Date(startMs+24*60*60*1000);
+    datesParam=`${fmtLocalDate(start)}/${fmtLocalDate(endDate)}`;
+  }
+  const params=new URLSearchParams({action:'TEMPLATE',text:title||'',dates:datesParam,details:details||''});
+  if(guestEmail)params.set('add',guestEmail);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 async function openNewTaskModal(prelinkedId='',prelinkedName=''){
   S._taskLinks=prelinkedId?[{id:prelinkedId,name:prelinkedName}]:[];
   document.getElementById('nt-name').value='';
@@ -3546,6 +3581,27 @@ async function openNewTaskModal(prelinkedId='',prelinkedName=''){
   document.getElementById('nt-notes').value='';
   document.getElementById('nt-search').value='';
   document.getElementById('nt-results').style.display='none';
+  document.getElementById('nt-add-gcal').checked=false;
+  document.getElementById('nt-gcal-invite').checked=false;
+  document.getElementById('nt-gcal-invite-row').style.display='none';
+  // Resolve the linked entry's contact email (if any) so the invite
+  // option can show a real name/email rather than a generic
+  // placeholder -- looked up from already-loaded S.entries, no extra fetch.
+  S._taskLinkEmail=null;
+  if(prelinkedId){
+    outer:for(const key of['leads','pipeline','contacts','accounts']){
+      const hit=(S.entries[key]||[]).find(t=>t.id===prelinkedId);
+      if(hit){
+        const cf=getCF(hit);
+        const email=cf['primary contact email']||cf.email||'';
+        if(email){
+          S._taskLinkEmail=email;
+          document.getElementById('nt-gcal-invite-name').textContent=`${prelinkedName} (${email})`;
+        }
+        break outer;
+      }
+    }
+  }
   renderTaskLinks();
   const members=await loadTeamMembers();
   const assigneeSel=document.getElementById('nt-assignees');
@@ -3681,6 +3737,17 @@ async function submitNewTask(){
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
     showToast(`Task "${name}" created!`,'success');
+    if(document.getElementById('nt-add-gcal')?.checked&&dueCombined){
+      const wantsInvite=document.getElementById('nt-gcal-invite')?.checked;
+      const gcalUrl=buildGoogleCalendarLink({
+        title:name,
+        details:notes||(S._taskLinks?.length?`Related to: ${S._taskLinks.map(l=>l.name).join(', ')}`:''),
+        startMs:dueCombined.ms,
+        hasTime:dueCombined.hasTime,
+        guestEmail:wantsInvite?S._taskLinkEmail:null
+      });
+      window.open(gcalUrl,'_blank');
+    }
     await loadMasterTasks();
     renderTasks();
     if(S_tasksView==='kanban')renderTasksKanban();
@@ -6015,6 +6082,8 @@ function openActivityModal(){
   if(taskNameEl)taskNameEl.value='Follow up: '+(S.currentEntry.task?.name||'');
   const taskDueEl=document.getElementById('act-task-due');
   if(taskDueEl)taskDueEl.value='';
+  const taskGcalEl=document.getElementById('act-task-gcal');
+  if(taskGcalEl)taskGcalEl.checked=false;
   document.getElementById('activity-modal').style.display='flex';
 }
 function toggleActTaskFields(show){
@@ -6124,6 +6193,15 @@ async function submitActivity(){
           await createQuickTaskForEntry(taskName,taskDue,S.currentEntry.task.id,S.currentEntry.task.name);
           showToast(`Task "${taskName}" created.`,'success');
           taskAlreadyHandled=true;
+          if(document.getElementById('act-task-gcal')?.checked&&taskDue){
+            const gcalUrl=buildGoogleCalendarLink({
+              title:taskName,
+              details:`Related to: ${S.currentEntry.task.name}`,
+              startMs:new Date(taskDue).getTime(),
+              hasTime:false
+            });
+            window.open(gcalUrl,'_blank');
+          }
         }catch(e){showToast('Task creation failed: '+e.message,'error');}
       }else{
         showToast('Task name required to create a related task — activity was still logged.','error');
