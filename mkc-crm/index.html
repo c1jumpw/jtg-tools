@@ -3767,16 +3767,23 @@ async function submitNewTask(){
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
     showToast(`Task "${name}" created!`,'success');
-    if(document.getElementById('nt-add-gcal')?.checked&&dueCombined){
-      const wantsInvite=document.getElementById('nt-gcal-invite')?.checked;
-      const gcalUrl=buildGoogleCalendarLink({
-        title:name,
-        details:notes||(S._taskLinks?.length?`Related to: ${S._taskLinks.map(l=>l.name).join(', ')}`:''),
-        startMs:dueCombined.ms,
-        hasTime:dueCombined.hasTime,
-        guestEmail:wantsInvite?S._taskLinkEmail:null
-      });
-      promptGoogleCalendar(gcalUrl);
+    if(document.getElementById('nt-add-gcal')?.checked){
+      if(dueCombined){
+        const wantsInvite=document.getElementById('nt-gcal-invite')?.checked;
+        const gcalUrl=buildGoogleCalendarLink({
+          title:name,
+          details:notes||(S._taskLinks?.length?`Related to: ${S._taskLinks.map(l=>l.name).join(', ')}`:''),
+          startMs:dueCombined.ms,
+          hasTime:dueCombined.hasTime,
+          guestEmail:wantsInvite?S._taskLinkEmail:null
+        });
+        promptGoogleCalendar(gcalUrl);
+      }else{
+        // Previously failed completely silently here -- checking the
+        // box with no due date set looked identical to the feature just
+        // not working at all. A calendar event needs a date, so say so.
+        showToast('Add to Calendar needs a due date -- none was set, so skipping the calendar prompt.','error');
+      }
     }
     await loadMasterTasks();
     renderTasks();
@@ -6224,18 +6231,24 @@ async function submitActivity(){
           await createQuickTaskForEntry(taskName,taskDue,S.currentEntry.task.id,S.currentEntry.task.name);
           showToast(`Task "${taskName}" created.`,'success');
           taskAlreadyHandled=true;
-          if(document.getElementById('act-task-gcal')?.checked&&taskDue){
-            // Stashed, not shown yet -- activity-modal is still open at
-            // this point in the function. Prompting here (before it
-            // closes) would risk the same two-modals-open stacking issue
-            // fixed earlier for Smart Triage; this waits until after the
-            // close call below instead.
-            pendingGcalUrl=buildGoogleCalendarLink({
-              title:taskName,
-              details:`Related to: ${S.currentEntry.task.name}`,
-              startMs:new Date(taskDue).getTime(),
-              hasTime:false
-            });
+          if(document.getElementById('act-task-gcal')?.checked){
+            if(taskDue){
+              // Stashed, not shown yet -- activity-modal is still open at
+              // this point in the function. Prompting here (before it
+              // closes) would risk the same two-modals-open stacking issue
+              // fixed earlier for Smart Triage; this waits until after the
+              // close call below instead.
+              pendingGcalUrl=buildGoogleCalendarLink({
+                title:taskName,
+                details:`Related to: ${S.currentEntry.task.name}`,
+                startMs:new Date(taskDue).getTime(),
+                hasTime:false
+              });
+            }else{
+              // Previously silent -- checking the box with no due date
+              // set looked identical to the feature not working at all.
+              showToast('Add to Calendar needs a due date -- none was set, so skipping the calendar prompt.','error');
+            }
           }
         }catch(e){showToast('Task creation failed: '+e.message,'error');}
       }else{
