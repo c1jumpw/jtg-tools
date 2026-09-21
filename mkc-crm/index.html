@@ -879,6 +879,26 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   </div>
 </div>
 
+<!-- GOOGLE CALENDAR PROMPT: a real <a target="_blank"> link the person
+     clicks directly, rather than a script-triggered window.open() --
+     browsers (mobile Safari especially) silently block window.open()
+     when it happens after an await (like the task-creation network
+     call), since too much time has passed since the actual click for it
+     to still count as "directly requested" by the user. A genuine
+     anchor tag click doesn't have this problem. -->
+<div id="gcal-prompt-modal" style="display:none" class="modal-overlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><h3>📅 Add to Calendar</h3><button class="pf-close" onclick="closeModal('gcal-prompt-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0">Opens Google Calendar in a new tab, pre-filled with the details -- just review and hit Save on Google's side.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('gcal-prompt-modal')">Not now</button>
+      <a id="gcal-prompt-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" onclick="closeModal('gcal-prompt-modal')" style="text-decoration:none">Open Google Calendar</a>
+    </div>
+  </div>
+</div>
+
 <!-- QC INBOX: thread / chat view + markdown export -->
 <div id="qc-thread-modal" style="display:none" class="modal-overlay">
   <div class="modal" style="max-width:640px;max-height:82vh;display:flex;flex-direction:column">
@@ -3571,6 +3591,16 @@ function buildGoogleCalendarLink({title,details,startMs,hasTime,guestEmail}){
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+// Shows the calendar link as something the person clicks themselves,
+// rather than auto-opening via window.open() -- see gcal-prompt-modal's
+// own comment for why this matters (popup blockers silently swallow
+// window.open() calls that happen after an async task).
+function promptGoogleCalendar(gcalUrl){
+  const link=document.getElementById('gcal-prompt-link');
+  if(link)link.href=gcalUrl;
+  document.getElementById('gcal-prompt-modal').style.display='flex';
+}
+
 async function openNewTaskModal(prelinkedId='',prelinkedName=''){
   S._taskLinks=prelinkedId?[{id:prelinkedId,name:prelinkedName}]:[];
   document.getElementById('nt-name').value='';
@@ -3746,7 +3776,7 @@ async function submitNewTask(){
         hasTime:dueCombined.hasTime,
         guestEmail:wantsInvite?S._taskLinkEmail:null
       });
-      window.open(gcalUrl,'_blank');
+      promptGoogleCalendar(gcalUrl);
     }
     await loadMasterTasks();
     renderTasks();
@@ -6185,6 +6215,7 @@ async function submitActivity(){
     // ── OPTIONAL RELATED TASK (Section 11-C) ──────────────────
     const wantsTask=document.getElementById('act-create-task')?.checked;
     let taskAlreadyHandled=false;
+    let pendingGcalUrl=null;
     if(wantsTask){
       const taskName=document.getElementById('act-task-name')?.value?.trim();
       const taskDue=document.getElementById('act-task-due')?.value||'';
@@ -6194,13 +6225,17 @@ async function submitActivity(){
           showToast(`Task "${taskName}" created.`,'success');
           taskAlreadyHandled=true;
           if(document.getElementById('act-task-gcal')?.checked&&taskDue){
-            const gcalUrl=buildGoogleCalendarLink({
+            // Stashed, not shown yet -- activity-modal is still open at
+            // this point in the function. Prompting here (before it
+            // closes) would risk the same two-modals-open stacking issue
+            // fixed earlier for Smart Triage; this waits until after the
+            // close call below instead.
+            pendingGcalUrl=buildGoogleCalendarLink({
               title:taskName,
               details:`Related to: ${S.currentEntry.task.name}`,
               startMs:new Date(taskDue).getTime(),
               hasTime:false
             });
-            window.open(gcalUrl,'_blank');
           }
         }catch(e){showToast('Task creation failed: '+e.message,'error');}
       }else{
@@ -6209,6 +6244,7 @@ async function submitActivity(){
     }
 
     closeModal('activity-modal');
+    if(pendingGcalUrl)promptGoogleCalendar(pendingGcalUrl);
     showToast('Activity logged.','success');
     const c=await cuFetch(`/task/${S.currentEntry.task.id}/comment`);
     S.currentEntry.comments=c.comments||[];
