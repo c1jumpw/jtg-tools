@@ -7617,7 +7617,7 @@ function renderTriageTier1(items){
 }
 
 function renderTriageTier2(items){
-  return `<div class="pf-section">
+  return `<div class="pf-section" id="triage-tier2-section">
     <h4 style="margin:0 0 4px">Confident Matches (${items.length})</h4>
     <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">Matched to a known CRM entry. Review the summaries below, uncheck anything that needs a closer look, then confirm -- this posts a real log comment to each entry.</p>
     ${items.map(r=>`<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
@@ -7687,6 +7687,7 @@ async function confirmTriageTier2(){
   const checked=[...document.querySelectorAll('.triage-t2-check:checked')].map(el=>el.dataset.key);
   if(!checked.length)return showToast('Nothing checked.','info');
   let done=0,failed=0;
+  const succeeded=[];
   for(const key of checked){
     const result=(S._triageResults||[]).find(r=>r.key===key);
     if(!result||!result.matchedEntry)continue;
@@ -7697,11 +7698,37 @@ async function confirmTriageTier2(){
         note:'Auto-triaged and confirmed via Smart Triage'
       });
       done++;
+      succeeded.push(result.matchedEntry);
     }catch(e){failed++;}
   }
   showToast(`Logged ${done}${failed?`, ${failed} failed`:''}.`,failed?'error':'success');
   await loadQcInbox();
+  // Quick-open summary instead of just closing -- lets you jump
+  // straight to any just-assigned entry to create a follow-up task or
+  // take further action, without needing to search for it again.
+  // Targets the Tier 2 section specifically (not the whole modal body),
+  // so Tier 1/Tier 3 sections (if any remain) stay untouched.
+  const section=document.getElementById('triage-tier2-section');
+  if(section&&succeeded.length){
+    section.innerHTML=`
+      <h4 style="margin:0 0 8px">Logged (${succeeded.length})</h4>
+      ${succeeded.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px"><strong>${esc(e.name)}</strong> <span style="font-size:11px;color:var(--text-muted)">(${esc(e.type)})</span></span>
+        <button class="btn btn-secondary btn-sm" onclick="openEntryFromTriage('${esc(e.id)}','${esc(e.type)}')">Open</button>
+      </div>`).join('')}
+    `;
+  }else if(section){
+    section.style.display='none';
+  }
+}
+
+// Closes the triage modal first (same pattern as reviewTriageItem --
+// two modals sharing one z-index means DOM order alone decides which
+// paints on top, so always close before opening a new one) then opens
+// the entry's profile directly.
+function openEntryFromTriage(taskId,taskType){
   closeModal('triage-modal');
+  openProfile(taskId,taskType);
 }
 
 function openQuickCapture(){
