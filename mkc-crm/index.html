@@ -3768,21 +3768,21 @@ async function submitNewTask(){
     closeModal('task-modal');
     showToast(`Task "${name}" created!`,'success');
     if(document.getElementById('nt-add-gcal')?.checked){
-      if(dueCombined){
+      if(startCombined){
         const wantsInvite=document.getElementById('nt-gcal-invite')?.checked;
         const gcalUrl=buildGoogleCalendarLink({
           title:name,
           details:notes||(S._taskLinks?.length?`Related to: ${S._taskLinks.map(l=>l.name).join(', ')}`:''),
-          startMs:dueCombined.ms,
-          hasTime:dueCombined.hasTime,
+          startMs:startCombined.ms,
+          hasTime:startCombined.hasTime,
           guestEmail:wantsInvite?S._taskLinkEmail:null
         });
         promptGoogleCalendar(gcalUrl);
       }else{
         // Previously failed completely silently here -- checking the
-        // box with no due date set looked identical to the feature just
-        // not working at all. A calendar event needs a date, so say so.
-        showToast('Add to Calendar needs a due date -- none was set, so skipping the calendar prompt.','error');
+        // box with no start date set looked identical to the feature
+        // just not working at all. A calendar event needs a date, so say so.
+        showToast('Add to Calendar needs a start date -- none was set, so skipping the calendar prompt.','error');
       }
     }
     await loadMasterTasks();
