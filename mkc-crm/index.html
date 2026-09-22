@@ -4331,7 +4331,7 @@ function renderMessagePreview(action,vars){
     const hasDraft=!!S.customDraftResult;
     const hasOptions=!!S.customDraftOptions;
     const mode=S.customChannelMode||'sms';
-    const isActivityFollowup=action.id==='followup_last_activity'||action.id==='followup_last_activity_deal';
+    const isActivityFollowup=action.type==='custom'; // all 4 custom-type actions (both Follow Up variants + both Write Custom Message variants) share this same situation-loading capability
     let html=`<h4>${esc(action.label)}</h4>
       ${action.structure?`<div class="msg-structure">${esc(action.structure)}</div>`:''}
       ${isActivityFollowup?`<div class="form-group" style="margin-bottom:10px">
@@ -4820,6 +4820,32 @@ function fillCustomPreset(kind){
 // activities) since a count is sometimes the more natural way to think
 // about "recent" for a sparsely-active entry. The person can still edit
 // the loaded text before generating, exactly like the preset buttons.
+// Full end-to-end shortcut from an Assign success screen: opens the
+// entry, jumps straight to CRM Actions, selects the Follow Up Based on
+// Last Activity action for that entry type, and auto-loads recent
+// activity (defaulting to the last hour, since this fires right after
+// something was just logged -- matches "just logged this" more closely
+// than a longer window would). modalsToClose lets each caller (manual
+// Assign vs Smart Triage) close whatever's actually open in that context.
+async function openFollowUpFromAssign(taskId,taskType,modalsToClose){
+  (modalsToClose||[]).forEach(id=>closeModal(id));
+  await openProfile(taskId,taskType);
+  switchPfTab('actions');
+  // Accounts share Pipeline's action group in this app (same convention
+  // used everywhere else CRM_ACTIONS is selected by type), so Deal/
+  // Account both map to the pipeline variant of this action.
+  const actionId=(taskType==='Deal'||taskType==='Account')?'followup_last_activity_deal':'followup_last_activity';
+  const actionEl=document.querySelector(`[data-action="${actionId}"]`);
+  if(!actionEl){
+    showToast('Could not find the Follow Up action for this entry.','error');
+    return;
+  }
+  actionEl.click(); // triggers selectAction(this, actionId) naturally, including the correct visual "selected" state
+  const windowEl=document.getElementById('activity-followup-window');
+  if(windowEl)windowEl.value='hour';
+  loadActivityIntoSituation();
+}
+
 function loadActivityIntoSituation(){
   if(!S.currentEntry)return;
   const windowChoice=document.getElementById('activity-followup-window')?.value||'day';
@@ -7730,9 +7756,10 @@ async function confirmTriageTier2(){
   if(section&&succeeded.length){
     section.innerHTML=`
       <h4 style="margin:0 0 8px">Logged (${succeeded.length})</h4>
-      ${succeeded.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px"><strong>${esc(e.name)}</strong> <span style="font-size:11px;color:var(--text-muted)">(${esc(e.type)})</span></span>
-        <button class="btn btn-secondary btn-sm" onclick="openEntryFromTriage('${esc(e.id)}','${esc(e.type)}')">Open</button>
+      ${succeeded.map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border);gap:8px">
+        <span style="font-size:13px;flex:1;min-width:0"><strong>${esc(e.name)}</strong> <span style="font-size:11px;color:var(--text-muted)">(${esc(e.type)})</span></span>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="openFollowUpFromAssign('${esc(e.id)}','${esc(e.type)}',['triage-modal'])">✉️ Follow Up</button>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="openEntryFromTriage('${esc(e.id)}','${esc(e.type)}')">Open</button>
       </div>`).join('')}
     `;
   }else if(section){
@@ -8173,6 +8200,7 @@ async function qcDoConfirmAssign(){
       <p style="font-size:13.5px;margin-bottom:14px">Logged to <strong>${esc(name)}</strong> as a comment${count>1?` covering ${esc(windowLabel)} (${count} messages)`:''}.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openNewTaskModal('${taskId}','${esc(name)}')">Create Related Task</button>
+        <button class="btn btn-secondary btn-sm" onclick="openFollowUpFromAssign('${taskId}','${taskType}',['qc-assign-modal','qc-thread-modal'])">✉️ Create Follow-Up Message</button>
         <button class="btn btn-secondary btn-sm" onclick="closeModal('qc-assign-modal');closeModal('qc-thread-modal');openProfile('${taskId}','${taskType}')">Open Record</button>
         <button class="btn btn-ghost btn-sm" onclick="closeModal('qc-assign-modal')">Done</button>
       </div>`;
