@@ -1655,7 +1655,7 @@ async function getListFields(listId){
 
 // ── DIRECT FIELD SETTER using hardcoded field IDs ──────────────────────
 async function setFieldById(taskId,fieldId,value,fieldType){
-  if(!fieldId||value===undefined||value===null)return;
+  if(!fieldId||value===undefined||value===null)return true;
   let payload;
   switch(fieldType){
     case'short_text':case'text':case'phone':case'email':case'url':
@@ -1681,7 +1681,11 @@ async function setFieldById(taskId,fieldId,value,fieldType){
   try{
     await cuFetch(`/task/${taskId}/field/${fieldId}`,'POST',payload);
     console.log(`✅ OK: "${fieldId}" (${fieldType}) →`,JSON.stringify(payload).substring(0,50));
-  }catch(e){console.warn(`❌ FAIL: "${fieldId}" (${fieldType}):`,e.message);}
+    return true;
+  }catch(e){
+    console.warn(`❌ FAIL: "${fieldId}" (${fieldType}):`,e.message);
+    return false;
+  }
 }
 
 // Get UUID for a labels-type field option — uses hardcoded maps, falls back to Sheets
@@ -2947,14 +2951,19 @@ async function submitClosedWon(archive){
     // Comment stays exactly as before -- the additional record the user
     // specifically asked to keep, alongside the now-real field values.
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:lines.join('\n'),notify_all:false});
+    let depositFieldFailed=false,balanceFieldFailed=false;
     if(depositMade){
       const depositNum=parseCurrencyInput(depositAmount);
-      if(depositNum!=null)await setFieldById(task.id,DEAL_DEPOSIT_AMOUNT_FIELD,depositNum,'currency');
+      if(depositNum!=null)depositFieldFailed=!(await setFieldById(task.id,DEAL_DEPOSIT_AMOUNT_FIELD,depositNum,'currency'));
     }
     const balanceNum=parseCurrencyInput(balanceAmount);
-    if(balanceNum!=null)await setFieldById(task.id,DEAL_REMAINING_BALANCE_FIELD,balanceNum,'currency');
+    if(balanceNum!=null)balanceFieldFailed=!(await setFieldById(task.id,DEAL_REMAINING_BALANCE_FIELD,balanceNum,'currency'));
     if(archive)await cuFetch(`/task/${task.id}`,'PUT',{status:'Archived'});
-    showToast(archive?'Logged and archived.':'Details logged.','success');
+    if(depositFieldFailed||balanceFieldFailed){
+      showToast(`Logged${archive?' and archived':''}, but the ${depositFieldFailed&&balanceFieldFailed?'deposit/balance fields':depositFieldFailed?'deposit field':'balance field'} failed to save -- the comment still has the full detail.`,'error');
+    }else{
+      showToast(archive?'Logged and archived.':'Details logged.','success');
+    }
     closeModal('closedwon-modal');
     openProfile(task.id,S.currentEntry.type);
   }catch(e){
@@ -3055,12 +3064,17 @@ async function submitEditProfile(){
     }
 
     statusEl.textContent='Saving to ClickUp…';
-    if(newPass)await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,newPass,'short_text');
-    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
-    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
-    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
-    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
-    await setFieldById(S.user.mkcId,TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
+    const profileFieldFailures=[];
+    const trackField=async(fid,val,ftype)=>{
+      const ok=await setFieldById(S.user.mkcId,fid,val,ftype);
+      if(!ok)profileFieldFailures.push(fid);
+    };
+    if(newPass)await trackField(TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,newPass,'short_text');
+    await trackField(TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
+    await trackField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    await trackField(TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
+    await trackField(TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    await trackField(TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
 
     statusEl.textContent='Saving to Sheet…';
     const rowNum=findOwnSheetRowNumber();
@@ -3081,8 +3095,13 @@ async function submitEditProfile(){
       return;
     }
 
-    statusEl.textContent=newPass?'✓ Saved. Your new passcode is active immediately.':'✓ Saved.';
-    showToast('Profile updated.','success');
+    if(profileFieldFailures.length){
+      statusEl.textContent=`Saved, but ${profileFieldFailures.length} field(s) failed on the ClickUp side -- check the console (F12) for details.`;
+      showToast('Partially saved -- see status.','error');
+    }else{
+      statusEl.textContent=newPass?'✓ Saved. Your new passcode is active immediately.':'✓ Saved.';
+      showToast('Profile updated.','success');
+    }
     await loadRef(); // refresh cached S.ref.team so Send via Quo/Email uses the new values right away
     setTimeout(()=>closeModal('edit-profile-modal'),1800);
   }catch(e){
@@ -3192,22 +3211,27 @@ async function submitAddTeamMember(){
     const newTask=await cuFetch(`/list/${TEAM_DIR_LIST_ID}/task`,'POST',{name:`${first} ${last}`,status:'Active'});
 
     statusEl.textContent='Setting fields…';
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.FIRST_NAME,first,'short_text');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.LAST_NAME,last,'short_text');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.KNOWN_AS,known,'short_text');
-    if(middle)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MIDDLE_NAME,middle,'short_text');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.BRANCH,BRANCH_UUIDS[branch],'labels');
-    if(role)await setFieldById(newTask.id,TEAM_DIR_FIELDS.ROLE,role,'short_text');
-    if(hireDate)await setFieldById(newTask.id,TEAM_DIR_FIELDS.HIRE_DATE,hireDate,'date');
-    if(persEmail)await setFieldById(newTask.id,TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
-    if(persPhone)await setFieldById(newTask.id,TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
-    if(address)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_EMAIL,wsEmail,'email');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,passcode,'short_text');
-    if(pubEmail)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
-    if(pubPhone)await setFieldById(newTask.id,TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
-    await setFieldById(newTask.id,TEAM_DIR_FIELDS.ACCESS_LEVEL,ACCESS_LEVEL_ORDERINDEX[access],'drop_down');
-    if(clickupUserId)await setFieldById(newTask.id,TEAM_DIR_FIELDS.WORKSPACE_NAME,clickupUserId,'users');
+    const teamFieldFailures=[];
+    const trackTeamField=async(fid,val,ftype)=>{
+      const ok=await setFieldById(newTask.id,fid,val,ftype);
+      if(!ok)teamFieldFailures.push(fid);
+    };
+    await trackTeamField(TEAM_DIR_FIELDS.FIRST_NAME,first,'short_text');
+    await trackTeamField(TEAM_DIR_FIELDS.LAST_NAME,last,'short_text');
+    await trackTeamField(TEAM_DIR_FIELDS.KNOWN_AS,known,'short_text');
+    if(middle)await trackTeamField(TEAM_DIR_FIELDS.MIDDLE_NAME,middle,'short_text');
+    await trackTeamField(TEAM_DIR_FIELDS.BRANCH,BRANCH_UUIDS[branch],'labels');
+    if(role)await trackTeamField(TEAM_DIR_FIELDS.ROLE,role,'short_text');
+    if(hireDate)await trackTeamField(TEAM_DIR_FIELDS.HIRE_DATE,hireDate,'date');
+    if(persEmail)await trackTeamField(TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
+    if(persPhone)await trackTeamField(TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    if(address)await trackTeamField(TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
+    await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_EMAIL,wsEmail,'email');
+    await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,passcode,'short_text');
+    if(pubEmail)await trackTeamField(TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
+    if(pubPhone)await trackTeamField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    await trackTeamField(TEAM_DIR_FIELDS.ACCESS_LEVEL,ACCESS_LEVEL_ORDERINDEX[access],'drop_down');
+    if(clickupUserId)await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_NAME,clickupUserId,'users');
 
     statusEl.textContent='Writing Sheet row…';
     // Full A-X order, verified column-by-column against the confirmed
@@ -3233,8 +3257,13 @@ async function submitAddTeamMember(){
     }
     await gsAppend('MKC Team Member Directory!A:X',[sheetRow]);
 
-    statusEl.textContent=`✓ Created ${first} ${last} — MKC ID ${newTask.id}`;
-    showToast(`Team member created: ${first} ${last}`,'success');
+    if(teamFieldFailures.length){
+      statusEl.textContent=`Created ${first} ${last}, but ${teamFieldFailures.length} field(s) failed on the ClickUp side -- check the console (F12), verify via Edit Profile or ClickUp directly.`;
+      showToast(`Team member created, but some fields failed — see status.`,'error');
+    }else{
+      statusEl.textContent=`✓ Created ${first} ${last} — MKC ID ${newTask.id}`;
+      showToast(`Team member created: ${first} ${last}`,'success');
+    }
     setTimeout(()=>closeModal('add-team-modal'),1800);
   }catch(e){
     statusEl.textContent='Failed: '+e.message;
@@ -3720,6 +3749,7 @@ async function submitNewTask(){
     const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
     try{await cuFetch(`/task/${newTask.id}/comment`,'POST',{comment_text:`[LOG] Task created — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
     // Set linked entry IDs as custom fields
+    const linkFieldFailures=[];
     if(S._taskLinks?.length){
       const fields=await getListFields(S.creds.listTasks);
       const idStr=S._taskLinks.map(l=>l.id).join(', ');
@@ -3727,7 +3757,8 @@ async function submitNewTask(){
       const setF=async(partial,val)=>{
         const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
         if(!f)return;
-        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}catch(e){}
+        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}
+        catch(e){linkFieldFailures.push(partial);}
       };
       await setF('related lead',idStr);
       await setF('related deal',idStr);
@@ -3766,7 +3797,11 @@ async function submitNewTask(){
       await gsAppend('Master CRM Tasks!A:H',[[name,status,linkedLead,linkedDeal,linkedAcct,dueStr,assignee,'']]);
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
-    showToast(`Task "${name}" created!`,'success');
+    if(linkFieldFailures.length){
+      showToast(`Task "${name}" created, but couldn't link it to the related ${linkFieldFailures.join('/')} field -- the task exists but may not show up under that entry's Tasks tab. Check the console (F12).`,'error');
+    }else{
+      showToast(`Task "${name}" created!`,'success');
+    }
     if(document.getElementById('nt-add-gcal')?.checked){
       if(startCombined){
         const wantsInvite=document.getElementById('nt-gcal-invite')?.checked;
@@ -6549,7 +6584,11 @@ async function submitEntry(){
     };
     const ntid=newTask.id;
     const F=CU_FIELDS;
-    const sfN=async(fid,val,ftype)=>setFieldById(ntid,fid,val,ftype);
+    const fieldFailures=[];
+    const sfN=async(fid,val,ftype)=>{
+      const ok=await setFieldById(ntid,fid,val,ftype);
+      if(!ok)fieldFailures.push(fid);
+    };
     // ── EMAIL & PHONE ─────────────────────────────────────────
     const nfEmail=document.getElementById('nf-email')?.value?.trim();
     if(nfEmail)await sfN(F.PRIMARY_EMAIL,nfEmail,'email');
@@ -6617,7 +6656,11 @@ async function submitEntry(){
     // would always see null and silently defeat this entire fix.
     const pendingQcAssignId=S._pendingQcAssignId;
     closeModal('entry-modal');
-    showToast(`${type} "${name.trim()}" created! ID: ${newTask.id.toUpperCase()}`,'success');
+    if(fieldFailures.length){
+      showToast(`${type} "${name.trim()}" created, but ${fieldFailures.length} field${fieldFailures.length>1?'s':''} failed to save. Open the browser console (F12) for exact errors, or edit the record to try again.`,'error');
+    }else{
+      showToast(`${type} "${name.trim()}" created! ID: ${newTask.id.toUpperCase()}`,'success');
+    }
     // If this entry was created from the Activity Inbox's Assign flow
     // (see qcCreateContactFromThread), close the loop by auto-assigning
     // the original message to the entry we just made -- otherwise the
@@ -6747,10 +6790,16 @@ async function saveUpdateProfile(){
 
     const tid=task.id;
     const F=CU_FIELDS;
-    const sf=async(fid,val,ftype)=>setFieldById(tid,fid,val,ftype);
+    const editFieldFailures=[];
+    const sf=async(fid,val,ftype)=>{
+      const ok=await setFieldById(tid,fid,val,ftype);
+      if(!ok)editFieldFailures.push(fid);
+    };
     const sfClear=async(fid,val,ftype)=>{
-      if(val===''||val===null||val===undefined)await setFieldById(tid,fid,'',ftype);
-      else await setFieldById(tid,fid,val,ftype);
+      const ok=(val===''||val===null||val===undefined)
+        ?await setFieldById(tid,fid,'',ftype)
+        :await setFieldById(tid,fid,val,ftype);
+      if(!ok)editFieldFailures.push(fid);
     };
 
     // ── BRANCH (labels type — send UUID array) ──────────────
@@ -6864,7 +6913,11 @@ async function saveUpdateProfile(){
 
     await cuFetch(`/task/${task.id}/comment`,'POST',{comment_text:`[LOG] Profile updated — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});
     await syncToSheets(task,type);
-    showToast('Profile updated & synced.','success');
+    if(editFieldFailures.length){
+      showToast(`Profile updated, but ${editFieldFailures.length} field${editFieldFailures.length>1?'s':''} failed to save. Open the browser console (F12) for exact errors, or try again.`,'error');
+    }else{
+      showToast('Profile updated & synced.','success');
+    }
     closeModal('entry-modal');
     await openProfile(task.id,type);
     loadAllEntries();
