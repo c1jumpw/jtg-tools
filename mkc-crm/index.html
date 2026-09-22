@@ -1683,6 +1683,17 @@ async function setFieldById(taskId,fieldId,value,fieldType){
     console.log(`✅ OK: "${fieldId}" (${fieldType}) →`,JSON.stringify(payload).substring(0,50));
     return true;
   }catch(e){
+    // FIELD_115 means this field simply isn't configured on this
+    // particular list at all -- not that a value was rejected. There's
+    // no data being lost (the field can't hold anything on this list
+    // either way), so this isn't a real failure to report -- without
+    // this distinction, a field that only exists on SOME lists would
+    // permanently "fail" on every edit for the lists it's missing from,
+    // which would make every future real failure easy to miss in the noise.
+    if(String(e.message||'').includes('FIELD_115')){
+      console.log(`ℹ️ SKIP: "${fieldId}" (${fieldType}) -- field not configured on this list, nothing to save here`);
+      return true;
+    }
     console.warn(`❌ FAIL: "${fieldId}" (${fieldType}):`,e.message);
     return false;
   }
@@ -6697,8 +6708,14 @@ function isValidEmailFormat(email){
 function normalizePhoneForClickUp(raw){
   const digits=(raw||'').replace(/\D/g,'');
   if(!digits)return'';
-  if(digits.length<10)return digits;
-  return digits.slice(-10);
+  // A bare 10-digit string with no country code marker at all is
+  // rejected outright by ClickUp's phone field validation (confirmed
+  // via direct API error: FIELD_016 "Value is not a valid phone
+  // number"). +1 plus the digits, with NO space, is the corrected
+  // format -- the original "+1 4041235467" (with a space) may well have
+  // been the actual issue reported, not the country code itself.
+  if(digits.length<10)return digits; // too short to safely assume a US number -- pass through as-is
+  return '+1'+digits.slice(-10);
 }
 
 async function saveUpdateProfile(){
