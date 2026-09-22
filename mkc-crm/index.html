@@ -6586,8 +6586,26 @@ async function submitEntry(){
       if(pcVal)await sfN(F.PRIMARY_EMAIL,document.getElementById('nf-email')?.value?.trim(),'email');
     }
     await syncToSheets(newTask,{Lead:'leads',Contact:'contacts',Deal:'pipeline',Account:'accounts'}[type]);
+    // Captured BEFORE closeModal runs -- closeModal now clears this flag
+    // on entry-modal close (see its own comment), so reading it after
+    // would always see null and silently defeat this entire fix.
+    const pendingQcAssignId=S._pendingQcAssignId;
     closeModal('entry-modal');
     showToast(`${type} "${name.trim()}" created! ID: ${newTask.id.toUpperCase()}`,'success');
+    // If this entry was created from the Activity Inbox's Assign flow
+    // (see qcCreateContactFromThread), close the loop by auto-assigning
+    // the original message to the entry we just made -- otherwise the
+    // contact gets created successfully but the message that prompted
+    // it is left stuck, unassigned, in the feed.
+    if(pendingQcAssignId){
+      try{
+        await authFetch(`/api/staging/${pendingQcAssignId}/assign`,'POST',{taskId:newTask.id,taskType:type,note:'Auto-assigned after creating this entry from the Activity Inbox'});
+        showToast(`Also linked the original message to ${name.trim()}.`,'success');
+        await loadQcInbox();
+      }catch(e){
+        showToast('Entry created, but linking the original message failed: '+e.message+' — assign it manually from the Activity Inbox.','error');
+      }
+    }
     await loadAllEntries();renderDashboard();
   }catch(e){showToast('Create failed: '+e.message,'error');console.error(e);}
   finally{btn.disabled=false;btn.textContent='Create Entry';}
@@ -7898,6 +7916,12 @@ function qcCreateContactFromThread(entryType){
   const identifier=(msg.contact_identifier||'').trim();
   const suggestedName=S._triageSuggestedName||'';
   S._triageSuggestedName=null;
+  // Remember which Activity Inbox item this new entry is FOR, so
+  // submitEntry can auto-assign the original message to it once the
+  // entry is actually created -- without this, creating a contact from
+  // here successfully makes the contact but never links the message
+  // that prompted it, leaving it stuck in the feed.
+  S._pendingQcAssignId=S.qc.assignTarget||null;
   closeModal('qc-assign-modal');
   closeModal('qc-thread-modal');
   openNewEntryModal(entryType||'Lead');
@@ -8363,6 +8387,11 @@ function goPage(type,p){const max=Math.ceil(S.filtered[type].length/50);S.pages[
 function closeModal(id){
   document.getElementById(id).style.display='none';
   S.isEditMode=false;
+  // If the New Entry modal is closed without saving (Cancel/X), clear
+  // the pending Activity-Inbox-assign flag -- otherwise it could
+  // silently attach to some unrelated entry created later through the
+  // normal +New Entry button.
+  if(id==='entry-modal')S._pendingQcAssignId=null;
   // If this was the thread modal AND it was opened from a Smart Triage
   // session (see reviewTriageItem), return to that session instead of
   // just dropping the person back at a closed screen. Whatever happened
