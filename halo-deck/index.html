@@ -424,6 +424,10 @@
         <div class="field">
           <label>Notes &amp; commentary <span style="font-weight:400;color:var(--text-faint);">(exported as readable text)</span></label>
           <textarea id="slideNotes" placeholder="Context, talking points, or commentary for this slide…"></textarea>
+          <button class="sqbtn" id="notesToLayerBtn" style="width:100%;margin-top:8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Add as text layer on this slide
+          </button>
         </div>
       </div>
 
@@ -1406,6 +1410,20 @@ $("#slideNotes").addEventListener("input", () => {
   clearTimeout(notesDebounce);
   notesDebounce = setTimeout(() => pushHistory(), 400);
 });
+$("#notesToLayerBtn").addEventListener("click", () => {
+  const txt = ($("#slideNotes").value || "").trim();
+  if(!txt){ showHint("Write a note first, then add it as a layer"); return; }
+  const el = defaultText(8, 72);
+  el.text = txt;
+  el.w = 84; el.h = 22;
+  el.fontSize = 2.6;
+  el.bg = "#ffffff"; el.bgOpacity = 0.88; el.padding = 1.4;
+  currentSlide().elements.push(el);
+  renderAll();
+  selectElement(el.id);
+  pushHistory();
+  showHint("Notes added as a text layer — drag it into place");
+});
 $("#titleField").addEventListener("change", () => scheduleAutosave());
 
 /* =========================================================================
@@ -1594,7 +1612,7 @@ function buildExportDoc(){
       if(node) elsHTML += node.outerHTML;
     });
     const notesHTML = (s.notes && s.notes.trim())
-      ? '<details class="notes"><summary>Notes</summary><p>' + nl2br(s.notes) + '</p></details>'
+      ? '<div class="notes"><div class="notes-label">Notes</div><p>' + nl2br(s.notes) + '</p></div>'
       : "";
     slidesHTML += '<section class="slide" style="' + bgStyle + '" data-index="' + i + '">' +
       '<div class="slide-inner">' + elsHTML + '</div>' + notesHTML + '</section>';
@@ -1641,10 +1659,10 @@ body{
 .el-shape-arrow{pointer-events:none;}
 .notes{
   margin-top:14px;background:#201E1B;border:1px solid #3A352C;border-radius:10px;
-  padding:4px 16px;font-size:13.5px;color:#c9c2b6;
+  padding:14px 16px;font-size:13.5px;color:#c9c2b6;
 }
-.notes summary{cursor:pointer;padding:10px 0;font-weight:600;font-size:12px;letter-spacing:.03em;color:#9C9488;}
-.notes p{margin:0 0 14px;line-height:1.6;white-space:pre-wrap;}
+.notes-label{font-weight:600;font-size:12px;letter-spacing:.03em;color:#9C9488;margin-bottom:8px;}
+.notes p{margin:0;line-height:1.6;white-space:pre-wrap;}
 .deck-nav{
   margin-top:18px;display:flex;align-items:center;gap:16px;
   background:#201E1B;border:1px solid #3A352C;border-radius:999px;padding:8px 10px;
