@@ -3784,8 +3784,13 @@ async function submitNewTask(){
         const payload=(f.type==='relationship'||f.type==='tasks')
           ?{value:{add:ids,rem:[]}}
           :{value:ids.join(', ')};
-        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
-        catch(e){linkFieldFailures.push(partial);}
+        try{
+          await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);
+          console.log(`✅ OK: "${partial}" (field type: ${f.type}) →`,JSON.stringify(payload).substring(0,80));
+        }catch(e){
+          console.warn(`❌ FAIL: "${partial}" (field type: ${f.type}, id: ${f.id}) →`,JSON.stringify(payload).substring(0,80),'| error:',e.message);
+          linkFieldFailures.push(partial);
+        }
       };
       await setF('related lead',idArr);
       await setF('related deal',idArr);
