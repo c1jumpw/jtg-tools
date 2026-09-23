@@ -890,10 +890,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
   <div class="modal" style="max-width:380px">
     <div class="modal-header"><h3>📅 Add to Calendar</h3><button class="pf-close" onclick="closeModal('gcal-prompt-modal')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
-      <p style="font-size:13.5px;color:var(--text-secondary);margin:0">Opens Google Calendar in a new tab, pre-filled with the details -- just review and hit Save on Google's side.</p>
+      <p style="font-size:13.5px;color:var(--text-secondary);margin:0">Opens Google Calendar in a new tab, pre-filled with the details -- just review and hit Save on Google's side. If it doesn't open, copy the link instead and paste it into Safari or your calendar app.</p>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap">
       <button class="btn btn-secondary" onclick="closeModal('gcal-prompt-modal')">Not now</button>
+      <button class="btn btn-secondary" id="gcal-prompt-copy" onclick="navigator.clipboard.writeText(this.dataset.url).then(()=>showToast('Link copied.','success')).catch(()=>showToast('Could not copy -- select and copy the link manually.','error'))">Copy Link</button>
       <a id="gcal-prompt-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" onclick="closeModal('gcal-prompt-modal')" style="text-decoration:none">Open Google Calendar</a>
     </div>
   </div>
@@ -3636,8 +3637,11 @@ function buildGoogleCalendarLink({title,details,startMs,hasTime,guestEmail}){
 // own comment for why this matters (popup blockers silently swallow
 // window.open() calls that happen after an async task).
 function promptGoogleCalendar(gcalUrl){
+  console.log('📅 Generated Google Calendar link:',gcalUrl);
   const link=document.getElementById('gcal-prompt-link');
   if(link)link.href=gcalUrl;
+  const copyBtn=document.getElementById('gcal-prompt-copy');
+  if(copyBtn)copyBtn.dataset.url=gcalUrl;
   document.getElementById('gcal-prompt-modal').style.display='flex';
 }
 
@@ -3763,17 +3767,29 @@ async function submitNewTask(){
     const linkFieldFailures=[];
     if(S._taskLinks?.length){
       const fields=await getListFields(S.creds.listTasks);
-      const idStr=S._taskLinks.map(l=>l.id).join(', ');
-      // Try to find the appropriate field by type
-      const setF=async(partial,val)=>{
+      const idArr=S._taskLinks.map(l=>l.id);
+      // Try to find the appropriate field by name, then build a payload
+      // matching its ACTUAL type -- ClickUp's task-relationship field
+      // type needs {value:{add:[...],rem:[]}} (same shape as the
+      // "users" case in setFieldById), not a plain comma-joined string.
+      // Sending the wrong shape to a relationship field is rejected,
+      // which is the likely reason this has been silently failing.
+      // Takes the array directly (not a pre-joined string) so each call
+      // site's own ID set is what actually gets used -- Related Account
+      // uses a different set (acctIds below) than Related Lead/Deal/
+      // Contact do (idArr), and both need to end up in the right payload.
+      const setF=async(partial,ids)=>{
         const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-        if(!f)return;
-        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:val});}
+        if(!f||!ids.length)return;
+        const payload=(f.type==='relationship'||f.type==='tasks')
+          ?{value:{add:ids,rem:[]}}
+          :{value:ids.join(', ')};
+        try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
         catch(e){linkFieldFailures.push(partial);}
       };
-      await setF('related lead',idStr);
-      await setF('related deal',idStr);
-      await setF('related contact',idStr);
+      await setF('related lead',idArr);
+      await setF('related deal',idArr);
+      await setF('related contact',idArr);
       // Propagate Related Account too -- either a link IS an Account
       // directly, or (Deal/Lead/Contact links) has its own Related
       // Account this task should inherit. Small number of extra fetches
@@ -3792,7 +3808,7 @@ async function submitNewTask(){
           }
         }catch(e){}
       }
-      if(acctIds.size)await setF('related account',[...acctIds].join(', '));
+      if(acctIds.size)await setF('related account',[...acctIds]);
     }
     // Sync to Master CRM Tasks Google Sheet
     // Columns: A=Task Name, B=Status, C=Related Lead/Contact ID, D=Related Deal ID, E=Related Account ID, F=Next Action Date, G=Assignee, H=Notebook Link
@@ -3809,7 +3825,7 @@ async function submitNewTask(){
     }catch(e){console.warn('Tasks sheet sync failed:',e.message);}
     closeModal('task-modal');
     if(linkFieldFailures.length){
-      showToast(`Task "${name}" created, but couldn't link it to the related ${linkFieldFailures.join('/')} field -- the task exists but may not show up under that entry's Tasks tab. Check the console (F12).`,'error');
+      showToast(`Task "${name}" created, but couldn't link it to the ${linkFieldFailures.join('/')} field -- the task exists but may not show up under that entry's Tasks tab. Check the console (F12).`,'error');
     }else{
       showToast(`Task "${name}" created!`,'success');
     }
