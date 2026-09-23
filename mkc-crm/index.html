@@ -3061,6 +3061,11 @@ async function submitEditProfile(){
 
   if(!currentPass){statusEl.textContent='Enter your current passcode to save any changes.';return;}
   if(newPass&&newPass!==confirmPass){statusEl.textContent="New passcode and confirmation don't match.";return;}
+  // Same email validation as Lead/Contact entries -- this form was missed
+  // when that was added, so a malformed address could reach ClickUp here.
+  for(const[val,label]of[[pubEmail,'MKC Public Email'],[persEmail,'Personal Email']]){
+    if(val&&!isValidEmailFormat(val)){statusEl.textContent=`${label} doesn't look like a valid email address (e.g. name@example.com).`;return;}
+  }
 
   const btn=document.getElementById('edit-profile-submit-btn');
   btn.disabled=true;
@@ -3083,9 +3088,9 @@ async function submitEditProfile(){
     };
     if(newPass)await trackField(TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,newPass,'short_text');
     await trackField(TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
-    await trackField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    await trackField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,normalizePhoneForClickUp(pubPhone),'phone');
     await trackField(TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
-    await trackField(TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    await trackField(TEAM_DIR_FIELDS.PERSONAL_PHONE,normalizePhoneForClickUp(persPhone),'phone');
     await trackField(TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
 
     statusEl.textContent='Saving to Sheet…';
@@ -3191,6 +3196,11 @@ async function submitAddTeamMember(){
     statusEl.textContent='First Name, Last Name, Branch, Workspace Email, and Workspace Passcode are all required.';
     return;
   }
+  // Workspace Email is this person's LOGIN identifier -- a malformed one
+  // here could effectively lock them out, so validate before writing.
+  for(const[val,label]of[[wsEmail,'Workspace Email'],[persEmail,'Personal Email'],[pubEmail,'MKC Public Email']]){
+    if(val&&!isValidEmailFormat(val)){statusEl.textContent=`${label} doesn't look like a valid email address (e.g. name@example.com).`;return;}
+  }
   if(!confirm(`Create a real Team Member Directory record for ${first} ${last} (${access})? This writes directly to ClickUp and the Team Directory sheet.`))return;
 
   const btn=document.getElementById('add-team-submit-btn');
@@ -3236,12 +3246,12 @@ async function submitAddTeamMember(){
     if(role)await trackTeamField(TEAM_DIR_FIELDS.ROLE,role,'short_text');
     if(hireDate)await trackTeamField(TEAM_DIR_FIELDS.HIRE_DATE,hireDate,'date');
     if(persEmail)await trackTeamField(TEAM_DIR_FIELDS.PERSONAL_EMAIL,persEmail,'email');
-    if(persPhone)await trackTeamField(TEAM_DIR_FIELDS.PERSONAL_PHONE,persPhone,'phone');
+    if(persPhone)await trackTeamField(TEAM_DIR_FIELDS.PERSONAL_PHONE,normalizePhoneForClickUp(persPhone),'phone');
     if(address)await trackTeamField(TEAM_DIR_FIELDS.MAILING_ADDRESS,address,'short_text');
     await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_EMAIL,wsEmail,'email');
     await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_PASSCODE,passcode,'short_text');
     if(pubEmail)await trackTeamField(TEAM_DIR_FIELDS.MKC_PUBLIC_EMAIL,pubEmail,'email');
-    if(pubPhone)await trackTeamField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,pubPhone,'phone');
+    if(pubPhone)await trackTeamField(TEAM_DIR_FIELDS.MKC_PUBLIC_PHONE,normalizePhoneForClickUp(pubPhone),'phone');
     await trackTeamField(TEAM_DIR_FIELDS.ACCESS_LEVEL,ACCESS_LEVEL_ORDERINDEX[access],'drop_down');
     if(clickupUserId)await trackTeamField(TEAM_DIR_FIELDS.WORKSPACE_NAME,clickupUserId,'users');
 
@@ -3297,7 +3307,12 @@ async function backfillRelatedAccounts(){
 
   try{
     const fields=await getListFields(S.creds.listTasks);
-    const acctField=fields.find(f=>f.name?.toLowerCase().includes('related account'));
+    // Same two-field convention as submitNewTask's setF: target the
+    // writable "Related Account ID" text duplicate, never the native
+    // list_relationship field (which the API cannot set). A bare
+    // .includes('related account') was ambiguous between the two.
+    const acctField=fields.find(f=>f.name?.toLowerCase().includes('related account')&&f.name?.toLowerCase().includes('id'))
+      ||fields.find(f=>f.name?.toLowerCase().includes('related account')&&f.type!=='list_relationship'&&f.type!=='relationship');
     if(!acctField){
       statusEl.textContent='';
       showToast('Could not find a "Related Account" field on the Tasks list — nothing changed.','error');
@@ -3334,7 +3349,7 @@ async function backfillRelatedAccounts(){
         }else{
           noLink++;
         }
-      }catch(e){errors++;}
+      }catch(e){errors++;console.warn(`❌ Backfill failed for task ${t.id} (field "${acctField.name}", ${acctField.type}):`,e.message);}
     }
 
     statusEl.textContent=`Done — ${updated} updated, ${skipped} already had an Account, ${noLink} had nothing to link, ${errors} errors.`;
@@ -6512,6 +6527,10 @@ function updateNFFields(){
       <div class="form-row">
         <div class="form-group"><label>Known As / Nickname</label><input type="text" id="nf-knownAs" placeholder="Preferred name"></div>
         <div class="form-group"><label>Title / Role</label><input type="text" id="nf-title" placeholder="e.g. CEO, Director"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email 2 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional)</span></label><input type="email" id="nf-email-2"></div>
+        <div class="form-group"><label>Phone 2 <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional)</span></label><input type="tel" id="nf-phone-2" placeholder="+1 470 222 6558" style="width:100%"></div>
       </div>`;
   } else if(type==='Deal'){
     d.innerHTML=`
@@ -6577,6 +6596,10 @@ async function submitEntry(){
   if(nfEmailCheck&&!isValidEmailFormat(nfEmailCheck)){
     return showToast('Email doesn\'t look like a valid email address (e.g. name@example.com).','error');
   }
+  const nfEmail2Check=document.getElementById('nf-email-2')?.value?.trim();
+  if(nfEmail2Check&&!isValidEmailFormat(nfEmail2Check)){
+    return showToast('Email 2 doesn\'t look like a valid email address (e.g. name@example.com).','error');
+  }
   const listId={Lead:S.creds.listLeads,Contact:S.creds.listContacts,Deal:S.creds.listPipeline,Account:S.creds.listAccounts}[type];
   if(!listId)return showToast(`${type} list ID not configured.`,'error');
   const btn=document.getElementById('em-submit');btn.disabled=true;btn.textContent='Creating…';
@@ -6589,40 +6612,6 @@ async function submitEntry(){
     // of who actually created it in the app, so this comment is the only
     // place the real creator is recorded.
     try{await cuFetch(`/task/${newTask.id}/comment`,'POST',{comment_text:`[LOG] Entry created — ${S.user?.name||'Admin'} | ${getTS()}`,notify_all:false});}catch(e){}
-    const fields=await getListFields(listId);
-    // Universal field setter — handles all ClickUp field types correctly
-    const setField=async(partial,val)=>{
-      if(val===undefined||val===null||val==='')return;
-      const f=fields.find(ff=>ff.name?.toLowerCase()===partial.toLowerCase())
-              ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
-      if(!f){console.warn('Field not found:',partial);return;}
-      let payload;
-      switch(f.type){
-        case'drop_down':{
-          const opt=f.type_config?.options?.find(o=>o.name?.toLowerCase()===String(val).toLowerCase());
-          if(!opt){console.warn('Dropdown option not found:',partial,val);return;}
-          payload={value:opt.orderindex!==undefined?opt.orderindex:opt.id};
-          break;}
-        case'labels':{
-          payload={value:Array.isArray(val)?val:[val]};
-          break;}
-        case'date':{
-          payload={value:typeof val==='number'?val:new Date(val).getTime()};
-          break;}
-        case'number':{
-          payload={value:Number(val)};
-          break;}
-        case'url':
-        case'email':
-        case'phone':
-        case'text':
-        default:{
-          payload={value:String(val)};
-          break;}
-      }
-      try{await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);}
-      catch(e){console.warn('setField failed:',partial,f.type,e.message);}
-    };
     const ntid=newTask.id;
     const F=CU_FIELDS;
     const fieldFailures=[];
@@ -6635,6 +6624,12 @@ async function submitEntry(){
     if(nfEmail)await sfN(F.PRIMARY_EMAIL,nfEmail,'email');
     const rawNfPhone=(document.getElementById('nf-phone')?.value||'').trim();
     if(rawNfPhone)await sfN(F.PHONE,normalizePhoneForClickUp(rawNfPhone),'phone');
+    if(type==='Lead'||type==='Contact'){
+      const nfEmail2=document.getElementById('nf-email-2')?.value?.trim();
+      if(nfEmail2)await sfN(F.EMAIL_2,nfEmail2,'email');
+      const nfPhone2=document.getElementById('nf-phone-2')?.value?.trim();
+      if(nfPhone2)await sfN(F.PHONE_2,normalizePhoneForClickUp(nfPhone2),'phone');
+    }
     // ── FIRST / LAST NAME ─────────────────────────────────────
     if(type==='Lead'||type==='Contact'){
       const fn=document.getElementById('nf-fname')?.value?.trim();
@@ -8493,10 +8488,6 @@ function makeTypeBadge(ct){
 function lookupUUID(name){
   const row=(S.ref.labels||[]).find(r=>r[1]?.toLowerCase()===name.toLowerCase());
   return row?.[0]||null;
-}
-function findCFId(task,partial){
-  const f=(task.custom_fields||[]).find(f=>f.name?.toLowerCase().includes(partial.toLowerCase()));
-  return f?.id||null;
 }
 
 function renderPg(type,total){
