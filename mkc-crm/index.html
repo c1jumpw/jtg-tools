@@ -3778,17 +3778,26 @@ async function submitNewTask(){
       // site's own ID set is what actually gets used -- Related Account
       // uses a different set (acctIds below) than Related Lead/Deal/
       // Contact do (idArr), and both need to end up in the right payload.
+      // ClickUp has two similarly-named fields for each of these:
+      // a native "list_relationship" field (can only be configured/set
+      // from within ClickUp itself, not via the API) and a plain-text
+      // "... ID" duplicate that exists specifically so the app can store
+      // a reference from outside ClickUp. Matching on partial alone was
+      // ambiguous -- it could land on either one depending on array
+      // order, which is exactly why Related Deal worked (its text field
+      // apparently sorted first) while Related Lead/Contact didn't
+      // (their native relationship field did). Requiring "id" in the
+      // name too guarantees we only ever target the writable text field.
       const setF=async(partial,ids)=>{
-        const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
+        const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase())&&ff.name?.toLowerCase().includes('id'))
+              ||fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase())&&ff.type!=='list_relationship'&&ff.type!=='relationship');
         if(!f||!ids.length)return;
-        const payload=(f.type==='list_relationship'||f.type==='relationship'||f.type==='tasks')
-          ?{value:{add:ids,rem:[]}}
-          :{value:ids.join(', ')};
+        const payload={value:ids.join(', ')};
         try{
           await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',payload);
-          console.log(`✅ OK: "${partial}" (field type: ${f.type}) →`,JSON.stringify(payload).substring(0,80));
+          console.log(`✅ OK: "${partial}" → field "${f.name}" (${f.type})`,JSON.stringify(payload).substring(0,80));
         }catch(e){
-          console.warn(`❌ FAIL: "${partial}" (field type: ${f.type}, id: ${f.id}) →`,JSON.stringify(payload).substring(0,80),'| error:',e.message);
+          console.warn(`❌ FAIL: "${partial}" → field "${f.name}" (${f.type}, id: ${f.id})`,JSON.stringify(payload).substring(0,80),'| error:',e.message);
           linkFieldFailures.push(partial);
         }
       };
