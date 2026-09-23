@@ -3781,7 +3781,7 @@ async function submitNewTask(){
       const setF=async(partial,ids)=>{
         const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial.toLowerCase()));
         if(!f||!ids.length)return;
-        const payload=(f.type==='relationship'||f.type==='tasks')
+        const payload=(f.type==='list_relationship'||f.type==='relationship'||f.type==='tasks')
           ?{value:{add:ids,rem:[]}}
           :{value:ids.join(', ')};
         try{
