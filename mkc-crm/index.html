@@ -706,6 +706,17 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </div>
         </div>
         <div class="settings-section">
+          <h3>Bulk Import from Notes</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Paste a dictated recap or free-form notes. The system extracts distinct operations -- new contacts, logged activities, tasks, comments -- and shows you a preview to confirm, adjust, or skip each one before anything is written to the CRM.</p>
+          <textarea id="bulk-import-input" class="form-textarea" rows="6" placeholder="e.g. Called Maurice about the Peachtree deal, he wants a proposal by Friday. Sarah from Delta reached out -- 470-555-1234, new lead from the CEO event." style="width:100%;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" id="bulk-import-parse-btn" onclick="parseBulkImport()">Parse Notes</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bulk-import-input').value='';document.getElementById('bulk-import-preview').innerHTML='';">Clear</button>
+            <span id="bulk-import-status" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div id="bulk-import-preview" style="margin-top:16px"></div>
+        </div>
+        <div class="settings-section">
           <h3>Message Templates</h3>
           <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px" id="template-editor-note"></p>
           <div id="template-editor-list"></div>
@@ -3292,6 +3303,417 @@ async function submitAddTeamMember(){
     showToast('Failed to create team member: '+e.message,'error');
   }finally{
     btn.disabled=false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BULK IMPORT FROM NOTES
+// Paste (or eventually dictate) a natural-language recap → server
+// extracts structured operations → editable preview → per-row confirm.
+// See api/parse-import.ts for the model/schema side.
+// ═══════════════════════════════════════════════════════════════════
+
+const PARSE_IMPORT_ENDPOINT='https://jtg-tools-mkc-crm.vercel.app/api/parse-import';
+
+// State for the current import session, so per-row edits persist while
+// the preview is open. Reset every parse.
+// {ops: [], unhandledContent: '', edits: {rowId: {...overrides}}}
+S._bulkImport=null;
+
+// Name-based entry matcher. Kept intentionally simple: substring match
+// on the display name, case-insensitive. Returns ALL matches rather
+// than picking one, so an ambiguous hint like "Maurice" (with three
+// Maurices on file) surfaces the choice to the user instead of silently
+// guessing wrong. Empty array means "no plausible match -- offer to
+// create new". Sorted by recency so the most active match sorts first.
+function findEntriesByNameHint(hint){
+  if(!hint)return [];
+  const q=hint.toLowerCase().trim();
+  if(q.length<2)return []; // one letter is way too permissive
+  const all=[];
+  for(const type of ['leads','contacts','pipeline','accounts']){
+    for(const t of (S.entries[type]||[])){
+      if(t.parent)continue; // skip subtasks
+      const name=(t.name||'').toLowerCase();
+      // Both directions of substring match: "Maurice" matches "Maurice
+      // Johnson", and "Maurice Johnson" matches "Maurice" if that's the
+      // full record name. Extra credit: also match against Known As.
+      const cf=getCF(t);
+      const knownAs=(cf['known as']||'').toLowerCase();
+      if(name.includes(q)||q.includes(name)||(knownAs&&(knownAs.includes(q)||q.includes(knownAs)))){
+        all.push({id:t.id,type,name:t.name,lastUpdated:Number(t.date_updated)||0});
+      }
+    }
+  }
+  all.sort((a,b)=>b.lastUpdated-a.lastUpdated);
+  return all;
+}
+
+async function parseBulkImport(){
+  const input=document.getElementById('bulk-import-input');
+  const btn=document.getElementById('bulk-import-parse-btn');
+  const status=document.getElementById('bulk-import-status');
+  const preview=document.getElementById('bulk-import-preview');
+  const transcript=(input?.value||'').trim();
+  if(!transcript){showToast('Paste some notes first.','error');return;}
+  if(transcript.length>20000){showToast('Transcript is too long (max 20,000 characters). Split it into smaller batches.','error');return;}
+
+  btn.disabled=true;
+  status.textContent='Parsing...';
+  preview.innerHTML='';
+  S._bulkImport=null;
+
+  try{
+    // Reference date so the model can resolve "Friday" / "next Wednesday"
+    // relative to the user's local calendar, not Vercel's edge location.
+    const today=new Date();
+    const referenceDate=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const res=await fetch(PARSE_IMPORT_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({transcript,referenceDate}),
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({error:`HTTP ${res.status}`}));
+      throw new Error(err.error||`Parse failed (${res.status})`);
+    }
+    const parsed=await res.json();
+    const ops=Array.isArray(parsed.operations)?parsed.operations:[];
+    if(!ops.length){
+      status.textContent='';
+      preview.innerHTML='<div style="padding:12px;background:var(--bg-main);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-secondary)">Nothing actionable was extracted. Try being more explicit about what to create/log/track.'+(parsed.unhandledContent?` <em>Note:</em> ${esc(parsed.unhandledContent)}`:'')+'</div>';
+      return;
+    }
+    // Assign a stable ID to each row so per-row edits can key against
+    // it -- row indexes shift if the user rejects one mid-list.
+    S._bulkImport={
+      ops:ops.map((op,i)=>({...op,_rowId:`row-${i}-${Date.now()}`,_status:'pending'})),
+      unhandledContent:parsed.unhandledContent||'',
+      edits:{},
+    };
+    status.textContent=`Extracted ${ops.length} operation${ops.length===1?'':'s'}.`;
+    renderBulkImportPreview();
+  }catch(e){
+    status.textContent='';
+    showToast('Parse failed: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+// Resolves the display description for an operation, applying any
+// pending edits. Used both for rendering and for execution -- so the
+// UI and the actual write always see the same effective values.
+function effectiveOp(rowId){
+  const op=S._bulkImport?.ops?.find(o=>o._rowId===rowId);
+  if(!op)return null;
+  const edits=S._bulkImport.edits[rowId]||{};
+  return {...op,...edits};
+}
+
+// A short human label for each operation type -- kept centralized so
+// the label in the preview list, in status toasts, and in the confirm
+// button never drift out of sync.
+const BULK_OP_LABELS={
+  create_lead:'New Lead',
+  create_contact:'New Contact',
+  create_deal:'New Deal',
+  create_account:'New Account',
+  log_activity:'Log Activity',
+  add_task:'Add Task',
+  add_comment:'Add Comment',
+};
+
+function renderBulkImportPreview(){
+  const preview=document.getElementById('bulk-import-preview');
+  if(!preview||!S._bulkImport){preview.innerHTML='';return;}
+  const {ops,unhandledContent}=S._bulkImport;
+  const pending=ops.filter(o=>o._status==='pending');
+  let html='';
+  if(unhandledContent){
+    html+=`<div style="padding:10px;background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;margin-bottom:12px;font-size:12.5px;color:#7c5a00"><strong>Not captured:</strong> ${esc(unhandledContent)}</div>`;
+  }
+  if(pending.length>1){
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="font-size:13.5px">${pending.length} pending item${pending.length===1?'':'s'}</strong><button class="btn btn-primary btn-sm" onclick="executeAllBulkOps()">✓ Accept &amp; Execute All</button></div>`;
+  }
+  for(const rawOp of ops){
+    html+=renderBulkImportRow(rawOp);
+  }
+  preview.innerHTML=html;
+}
+
+function renderBulkImportRow(rawOp){
+  const op=effectiveOp(rawOp._rowId);
+  const label=BULK_OP_LABELS[op.op]||op.op;
+  const confBadge={
+    high:'<span style="background:#d1fadf;color:#054f31;padding:1px 6px;border-radius:10px;font-size:10.5px;font-weight:600">HIGH</span>',
+    medium:'<span style="background:#fef0c7;color:#7a2e0e;padding:1px 6px;border-radius:10px;font-size:10.5px;font-weight:600">MEDIUM</span>',
+    low:'<span style="background:#fee4e2;color:#7a271a;padding:1px 6px;border-radius:10px;font-size:10.5px;font-weight:600">LOW</span>',
+  }[op.confidence]||'';
+
+  // Status-based rendering: pending shows the editor, done/failed shows
+  // just a summary line with the result, skipped is greyed out. Editing
+  // is only offered for pending -- past decisions stay visible but
+  // locked, so the person can see what happened without accidentally
+  // re-triggering.
+  const statusIcon={pending:'',done:'<span style="color:#12b76a;font-weight:700">✓</span> ',failed:'<span style="color:#f04438;font-weight:700">✗</span> ',skipped:'<span style="color:var(--text-muted)">—</span> '}[rawOp._status]||'';
+  const isPending=rawOp._status==='pending';
+  const dim=isPending?'':'opacity:0.55;';
+
+  let body='';
+  if(op.op==='create_lead'||op.op==='create_contact'){
+    body=renderCreatePersonEditor(rawOp._rowId,op,isPending);
+  }else if(op.op==='create_deal'){
+    body=renderCreateDealEditor(rawOp._rowId,op,isPending);
+  }else if(op.op==='create_account'){
+    body=renderCreateAccountEditor(rawOp._rowId,op,isPending);
+  }else if(op.op==='log_activity'||op.op==='add_comment'){
+    body=renderLogOrCommentEditor(rawOp._rowId,op,isPending);
+  }else if(op.op==='add_task'){
+    body=renderAddTaskEditor(rawOp._rowId,op,isPending);
+  }
+
+  const actions=isPending?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+    <button class="btn btn-primary btn-sm" onclick="executeBulkOp('${rawOp._rowId}')">Confirm &amp; Execute</button>
+    <button class="btn btn-secondary btn-sm" onclick="skipBulkOp('${rawOp._rowId}')">Skip</button>
+  </div>`:'';
+
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;${dim}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+      <div style="font-size:13px;font-weight:600">${statusIcon}${esc(label)}</div>
+      ${confBadge}
+    </div>
+    ${body}
+    ${actions}
+  </div>`;
+}
+
+// Editor helpers -- each returns the editable body HTML for one op
+// type. Inputs write straight into S._bulkImport.edits[rowId] on blur
+// so the effective op stays in sync with what the user sees. Kept
+// minimal on fields (only what the schema actually surfaces) rather
+// than exposing every possible ClickUp field -- the goal here is
+// quick-confirm, not full-form editing. If the user needs to set
+// something exotic, they can execute the basics here and edit the
+// entry afterward.
+
+function bulkInput(rowId,key,label,val,type='text'){
+  return `<div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px">${esc(label)}</label><input type="${type}" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12.5px" value="${esc(val||'')}" oninput="updateBulkEdit('${rowId}','${key}',this.value)"></div>`;
+}
+function bulkTextarea(rowId,key,label,val){
+  return `<div style="margin-bottom:6px"><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:2px">${esc(label)}</label><textarea rows="2" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit;resize:vertical" oninput="updateBulkEdit('${rowId}','${key}',this.value)">${esc(val||'')}</textarea></div>`;
+}
+
+function updateBulkEdit(rowId,key,val){
+  if(!S._bulkImport)return;
+  if(!S._bulkImport.edits[rowId])S._bulkImport.edits[rowId]={};
+  S._bulkImport.edits[rowId][key]=val;
+}
+
+function renderCreatePersonEditor(rowId,op,editable){
+  if(!editable)return `<div style="font-size:12.5px">${esc(op.firstName||'')} ${esc(op.lastName||'')} ${op.email?`&lt;${esc(op.email)}&gt;`:''} ${op.phone?`(${esc(op.phone)})`:''}${op.company?` &middot; ${esc(op.company)}`:''}</div>`;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${bulkInput(rowId,'firstName','First Name',op.firstName)}
+    ${bulkInput(rowId,'lastName','Last Name',op.lastName)}
+    ${bulkInput(rowId,'email','Email',op.email,'email')}
+    ${bulkInput(rowId,'phone','Phone',op.phone,'tel')}
+    ${bulkInput(rowId,'title','Title',op.title)}
+    ${bulkInput(rowId,'company','Company',op.company)}
+  </div>`;
+}
+function renderCreateDealEditor(rowId,op,editable){
+  if(!editable)return `<div style="font-size:12.5px">${esc(op.dealName||'')} ${op.dealValue?` &middot; ${esc(op.dealValue)}`:''}</div>`;
+  return `${bulkInput(rowId,'dealName','Deal Name',op.dealName)}${bulkInput(rowId,'dealValue','Value',op.dealValue)}`;
+}
+function renderCreateAccountEditor(rowId,op,editable){
+  if(!editable)return `<div style="font-size:12.5px">${esc(op.accountName||'')}</div>`;
+  return bulkInput(rowId,'accountName','Account Name',op.accountName);
+}
+function renderLogOrCommentEditor(rowId,op,editable){
+  const matchBlock=renderContactMatchPicker(rowId,op,editable);
+  if(!editable)return `<div style="font-size:12.5px"><em>${esc(op.contactHint||'?')}</em>: ${esc(op.activityText||'')}</div>`;
+  return `${matchBlock}${bulkTextarea(rowId,'activityText','What to log',op.activityText)}`;
+}
+function renderAddTaskEditor(rowId,op,editable){
+  const matchBlock=renderContactMatchPicker(rowId,op,editable);
+  if(!editable)return `<div style="font-size:12.5px">${esc(op.taskName||'')}${op.taskDueDate?` (due ${esc(op.taskDueDate)})`:''}${op.contactHint?` &middot; ref: ${esc(op.contactHint)}`:''}</div>`;
+  return `${matchBlock}${bulkInput(rowId,'taskName','Task Name',op.taskName)}${bulkInput(rowId,'taskDueDate','Due Date (YYYY-MM-DD)',op.taskDueDate,'date')}`;
+}
+
+// The critical piece: contact-hint resolution. Shows the top matches
+// from findEntriesByNameHint as a picker, plus an explicit "no match"
+// option. The user is always in control -- we never silently pick one
+// for them, since silently guessing a match is exactly the way to log
+// against the wrong contact and lose track of the right one.
+function renderContactMatchPicker(rowId,op,editable){
+  if(!op.contactHint)return '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px"><em>No contact reference in this item</em></div>';
+  const matches=findEntriesByNameHint(op.contactHint);
+  const chosen=op._chosenEntryId||(matches.length===1?matches[0].id:'');
+  if(chosen&&!op._chosenEntryId&&matches.length===1){
+    // Auto-choose the ONLY match at render time -- but write it into
+    // edits so execution sees it too, not just the rendered display.
+    if(!S._bulkImport.edits[rowId])S._bulkImport.edits[rowId]={};
+    S._bulkImport.edits[rowId]._chosenEntryId=chosen;
+    S._bulkImport.edits[rowId]._chosenEntryType=matches[0].type;
+    S._bulkImport.edits[rowId]._chosenEntryName=matches[0].name;
+  }
+  if(!editable){
+    const label=op._chosenEntryName||'(unmatched)';
+    return `<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:4px">Ref: <em>${esc(op.contactHint)}</em> → ${esc(label)}</div>`;
+  }
+  const opts=matches.map(m=>`<option value="${m.id}|${m.type}|${esc(m.name)}"${chosen===m.id?' selected':''}>${esc(m.name)} (${esc(m.type)})</option>`).join('');
+  return `<div style="margin-bottom:8px;padding:8px;background:var(--bg-main);border-radius:6px">
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Speaker said: <em>"${esc(op.contactHint)}"</em></div>
+    <select style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12.5px" onchange="chooseBulkMatch('${rowId}',this.value)">
+      <option value="">${matches.length?'-- Choose a match --':'-- No plausible match found --'}</option>
+      ${opts}
+    </select>
+  </div>`;
+}
+
+function chooseBulkMatch(rowId,val){
+  if(!S._bulkImport)return;
+  if(!S._bulkImport.edits[rowId])S._bulkImport.edits[rowId]={};
+  if(!val){
+    S._bulkImport.edits[rowId]._chosenEntryId='';
+    S._bulkImport.edits[rowId]._chosenEntryType='';
+    S._bulkImport.edits[rowId]._chosenEntryName='';
+    return;
+  }
+  const [id,type,...nameParts]=val.split('|');
+  S._bulkImport.edits[rowId]._chosenEntryId=id;
+  S._bulkImport.edits[rowId]._chosenEntryType=type;
+  S._bulkImport.edits[rowId]._chosenEntryName=nameParts.join('|');
+}
+
+function skipBulkOp(rowId){
+  const rawOp=S._bulkImport?.ops?.find(o=>o._rowId===rowId);
+  if(!rawOp)return;
+  rawOp._status='skipped';
+  renderBulkImportPreview();
+}
+
+// Executes ONE operation. Reuses the same underlying primitives the
+// rest of the CRM uses (cuFetch, setFieldById, sfN patterns) rather
+// than duplicating write logic -- so any future field-write fix
+// automatically covers bulk import too.
+async function executeBulkOp(rowId){
+  const rawOp=S._bulkImport?.ops?.find(o=>o._rowId===rowId);
+  if(!rawOp||rawOp._status!=='pending')return;
+  const op=effectiveOp(rowId);
+  try{
+    if(op.op==='create_lead'||op.op==='create_contact'){
+      await bulkExecCreatePerson(op);
+    }else if(op.op==='create_deal'){
+      await bulkExecCreateDeal(op);
+    }else if(op.op==='create_account'){
+      await bulkExecCreateAccount(op);
+    }else if(op.op==='log_activity'||op.op==='add_comment'){
+      await bulkExecComment(op);
+    }else if(op.op==='add_task'){
+      await bulkExecTask(op);
+    }else{
+      throw new Error(`Unknown op type: ${op.op}`);
+    }
+    rawOp._status='done';
+    showToast(`✓ ${BULK_OP_LABELS[op.op]||op.op}`,'success');
+  }catch(e){
+    rawOp._status='failed';
+    rawOp._errorMsg=e.message;
+    showToast(`Failed: ${e.message}`,'error');
+  }
+  renderBulkImportPreview();
+}
+
+async function executeAllBulkOps(){
+  if(!S._bulkImport)return;
+  const pending=S._bulkImport.ops.filter(o=>o._status==='pending');
+  if(!pending.length)return;
+  if(!confirm(`Execute ${pending.length} pending item${pending.length===1?'':'s'}? Each will be written to the CRM in order.`))return;
+  const btn=document.getElementById('bulk-import-parse-btn');
+  if(btn)btn.disabled=true;
+  // Sequential, not parallel: order matters when a create_lead is
+  // followed by a log_activity that might refer to the just-created
+  // entry, and cheaper to reason about failures. Not slow at this
+  // scale (typically <20 ops per session).
+  for(const rawOp of pending){
+    await executeBulkOp(rawOp._rowId);
+  }
+  if(btn)btn.disabled=false;
+  // Refresh loaded entries so any newly-created leads/contacts show up
+  // in later matches within the same import session.
+  await loadAllEntries();
+  S._contactEntryLookup=null; // invalidate the cached lookup
+}
+
+async function bulkExecCreatePerson(op){
+  const type=op.op==='create_lead'?'Lead':'Contact';
+  const listId=type==='Lead'?S.creds.listLeads:S.creds.listContacts;
+  if(!listId)throw new Error(`${type} list ID not configured`);
+  const name=[(op.firstName||'').trim(),(op.lastName||'').trim()].filter(Boolean).join(' ')||'(unnamed)';
+  if(op.email&&!isValidEmailFormat(op.email))throw new Error(`Email "${op.email}" is invalid`);
+  const newTask=await cuFetch(`/list/${listId}/task`,'POST',{name});
+  const F=CU_FIELDS;
+  const tid=newTask.id;
+  if(op.firstName)await setFieldById(tid,F.FIRST_NAME,op.firstName,'short_text');
+  if(op.lastName)await setFieldById(tid,F.LAST_NAME,op.lastName,'short_text');
+  if(op.email)await setFieldById(tid,F.PRIMARY_EMAIL,op.email,'email');
+  if(op.phone)await setFieldById(tid,F.PHONE,normalizePhoneForClickUp(op.phone),'phone');
+  if(op.title)await setFieldById(tid,F.TITLE,op.title,'short_text');
+  // Company: if given, note in the description -- we don't create/link
+  // an Account automatically since that's a distinct decision the user
+  // should make separately (as its own future bulk op if desired).
+  if(op.company||op.notes){
+    const desc=[op.company?`Company: ${op.company}`:'',op.notes||''].filter(Boolean).join('\n\n');
+    if(desc)await cuFetch(`/task/${tid}`,'PUT',{description:desc});
+  }
+}
+async function bulkExecCreateDeal(op){
+  if(!S.creds.listPipeline)throw new Error('Pipeline list ID not configured');
+  const name=(op.dealName||'').trim();
+  if(!name)throw new Error('Deal name is required');
+  const newTask=await cuFetch(`/list/${S.creds.listPipeline}/task`,'POST',{name});
+  if(op.dealValue)await cuFetch(`/task/${newTask.id}`,'PUT',{description:`Value: ${op.dealValue}${op.notes?`\n\n${op.notes}`:''}`});
+}
+async function bulkExecCreateAccount(op){
+  if(!S.creds.listAccounts)throw new Error('Accounts list ID not configured');
+  const name=(op.accountName||'').trim();
+  if(!name)throw new Error('Account name is required');
+  await cuFetch(`/list/${S.creds.listAccounts}/task`,'POST',{name});
+}
+async function bulkExecComment(op){
+  const entryId=op._chosenEntryId;
+  if(!entryId)throw new Error(`No matched entry chosen for "${op.contactHint||'(no hint)'}"`);
+  const text=(op.activityText||'').trim();
+  if(!text)throw new Error('Activity text is empty');
+  const channelPrefix=op.activityChannel?`[${op.activityChannel.toUpperCase()}] `:'[BULK IMPORT] ';
+  const comment=`${channelPrefix}${text} — ${S.user?.name||'Admin'} | ${getTS()}`;
+  await cuFetch(`/task/${entryId}/comment`,'POST',{comment_text:comment,notify_all:false});
+}
+async function bulkExecTask(op){
+  if(!S.creds.listTasks)throw new Error('Master CRM Tasks list ID not configured');
+  const name=(op.taskName||'').trim();
+  if(!name)throw new Error('Task name is required');
+  const body={name};
+  if(op.taskDueDate){
+    // YYYY-MM-DD → local-midnight timestamp so it lands on the intended
+    // calendar day regardless of timezone (same reasoning as the
+    // calendar link builder's all-day event handling).
+    const [y,m,d]=op.taskDueDate.split('-').map(Number);
+    if(y&&m&&d)body.due_date=new Date(y,m-1,d).getTime();
+  }
+  const newTask=await cuFetch(`/list/${S.creds.listTasks}/task`,'POST',body);
+  // If a contact was matched, write the linkage using the same
+  // approach as submitNewTask's setF (target "Related X ID" text
+  // field, never the native list_relationship).
+  if(op._chosenEntryId&&op._chosenEntryType){
+    try{
+      const fields=await getListFields(S.creds.listTasks);
+      const partial=op._chosenEntryType==='pipeline'?'related deal':op._chosenEntryType==='accounts'?'related account':op._chosenEntryType==='contacts'?'related contact':'related lead';
+      const f=fields.find(ff=>ff.name?.toLowerCase().includes(partial)&&ff.name?.toLowerCase().includes('id'))
+            ||fields.find(ff=>ff.name?.toLowerCase().includes(partial)&&ff.type!=='list_relationship'&&ff.type!=='relationship');
+      if(f)await cuFetch(`/task/${newTask.id}/field/${f.id}`,'POST',{value:op._chosenEntryId});
+    }catch(e){console.warn('Bulk task: failed to set related field',e.message);}
   }
 }
 
