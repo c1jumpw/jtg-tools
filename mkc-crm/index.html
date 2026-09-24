@@ -2041,11 +2041,6 @@ async function loadAllEntries(){
   // are about to change and the old map would otherwise silently go stale.
   S._contactLookup=null;
   S._contactEntryLookup=null;
-  // Clear diagnostic flags too, so the next resolveContactName call
-  // logs fresh evidence against the newly-loaded entries -- not once
-  // ever, which would be useless for debugging staleness issues.
-  S._contactLookupDiag=false;
-  S._resolveMissLogged=false;
   const lists={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts};
   const typeKeys=Object.keys(lists);
   for(const type of typeKeys){
@@ -8575,49 +8570,65 @@ function qcMatchEntries(q){
  */
 function buildContactLookupMap(){
   const map={};
-  // Order matters: last write wins on a phone/email collision, so this
-  // is also the priority order (lowest to highest). Contacts explicitly
-  // confirmed to win over everything else -- an established contact is
-  // the most current, actionable person-level record if the same
-  // number happens to also appear on an older Lead, a Deal, or an Account.
+  // Read-side tolerance -- see comment on buildContactEntryLookupMap
+  // for the design rationale. Read every string custom field, and
+  // treat anything that normalizes to 10+ digits as a phone. This
+  // handles historical data written in any of: "+19734600257",
+  // "+1 973-460-0257", "(973) 460-0257", "9734600257" -- all end up
+  // indexed under the same "9734600257" key. The write side still
+  // canonicalizes to +1XXXXXXXXXX (normalizePhoneForClickUp) so new
+  // data is clean; this is just about not losing matches on old data.
   ['accounts','pipeline','leads','contacts'].forEach(key=>{
     (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      const primaryPhone=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
-      const phone2=(cf['phone 2']||'').replace(/\D/g,'');
       const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
-      // Phone 2 is a genuinely separate number for the same person, not
-      // a fallback for a missing primary -- both need their own map key
-      // pointing at this same entry, not an OR-chain that only checks
-      // one or the other.
-      if(primaryPhone.length>=10)map['phone:'+primaryPhone.slice(-10)]=t.name;
-      if(phone2.length>=10)map['phone:'+phone2.slice(-10)]=t.name;
       if(email)map['email:'+email]=t.name;
+      // Every string-valued custom field is a candidate for a phone.
+      // Some entries in the wild have the number in unexpected fields
+      // (a signature line pasted into a notes field, a phone stashed
+      // in "primary contact phone" instead of "phone", etc.) -- this
+      // catches them without requiring a schema audit first.
+      for(const k in cf){
+        const v=cf[k];
+        if(typeof v!=='string'||!v)continue;
+        // Skip obvious non-phones cheaply: emails, URLs, notes with
+        // sentences. Phone-looking values are almost entirely digits
+        // plus a small set of format characters (+ - ( ) . space).
+        if(v.length>50)continue; // notes/descriptions don't fit here
+        if(/[a-zA-Z]/.test(v))continue; // letters mean it's not a phone
+        const digits=v.replace(/\D/g,'');
+        if(digits.length<10||digits.length>15)continue; // real phones fit here (E.164 caps at 15)
+        map['phone:'+digits.slice(-10)]=t.name;
+      }
     });
   });
   return map;
 }
 
-// Parallel to buildContactLookupMap, but stores the full entry
-// reference (id/type/name) instead of just a display name -- needed for
-// Smart Triage's auto-assign, which has to actually call the assign
-// endpoint with a real taskId/taskType, not just show a name. Kept
-// entirely separate from the name-only map above rather than changing
-// its return shape, since resolveContactName has existing callers that
-// expect a plain string back.
 function buildContactEntryLookupMap(){
+  // Parallel to buildContactLookupMap but stores {id,type,name} for
+  // Smart Triage's auto-assign, which needs a real taskId/taskType --
+  // not just a display name. Same read-side tolerance rationale
+  // applies here word for word; kept as a separate builder rather
+  // than changing buildContactLookupMap's return shape, since
+  // resolveContactName's callers expect a plain string back.
   const typeLabel={leads:'Lead',pipeline:'Deal',contacts:'Contact',accounts:'Account'};
   const map={};
   ['accounts','pipeline','leads','contacts'].forEach(key=>{
     (S.entries[key]||[]).filter(t=>!t.parent).forEach(t=>{
       const cf=getCF(t);
-      const primaryPhone=(cf.phone||cf['primary contact phone']||cf['primary phone']||'').replace(/\D/g,'');
-      const phone2=(cf['phone 2']||'').replace(/\D/g,'');
-      const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
       const entry={id:t.id,type:typeLabel[key],name:t.name};
-      if(primaryPhone.length>=10)map['phone:'+primaryPhone.slice(-10)]=entry;
-      if(phone2.length>=10)map['phone:'+phone2.slice(-10)]=entry;
+      const email=(cf['primary contact email']||cf.email||'').toLowerCase().trim();
       if(email)map['email:'+email]=entry;
+      for(const k in cf){
+        const v=cf[k];
+        if(typeof v!=='string'||!v)continue;
+        if(v.length>50)continue;
+        if(/[a-zA-Z]/.test(v))continue;
+        const digits=v.replace(/\D/g,'');
+        if(digits.length<10||digits.length>15)continue;
+        map['phone:'+digits.slice(-10)]=entry;
+      }
     });
   });
   return map;
@@ -8649,36 +8660,11 @@ function resolveContactEntry(identifier){
 function resolveContactName(identifier){
   if(!identifier)return null;
   if(!S._contactLookup)S._contactLookup=buildContactLookupMap();
-  // One-time diagnostic per inbox load: if the lookup map exists but
-  // has zero phone entries, or if this specific identifier's expected
-  // key isn't there, print evidence to the console. Removed once we
-  // confirm the underlying issue -- see chat history for context.
-  if(!S._contactLookupDiag){
-    S._contactLookupDiag=true;
-    const keys=Object.keys(S._contactLookup);
-    const phoneKeys=keys.filter(k=>k.startsWith('phone:'));
-    const emailKeys=keys.filter(k=>k.startsWith('email:'));
-    console.log(`🔍 Contact lookup map: ${phoneKeys.length} phone(s), ${emailKeys.length} email(s), total ${keys.length}`);
-    if(phoneKeys.length>0)console.log(`🔍 Sample phone keys (first 3):`,phoneKeys.slice(0,3));
-    else console.warn('🔍 NO phone keys in the lookup — either no entries have phones, or the map builder skipped them all');
-    const entryCounts=Object.fromEntries(['leads','contacts','pipeline','accounts'].map(k=>[k,(S.entries[k]||[]).length]));
-    console.log('🔍 S.entries counts:',entryCounts);
-  }
   const trimmed=identifier.trim();
   if(trimmed.includes('@'))return S._contactLookup['email:'+trimmed.toLowerCase()]||null;
   const digits=trimmed.replace(/\D/g,'');
   if(digits.length<10)return null;
-  const key='phone:'+digits.slice(-10);
-  const hit=S._contactLookup[key];
-  if(!hit&&!S._resolveMissLogged){
-    // Log ONE miss with full detail, so we can see the exact key the
-    // identifier resolved to vs what's actually in the map.
-    S._resolveMissLogged=true;
-    const phoneKeys=Object.keys(S._contactLookup).filter(k=>k.startsWith('phone:'));
-    console.warn(`🔍 First miss: identifier="${identifier}" → key="${key}", not found. Map has ${phoneKeys.length} phone entries.`);
-    if(phoneKeys.length<=20)console.warn('🔍 Full phone key list:',phoneKeys);
-  }
-  return hit||null;
+  return S._contactLookup['phone:'+digits.slice(-10)]||null;
 }
 
 function qcRenderAssignResults(matches){
