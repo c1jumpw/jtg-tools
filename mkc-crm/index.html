@@ -2041,6 +2041,11 @@ async function loadAllEntries(){
   // are about to change and the old map would otherwise silently go stale.
   S._contactLookup=null;
   S._contactEntryLookup=null;
+  // Clear diagnostic flags too, so the next resolveContactName call
+  // logs fresh evidence against the newly-loaded entries -- not once
+  // ever, which would be useless for debugging staleness issues.
+  S._contactLookupDiag=false;
+  S._resolveMissLogged=false;
   const lists={leads:S.creds.listLeads,pipeline:S.creds.listPipeline,contacts:S.creds.listContacts,accounts:S.creds.listAccounts};
   const typeKeys=Object.keys(lists);
   for(const type of typeKeys){
@@ -8644,11 +8649,36 @@ function resolveContactEntry(identifier){
 function resolveContactName(identifier){
   if(!identifier)return null;
   if(!S._contactLookup)S._contactLookup=buildContactLookupMap();
+  // One-time diagnostic per inbox load: if the lookup map exists but
+  // has zero phone entries, or if this specific identifier's expected
+  // key isn't there, print evidence to the console. Removed once we
+  // confirm the underlying issue -- see chat history for context.
+  if(!S._contactLookupDiag){
+    S._contactLookupDiag=true;
+    const keys=Object.keys(S._contactLookup);
+    const phoneKeys=keys.filter(k=>k.startsWith('phone:'));
+    const emailKeys=keys.filter(k=>k.startsWith('email:'));
+    console.log(`🔍 Contact lookup map: ${phoneKeys.length} phone(s), ${emailKeys.length} email(s), total ${keys.length}`);
+    if(phoneKeys.length>0)console.log(`🔍 Sample phone keys (first 3):`,phoneKeys.slice(0,3));
+    else console.warn('🔍 NO phone keys in the lookup — either no entries have phones, or the map builder skipped them all');
+    const entryCounts=Object.fromEntries(['leads','contacts','pipeline','accounts'].map(k=>[k,(S.entries[k]||[]).length]));
+    console.log('🔍 S.entries counts:',entryCounts);
+  }
   const trimmed=identifier.trim();
   if(trimmed.includes('@'))return S._contactLookup['email:'+trimmed.toLowerCase()]||null;
   const digits=trimmed.replace(/\D/g,'');
   if(digits.length<10)return null;
-  return S._contactLookup['phone:'+digits.slice(-10)]||null;
+  const key='phone:'+digits.slice(-10);
+  const hit=S._contactLookup[key];
+  if(!hit&&!S._resolveMissLogged){
+    // Log ONE miss with full detail, so we can see the exact key the
+    // identifier resolved to vs what's actually in the map.
+    S._resolveMissLogged=true;
+    const phoneKeys=Object.keys(S._contactLookup).filter(k=>k.startsWith('phone:'));
+    console.warn(`🔍 First miss: identifier="${identifier}" → key="${key}", not found. Map has ${phoneKeys.length} phone entries.`);
+    if(phoneKeys.length<=20)console.warn('🔍 Full phone key list:',phoneKeys);
+  }
+  return hit||null;
 }
 
 function qcRenderAssignResults(matches){
