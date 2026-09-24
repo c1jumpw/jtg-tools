@@ -706,11 +706,11 @@ textarea.form-textarea{height:auto;padding:10px 12px;resize:vertical;min-height:
           </div>
         </div>
         <div class="settings-section">
-          <h3>Bulk Import from Notes</h3>
-          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Paste a dictated recap or free-form notes. The system extracts distinct operations -- new contacts, logged activities, tasks, comments -- and shows you a preview to confirm, adjust, or skip each one before anything is written to the CRM.</p>
+          <h3>CRM Dictation Reader</h3>
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Paste a cleaned recap from your <em>CRM Dictation Cleaner</em> prompt (or any structured notes). The reader extracts distinct operations — new contacts, logged activities, tasks, comments — and shows you a preview to confirm, adjust, or skip each one before anything is written to the CRM.</p>
           <textarea id="bulk-import-input" class="form-textarea" rows="6" placeholder="e.g. Called Maurice about the Peachtree deal, he wants a proposal by Friday. Sarah from Delta reached out -- 470-555-1234, new lead from the CEO event." style="width:100%;font-size:13px;font-family:inherit;resize:vertical"></textarea>
           <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" id="bulk-import-parse-btn" onclick="parseBulkImport()">Parse Notes</button>
+            <button class="btn btn-primary btn-sm" id="bulk-import-parse-btn" onclick="parseBulkImport()">Read Notes</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bulk-import-input').value='';document.getElementById('bulk-import-preview').innerHTML='';">Clear</button>
             <span id="bulk-import-status" style="font-size:12px;color:var(--text-muted)"></span>
           </div>
@@ -9117,7 +9117,9 @@ const RESOURCE_ARTICLES=[
   {id:'access-levels',category:'Admin',minTier:'admin',title:'Understanding Access Levels',
     body:`<strong>Staff</strong> see only their own assigned entries, everywhere in the app. <strong>Admin</strong> and <strong>Super Admin</strong> see everything. Only <strong>Super Admin</strong> sees Data Maintenance tools and can change someone else's access level.`},
   {id:'data-maintenance',category:'Super Admin',minTier:'super',title:'Data Maintenance Tools',
-    body:`One-time fixes like backfilling Related Account IDs or checking the Team Directory for drift, in Settings. These write directly to ClickUp — read what a tool actually does before running it, since these aren't easily reversible.`}
+    body:`One-time fixes like backfilling Related Account IDs or checking the Team Directory for drift, in Settings. These write directly to ClickUp — read what a tool actually does before running it, since these aren't easily reversible.`},
+  {id:'dictation-reader',category:'Admin',minTier:'admin',title:'CRM Dictation Reader',
+    body:`In Settings, under <strong>CRM Dictation Reader</strong>. Paste dictated notes or a recap — ideally cleaned first with your <em>CRM Dictation Cleaner</em> Claude prompt — and the reader extracts distinct operations (new leads/contacts, logged activities, tasks, comments) into a per-row preview. Each row is editable before it writes. When a note refers to a person by first name and multiple matches exist, the reader shows all plausible matches instead of picking one — so a "Maurice" mention with three Maurices on file surfaces the choice rather than silently guessing.`}
 ];
 
 function renderResources(){
